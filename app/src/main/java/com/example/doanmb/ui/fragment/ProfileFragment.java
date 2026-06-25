@@ -22,13 +22,9 @@ import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
-import com.example.doanmb.ui.activity.ReviewActivity;
-import com.example.doanmb.ui.activity.PrivacyActivity;
-import com.example.doanmb.ui.activity.ReferralActivity;
+
 import com.bumptech.glide.Glide;
 import com.example.doanmb.ui.activity.AboutUsActivity;
-import com.example.doanmb.ui.activity.GiftsActivity;
-import com.example.doanmb.ui.activity.SupportActivity;
 import com.example.doanmb.util.ImageLoader;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.activity.FavoriteCarsActivity;
@@ -60,7 +56,7 @@ public class ProfileFragment extends Fragment {
     private TextView tvProfileNameMain, tvPhoneVerifiedBadge, tvWalletBalance;
     private ImageView ivAvatarMain,ivVerifiedIcon,ivFavouriteCar,ivRegRentCar,ivLocation;
     private Button btnLogin, btnRegister, btnLogout, btnSwitchDriver;
-    private RelativeLayout menuAboutUs,menuGifts,menuReferral, menuPrivacy, menuSupportCenter,menuReview;
+    private RelativeLayout menuAboutUs;
     // Views màn 2
     private ImageView ivAvatarSettings;
     private CardView ivChangeAvatarTrigger;
@@ -131,13 +127,7 @@ public class ProfileFragment extends Fragment {
         edtInfoPhone = view.findViewById(R.id.edt_info_phone);
         btnSavePersonalInfo = view.findViewById(R.id.btn_save_personal_info);
         ivVerifiedIcon = view.findViewById(R.id.iv_verified_icon);
-        // phần tĩnh của trang profile
         menuAboutUs = view.findViewById(R.id.menu_about_us);
-        menuGifts = view.findViewById(R.id.menu_gifts);
-        menuReferral = view.findViewById(R.id.menu_referral);
-        menuPrivacy = view.findViewById(R.id.menu_privacy);
-        menuSupportCenter = view.findViewById(R.id.menu_support_center);
-        menuReview= view.findViewById(R.id.menu_review);
     }
 
     private void setupListeners() {
@@ -208,21 +198,6 @@ public class ProfileFragment extends Fragment {
                 Intent intent = new Intent(getActivity(), AboutUsActivity.class);
                 startActivity(intent);
             });
-        }
-        if (menuGifts != null) {
-            menuGifts.setOnClickListener(v -> startActivity(new Intent(getActivity(), GiftsActivity.class)));
-        }
-        if (menuReferral != null) {
-            menuReferral.setOnClickListener(v -> startActivity(new Intent(getActivity(), ReferralActivity.class)));
-        }
-        if (menuPrivacy != null) {
-            menuPrivacy.setOnClickListener(v -> startActivity(new Intent(getActivity(), PrivacyActivity.class)));
-        }
-        if (menuSupportCenter != null) {
-            menuSupportCenter.setOnClickListener(v -> startActivity(new Intent(getActivity(), SupportActivity.class)));
-        }
-        if (menuReview != null) {
-            menuReview.setOnClickListener(v -> startActivity(new Intent(getActivity(), ReviewActivity.class)));
         }
     }
 
