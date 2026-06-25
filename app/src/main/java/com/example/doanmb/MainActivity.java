@@ -153,7 +153,8 @@ public class MainActivity extends AppCompatActivity {
 
         ManageFragment fragment = new ManageFragment();
         Bundle args = new Bundle();
-        args.putBoolean("OPEN_REQUESTS", true);
+        // Cập nhật key thành "showRequests" theo đúng yêu cầu của bạn
+        args.putBoolean("showRequests", true);
         fragment.setArguments(args);
 
         fragmentCache.put(R.id.nav_manage, fragment);
@@ -165,6 +166,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void handleNotificationIntent(Intent intent) {
         if (intent == null) return;
+
+        // Giữ lại logic cũ phòng trường hợp app đang dùng
         String openTab = intent.getStringExtra("OPEN_TAB");
         if ("manage".equals(openTab)) {
             openManageRequestsTab();
@@ -177,6 +180,13 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(i);
             }
         }
+
+        String navigateTo = intent.getStringExtra("navigateTo");
+        if ("manage_requests".equals(navigateTo)) {
+            // Gọi hàm có sẵn, hàm này đã xử lý việc chọn bottom nav và truyền Bundle
+            openManageRequestsTab();
+        }
+
     }
 
     /**

@@ -309,6 +309,7 @@ public class CarviaMessagingService extends FirebaseMessagingService {
         createNotificationChannel();
 
         Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra("navigateTo", "manage_requests");
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
         // Gửi lệnh mở tab Manage thay vì tab Messages

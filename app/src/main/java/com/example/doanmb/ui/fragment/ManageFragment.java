@@ -78,6 +78,12 @@ public class ManageFragment extends Fragment {
             loadRequests();
         }
 
+        // Nếu được điều hướng đến với yêu cầu mở tab Yêu cầu (từ notification)
+        Bundle args = getArguments();
+        if (args != null && args.getBoolean("showRequests", false)) {
+            showTab(false); // false = tab Yêu cầu nhận được
+        }
+
         return view;
     }
 
