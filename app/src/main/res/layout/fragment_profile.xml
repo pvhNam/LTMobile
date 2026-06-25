@@ -300,10 +300,43 @@
                         </RelativeLayout>
                         <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#E8E8E8" android:layout_marginHorizontal="16dp"/>
 
-                        <RelativeLayout android:layout_width="match_parent" android:layout_height="48dp" android:paddingHorizontal="16dp">
-                            <TextView android:id="@+id/ic4" android:layout_width="24dp" android:layout_height="24dp" android:text="⭐" android:textSize="16sp" android:gravity="center" android:layout_centerVertical="true"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bài đánh giá" android:textColor="#1A1A1A" android:textSize="14sp" android:layout_toEndOf="@id/ic4" android:layout_marginStart="12dp" android:layout_centerVertical="true" android:textStyle="bold"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@color/lg_accent" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
+                        <RelativeLayout
+                            android:id="@+id/menu_review"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:paddingHorizontal="16dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?android:attr/selectableItemBackground">
+
+                            <TextView
+                                android:id="@+id/ic4"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:text="⭐"
+                                android:textSize="16sp"
+                                android:gravity="center"
+                                android:layout_centerVertical="true"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Bài đánh giá"
+                                android:textColor="#1A1A1A"
+                                android:textSize="14sp"
+                                android:layout_toEndOf="@id/ic4"
+                                android:layout_marginStart="12dp"
+                                android:layout_centerVertical="true"
+                                android:textStyle="bold"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="›"
+                                android:textColor="@color/lg_accent"
+                                android:textSize="22sp"
+                                android:layout_alignParentEnd="true"
+                                android:layout_centerVertical="true" />
                         </RelativeLayout>
 
                     </LinearLayout>
@@ -324,17 +357,31 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <RelativeLayout android:layout_width="match_parent" android:layout_height="48dp" android:paddingHorizontal="16dp">
+                        <RelativeLayout
+                            android:id="@+id/menu_gifts"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:paddingHorizontal="16dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?android:attr/selectableItemBackground">
                             <TextView android:id="@+id/ic5" android:layout_width="24dp" android:layout_height="24dp" android:text="🎁" android:textSize="16sp" android:gravity="center" android:layout_centerVertical="true"/>
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Quà tặng" android:textColor="#1A1A1A" android:textSize="14sp" android:layout_toEndOf="@id/ic5" android:layout_marginStart="12dp" android:layout_centerVertical="true" android:textStyle="bold"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@color/lg_accent" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="#2A70DE" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
                         </RelativeLayout>
                         <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#E8E8E8" android:layout_marginHorizontal="16dp"/>
 
-                        <RelativeLayout android:layout_width="match_parent" android:layout_height="48dp" android:paddingHorizontal="16dp">
+                        <RelativeLayout
+                            android:id="@+id/menu_referral"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:paddingHorizontal="16dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?android:attr/selectableItemBackground">
                             <TextView android:id="@+id/ic6" android:layout_width="24dp" android:layout_height="24dp" android:text="👥" android:textSize="16sp" android:gravity="center" android:layout_centerVertical="true"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Giới thiệu bạn mới" android:textColor="#1A1A1A" android:textSize="14sp" android:layout_toEndOf="@id/ic6" android:layout_marginStart="12dp" android:layout_centerVertical="true" android:textStyle="bold"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@color/lg_accent" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cộng đồng" android:textColor="#1A1A1A" android:textSize="14sp" android:layout_toEndOf="@id/ic6" android:layout_marginStart="12dp" android:layout_centerVertical="true" android:textStyle="bold"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="#2A70DE" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
                         </RelativeLayout>
 
                     </LinearLayout>
@@ -355,17 +402,31 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <RelativeLayout android:layout_width="match_parent" android:layout_height="48dp" android:paddingHorizontal="16dp">
+                        <RelativeLayout
+                            android:id="@+id/menu_privacy"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:paddingHorizontal="16dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?android:attr/selectableItemBackground">
                             <TextView android:id="@+id/ic7" android:layout_width="24dp" android:layout_height="24dp" android:text="🛡️" android:textSize="16sp" android:gravity="center" android:layout_centerVertical="true"/>
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Chính sách bảo mật" android:textColor="#1A1A1A" android:textSize="14sp" android:layout_toEndOf="@id/ic7" android:layout_marginStart="12dp" android:layout_centerVertical="true" android:textStyle="bold"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@color/lg_accent" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="#2A70DE" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
                         </RelativeLayout>
                         <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#E8E8E8" android:layout_marginHorizontal="16dp"/>
 
-                        <RelativeLayout android:layout_width="match_parent" android:layout_height="48dp" android:paddingHorizontal="16dp">
+                        <RelativeLayout
+                            android:id="@+id/menu_support_center"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:paddingHorizontal="16dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?android:attr/selectableItemBackground">
                             <TextView android:id="@+id/ic8" android:layout_width="24dp" android:layout_height="24dp" android:text="❓" android:textSize="16sp" android:gravity="center" android:layout_centerVertical="true"/>
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Trung tâm hỗ trợ" android:textColor="#1A1A1A" android:textSize="14sp" android:layout_toEndOf="@id/ic8" android:layout_marginStart="12dp" android:layout_centerVertical="true" android:textStyle="bold"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@color/lg_accent" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="#2A70DE" android:textSize="22sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
                         </RelativeLayout>
                         <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#E8E8E8" android:layout_marginHorizontal="16dp"/>
 
