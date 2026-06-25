@@ -43,6 +43,71 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- ── Bộ lọc theo tháng ── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/filter_month_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:clickable="true"
+        android:focusable="true"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="#FFFFFF"
+        app:layout_constraintTop_toBottomOf="@id/revenue_header">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_calendar"
+                android:tint="#C62828"
+                android:layout_marginEnd="10dp" />
+
+            <TextView
+                android:id="@+id/tv_revenue_month"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Tất cả thời gian"
+                android:textColor="#212121"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_revenue_month_reset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:text="Tất cả ✕"
+                android:textColor="#9E9E9E"
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▾"
+                android:textColor="#C62828"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <!-- ── Summary card ── -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/summary_card"
@@ -54,7 +119,7 @@
         app:cardCornerRadius="16dp"
         app:cardElevation="4dp"
         app:cardBackgroundColor="#FFFFFF"
-        app:layout_constraintTop_toBottomOf="@id/revenue_header">
+        app:layout_constraintTop_toBottomOf="@id/filter_month_card">
 
         <LinearLayout
             android:layout_width="match_parent"

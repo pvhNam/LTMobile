@@ -32,8 +32,7 @@ import java.util.List;
 
 public class AdminOverviewFragment extends Fragment {
 
-    private TextView tvTotalRevenue, tvMonthRevenue, tvConfirmedCount, tvSaleRevenue, tvRentalRevenue;
-    private TextView tvPostingFeeRevenue, tvPostingCarCount, tvDriverPendingCount;
+    private TextView tvTotalRevenue, tvDriverPendingCount;
     private View btnViewUsers, btnViewCars, btnViewDriverApproval;
     private BarChart barChart;
     private FirebaseFirestore db;
@@ -49,12 +48,6 @@ public class AdminOverviewFragment extends Fragment {
         db = FirebaseFirestore.getInstance();
 
         tvTotalRevenue      = view.findViewById(R.id.tv_total_revenue);
-        tvMonthRevenue      = view.findViewById(R.id.tv_month_revenue);
-        tvConfirmedCount    = view.findViewById(R.id.tv_confirmed_count);
-        tvSaleRevenue       = view.findViewById(R.id.tv_sale_revenue);
-        tvRentalRevenue     = view.findViewById(R.id.tv_rental_revenue);
-        tvPostingFeeRevenue  = view.findViewById(R.id.tv_posting_fee_revenue);
-        tvPostingCarCount    = view.findViewById(R.id.tv_posting_car_count);
         tvDriverPendingCount = view.findViewById(R.id.tv_driver_pending_count);
 
         btnViewUsers         = view.findViewById(R.id.btn_view_users);
@@ -94,13 +87,6 @@ public class AdminOverviewFragment extends Fragment {
                     if (!isAdded()) return;
 
                     long commissionRevenue = 0;
-                    long monthRevenue      = 0;
-                    long saleRevenue       = 0;
-                    long rentalRevenue     = 0;
-
-                    Calendar now = Calendar.getInstance();
-                    int currentMonth = now.get(Calendar.MONTH);
-                    int currentYear  = now.get(Calendar.YEAR);
 
                     for (QueryDocumentSnapshot doc : orderSnap) {
                         String type        = doc.getString("type");
@@ -117,31 +103,14 @@ public class AdminOverviewFragment extends Fragment {
                                 } catch (NumberFormatException ignored) {}
                             }
                             commission = (long)(pricePerUnit * days * RENTAL_COMMISSION);
-                            rentalRevenue += commission;
                         } else {
                             commission = (long)(pricePerUnit * SALE_COMMISSION);
-                            saleRevenue += commission;
                         }
 
                         commissionRevenue += commission;
-
-                        Timestamp ts = doc.getTimestamp("createdAt");
-                        if (ts != null) {
-                            Calendar orderCal = Calendar.getInstance();
-                            orderCal.setTimeInMillis(ts.toDate().getTime());
-                            if (orderCal.get(Calendar.MONTH) == currentMonth
-                                    && orderCal.get(Calendar.YEAR) == currentYear) {
-                                monthRevenue += commission;
-                            }
-                        }
                     }
 
-                    tvConfirmedCount.setText(String.valueOf(orderSnap.size()));
-                    tvSaleRevenue.setText(formatRevenue(saleRevenue));
-                    tvRentalRevenue.setText(formatRevenue(rentalRevenue));
-
                     final long commissionFinal = commissionRevenue;
-                    final long monthFinal      = monthRevenue;
 
                     // Chain: lấy số bài đăng để tính phí
                     db.collection("cars").get().addOnSuccessListener(carSnap -> {
@@ -151,9 +120,6 @@ public class AdminOverviewFragment extends Fragment {
                         long grandTotal   = commissionFinal + postingFee;
 
                         tvTotalRevenue.setText(formatRevenue(grandTotal));
-                        tvMonthRevenue.setText(formatRevenue(monthFinal));
-                        tvPostingFeeRevenue.setText(formatRevenue(postingFee));
-                        tvPostingCarCount.setText(carCount + " bài đăng × 200.000 VNĐ");
                     });
                 });
     }
