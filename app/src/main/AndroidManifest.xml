@@ -94,5 +94,10 @@
             android:screenOrientation="portrait"
             android:exported="false" />
         <activity android:name=".ui.activity.AboutUsActivity" />
+        <activity android:name=".ui.activity.GiftsActivity" />
+        <activity android:name=".ui.activity.ReferralActivity" />
+        <activity android:name=".ui.activity.PrivacyActivity" />
+        <activity android:name=".ui.activity.SupportActivity" />
+        <activity android:name=".ui.activity.ReviewActivity" />
     </application>
 </manifest>
