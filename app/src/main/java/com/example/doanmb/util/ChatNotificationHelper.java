@@ -26,26 +26,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Helper gửi thông báo chat qua FCM V1 API (không cần Cloud Function, không cần Blaze plan).
- *
- * Cách hoạt động:
- * 1. Đọc service-account.json từ assets để lấy private_key + client_email
- * 2. Tự tạo JWT token để xác thực với Google OAuth2
- * 3. Đổi JWT lấy Access Token
- * 4. Gọi FCM V1 API để gửi notification đến thiết bị người nhận
+ * Helper gửi thông báo qua FCM V1 API.
+ * Hỗ trợ cả thông báo chat và thông báo đơn hàng (mua/thuê xe).
  */
 public final class ChatNotificationHelper {
 
-    private static final String TAG         = "ChatNotifHelper";
-    private static final String PROJECT_ID  = "doanmb-a73a9";
-    private static final String FCM_URL     =
+    private static final String TAG        = "ChatNotifHelper";
+    private static final String PROJECT_ID = "doanmb-a73a9";
+    private static final String FCM_URL    =
             "https://fcm.googleapis.com/v1/projects/" + PROJECT_ID + "/messages:send";
-    private static final String TOKEN_URL   = "https://oauth2.googleapis.com/token";
-    private static final String SCOPE       = "https://www.googleapis.com/auth/firebase.messaging";
+    private static final String TOKEN_URL  = "https://oauth2.googleapis.com/token";
+    private static final String SCOPE      = "https://www.googleapis.com/auth/firebase.messaging";
 
-    // Cache access token (hết hạn sau ~1 tiếng, tự refresh)
-    private static String  cachedAccessToken     = null;
-    private static long    tokenExpiryTimeMillis  = 0;
+    private static String cachedAccessToken    = null;
+    private static long   tokenExpiryTimeMillis = 0;
 
     private static final ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -53,14 +47,13 @@ public final class ChatNotificationHelper {
 
     /**
      * Gọi khi app khởi động để cache access token sẵn.
-     * Tránh delay lần đầu gửi notification (do phải đọc file + tạo JWT + gọi OAuth2).
      */
     public static void warmUpAccessToken(Context context) {
         executor.execute(() -> getAccessToken(context));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // API CHÍNH (có carType)
+    // THÔNG BÁO CHAT (giữ nguyên, không thay đổi)
     // ─────────────────────────────────────────────────────────────────────────
 
     public static void sendChatNotification(Context context,
@@ -78,10 +71,6 @@ public final class ChatNotificationHelper {
         String title = buildTitle(senderName);
         String body  = buildBody(senderName, carName, carType, messagePreview);
 
-        // ── 1. Lưu vào Firestore "notifications" (tab Thông báo trong app) ──
-        // ── Document ID cố định = "receiverId_roomId"
-        // → mỗi cuộc trò chuyện chỉ có 1 thông báo duy nhất,
-        //   tin nhắn mới sẽ cập nhật (upsert) thay vì tạo mới
         String notifDocId = receiverId + "_" + (roomId != null ? roomId : "");
 
         Map<String, Object> notif = new HashMap<>();
@@ -94,15 +83,13 @@ public final class ChatNotificationHelper {
         notif.put("carName",    carName    != null ? carName    : "");
         notif.put("carType",    carType    != null ? carType    : "sale");
         notif.put("senderName", senderName != null ? senderName : "");
-        notif.put("read",       false);       // reset về chưa đọc mỗi khi có tin mới
+        notif.put("read",       false);
         notif.put("createdAt",  Timestamp.now());
 
-        // set() với merge=false → tạo mới nếu chưa có, ghi đè nếu đã có
         db.collection("notifications").document(notifDocId).set(notif)
-                .addOnSuccessListener(v -> Log.d(TAG, "Notification upserted: " + notifDocId))
-                .addOnFailureListener(e -> Log.w(TAG, "Failed to upsert notification", e));
+                .addOnSuccessListener(v -> Log.d(TAG, "Chat notif upserted: " + notifDocId))
+                .addOnFailureListener(e -> Log.w(TAG, "Failed to upsert chat notif", e));
 
-        // ── 2. Lấy FCM token của người nhận → gọi FCM V1 API ────────────────
         final String finalTitle = title;
         final String finalBody  = body;
 
@@ -121,13 +108,6 @@ public final class ChatNotificationHelper {
                 .addOnFailureListener(e -> Log.w(TAG, "Failed to get FCM token", e));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // BACKWARD-COMPAT — BẮT BUỘC truyền Context, không dùng null
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * @deprecated Luôn dùng overload có Context để FCM hoạt động trên điện thoại thật.
-     */
     @Deprecated
     public static void sendChatNotification(String receiverId,
                                             String senderId,
@@ -141,9 +121,6 @@ public final class ChatNotificationHelper {
                         "Dùng overload: sendChatNotification(context, receiverId, ...)");
     }
 
-    /**
-     * @deprecated Luôn dùng overload có Context để FCM hoạt động trên điện thoại thật.
-     */
     @Deprecated
     public static void sendChatNotification(String receiverId,
                                             String senderId,
@@ -157,7 +134,96 @@ public final class ChatNotificationHelper {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // FCM V1 API — gọi từ background thread
+    // THÔNG BÁO ĐƠN HÀNG — MỚI
+    // type: "order_sent" | "order_confirmed" | "order_rejected"
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Gửi thông báo liên quan đến đơn mua/thuê xe.
+     *
+     * @param context     Context của Activity/Fragment gọi
+     * @param receiverId  UID người nhận thông báo
+     * @param senderId    UID người gửi (trigger sự kiện)
+     * @param senderName  Tên người gửi (hiển thị trong thông báo)
+     * @param carName     Tên xe liên quan
+     * @param type        "order_sent" | "order_confirmed" | "order_rejected"
+     * @param orderId     ID của đơn hàng trong Firestore
+     */
+    public static void sendOrderNotification(Context context,
+                                             String receiverId,
+                                             String senderId,
+                                             String senderName,
+                                             String carName,
+                                             String type,
+                                             String orderId) {
+        if (receiverId == null || receiverId.isEmpty()) return;
+
+        // Xây dựng title/body theo loại sự kiện
+        String title, body;
+        switch (type != null ? type : "") {
+            case "order_confirmed":
+                title = "✅ Yêu cầu được chấp nhận";
+                body  = "Đơn của bạn cho xe \"" + safe(carName) + "\" đã được xác nhận!";
+                break;
+            case "order_rejected":
+                title = "❌ Yêu cầu bị từ chối";
+                body  = "Đơn của bạn cho xe \"" + safe(carName) + "\" đã bị từ chối.";
+                break;
+            default: // order_sent
+                title = "📋 Yêu cầu mới từ " + safe(senderName);
+                body  = safe(senderName) + " muốn đặt xe \"" + safe(carName) + "\" của bạn.";
+                break;
+        }
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // 1. Lưu vào Firestore collection "notifications"
+        // docId = receiverId_order_orderId → mỗi đơn có 1 doc riêng
+        String notifDocId = receiverId + "_order_" + safe(orderId);
+
+        Map<String, Object> notif = new HashMap<>();
+        notif.put("userId",     receiverId);
+        notif.put("senderId",   safe(senderId));
+        notif.put("title",      title);
+        notif.put("body",       body);
+        notif.put("type",       type != null ? type : "order_sent");
+        notif.put("orderId",    safe(orderId));
+        notif.put("carName",    safe(carName));
+        notif.put("senderName", safe(senderName));
+        notif.put("read",       false);
+        notif.put("createdAt",  Timestamp.now());
+
+        db.collection("notifications").document(notifDocId).set(notif)
+                .addOnSuccessListener(v -> Log.d(TAG, "Order notif saved: " + notifDocId))
+                .addOnFailureListener(e -> Log.w(TAG, "Failed to save order notif", e));
+
+        // 2. Lấy FCM token → gửi push notification
+        final String finalTitle = title;
+        final String finalBody  = body;
+        final String finalType  = type != null ? type : "order_sent";
+
+        db.collection("users").document(receiverId).get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) return;
+                    String fcmToken = doc.getString("fcmToken");
+                    if (fcmToken == null || fcmToken.isEmpty()) {
+                        Log.d(TAG, "No FCM token for order notif: " + receiverId);
+                        return;
+                    }
+                    // Tái dùng sendFcmV1 — truyền type vào field carType để
+                    // CarviaMessagingService nhận được và phân loại
+                    executor.execute(() ->
+                            sendFcmV1(context, fcmToken, finalTitle, finalBody,
+                                    senderName, carName,
+                                    finalType,     // carType field tái dùng để truyền loại
+                                    safe(orderId), // roomId field tái dùng để truyền orderId
+                                    senderId));
+                })
+                .addOnFailureListener(e -> Log.w(TAG, "Failed to get FCM token for order", e));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FCM V1 API — gọi từ background thread (dùng chung cho chat + order)
     // ─────────────────────────────────────────────────────────────────────────
 
     private static void sendFcmV1(Context context,
@@ -166,22 +232,20 @@ public final class ChatNotificationHelper {
                                   String senderName, String carName, String carType,
                                   String roomId, String senderId) {
         try {
-            // 1. Lấy access token (cache 55 phút)
             String accessToken = getAccessToken(context);
             if (accessToken == null) {
                 Log.e(TAG, "Không lấy được access token");
                 return;
             }
 
-            // 2. Build FCM payload
             JSONObject dataObj = new JSONObject();
             dataObj.put("title",      title);
             dataObj.put("body",       body);
-            dataObj.put("senderName", senderName != null ? senderName : "");
-            dataObj.put("carName",    carName    != null ? carName    : "");
-            dataObj.put("carType",    carType    != null ? carType    : "sale");
-            dataObj.put("roomId",     roomId     != null ? roomId     : "");
-            dataObj.put("senderId",   senderId   != null ? senderId   : "");
+            dataObj.put("senderName", safe(senderName));
+            dataObj.put("carName",    safe(carName));
+            dataObj.put("carType",    safe(carType));
+            dataObj.put("roomId",     safe(roomId));
+            dataObj.put("senderId",   safe(senderId));
 
             JSONObject androidConfig = new JSONObject();
             androidConfig.put("priority", "high");
@@ -194,7 +258,6 @@ public final class ChatNotificationHelper {
             JSONObject payload = new JSONObject();
             payload.put("message", messageObj);
 
-            // 3. Gửi HTTP POST
             URL url = new URL(FCM_URL);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
@@ -225,21 +288,17 @@ public final class ChatNotificationHelper {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // LẤY OAUTH2 ACCESS TOKEN TỪ SERVICE ACCOUNT JSON
+    // OAUTH2 ACCESS TOKEN
     // ─────────────────────────────────────────────────────────────────────────
 
     private static synchronized String getAccessToken(Context context) {
-        // Dùng cache nếu còn hạn (trừ 5 phút để an toàn)
         if (cachedAccessToken != null &&
                 System.currentTimeMillis() < tokenExpiryTimeMillis - 5 * 60 * 1000) {
             return cachedAccessToken;
         }
 
         try {
-            // Đọc service-account.json từ assets
-            Context appContext = context != null
-                    ? context.getApplicationContext()
-                    : null;
+            Context appContext = context != null ? context.getApplicationContext() : null;
             if (appContext == null) {
                 Log.e(TAG, "Context null, không đọc được service-account.json");
                 return null;
@@ -256,17 +315,13 @@ public final class ChatNotificationHelper {
             String     clientEmail = sa.getString("client_email");
             String     privateKeyPem = sa.getString("private_key");
 
-            // Parse private key
             PrivateKey privateKey = parsePrivateKey(privateKeyPem);
-
-            // Tạo JWT
             String jwt = buildJwt(clientEmail, privateKey);
-
-            // Đổi JWT lấy access token
             String accessToken = exchangeJwtForToken(jwt);
+
             if (accessToken != null) {
-                cachedAccessToken    = accessToken;
-                tokenExpiryTimeMillis = System.currentTimeMillis() + 3600 * 1000; // 1 tiếng
+                cachedAccessToken     = accessToken;
+                tokenExpiryTimeMillis = System.currentTimeMillis() + 3600 * 1000;
             }
             return accessToken;
 
@@ -289,14 +344,12 @@ public final class ChatNotificationHelper {
     private static String buildJwt(String clientEmail, PrivateKey key) throws Exception {
         long now = System.currentTimeMillis() / 1000;
 
-        // Header
         JSONObject header = new JSONObject();
         header.put("alg", "RS256");
         header.put("typ", "JWT");
         String headerB64 = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(header.toString().getBytes(StandardCharsets.UTF_8));
 
-        // Claims
         JSONObject claims = new JSONObject();
         claims.put("iss",   clientEmail);
         claims.put("scope", SCOPE);
@@ -306,7 +359,6 @@ public final class ChatNotificationHelper {
         String claimsB64 = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(claims.toString().getBytes(StandardCharsets.UTF_8));
 
-        // Sign
         String signingInput = headerB64 + "." + claimsB64;
         Signature sig = Signature.getInstance("SHA256withRSA");
         sig.initSign(key);
@@ -350,7 +402,7 @@ public final class ChatNotificationHelper {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // PUBLIC HELPERS
+    // HELPERS
     // ─────────────────────────────────────────────────────────────────────────
 
     public static String buildTitle(String senderName) {
@@ -366,14 +418,11 @@ public final class ChatNotificationHelper {
 
     public static String buildBody(String senderName, String carName,
                                    String carType, String messagePreview) {
-        // Ưu tiên nội dung tin nhắn thật — chỉ fallback về "muốn mua xe X"
-        // nếu không có tin nhắn (lần đầu mở chat, chưa nhắn gì)
         if (messagePreview != null && !messagePreview.isEmpty()) {
             return messagePreview.length() > 70
                     ? messagePreview.substring(0, 70) + "…"
                     : messagePreview;
         }
-        // Fallback: chưa có tin nhắn → hiện "muốn mua/thuê xe X"
         if (carName != null && !carName.isEmpty()) {
             String who    = (senderName != null && !senderName.isEmpty()) ? senderName : "Ai đó";
             String action = "rental".equalsIgnoreCase(carType) ? "thuê" : "mua";
@@ -384,5 +433,10 @@ public final class ChatNotificationHelper {
 
     public static String buildBody(String senderName, String carName, String messagePreview) {
         return buildBody(senderName, carName, "sale", messagePreview);
+    }
+
+    /** Trả về "" nếu giá trị null, tránh NullPointerException khi build payload. */
+    private static String safe(String s) {
+        return s != null ? s : "";
     }
 }

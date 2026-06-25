@@ -70,10 +70,22 @@ public class CarviaMessagingService extends FirebaseMessagingService {
         // title vẫn dùng từ FCM (đúng: "Tin nhắn từ Kachi")
         String title      = data.getOrDefault("title",      "Tin nhắn mới");
 
+        // ── BƯỚC 1: Lấy thêm carType để phân loại ──
+        String carType    = data.getOrDefault("carType",    "");
+
+        // ── Rẽ nhánh: Nếu là thông báo đơn hàng → gọi UI đơn hàng rồi thoát luôn ──
+        if (carType.startsWith("order_")) {
+            String body = data.getOrDefault("body", "Bạn có yêu cầu mới");
+            // Lưu ý: với thông báo order, biến roomId đang chứa orderId
+            showOrderNotification(title, body, senderName, carName, roomId);
+            return;
+        }
+        // ───────────────────────────────────────────────────────────────────────────
+
         if (roomId.isEmpty()) {
             // Không có roomId → không thể lấy tin nhắn, dùng body từ FCM
             String body = data.getOrDefault("body", "Bạn có tin nhắn mới");
-            fetchAvatarThenShow(title, body, senderName, carName, roomId, senderId);
+            fetchAvatarThenShow(title, body, senderName, carName, roomId, senderId, carType);
             return;
         }
 
@@ -117,13 +129,13 @@ public class CarviaMessagingService extends FirebaseMessagingService {
                     }
 
                     Log.d(TAG, "Real message body: " + realBody);
-                    fetchAvatarThenShow(title, realBody, senderName, carName, roomId, senderId);
+                    fetchAvatarThenShow(title, realBody, senderName, carName, roomId, senderId, carType);
                 })
                 .addOnFailureListener(e -> {
                     // Firestore thất bại → fallback dùng body từ FCM
                     Log.w(TAG, "Không lấy được tin nhắn từ Firestore: " + e.getMessage());
                     String fallbackBody = data.getOrDefault("body", "Bạn có tin nhắn mới");
-                    fetchAvatarThenShow(title, fallbackBody, senderName, carName, roomId, senderId);
+                    fetchAvatarThenShow(title, fallbackBody, senderName, carName, roomId, senderId, carType);
                 });
     }
 
@@ -132,40 +144,36 @@ public class CarviaMessagingService extends FirebaseMessagingService {
      */
     private void fetchAvatarThenShow(String title, String body,
                                      String senderName, String carName,
-                                     String roomId, String senderId) {
-        // Nếu đã cache avatar
+                                     String roomId, String senderId,
+                                     String carType) { // ← Cập nhật chữ ký hàm
         if (senderId != null && !senderId.isEmpty() && avatarCache.containsKey(senderId)) {
             showNotification(title, body, senderName, carName, roomId, senderId,
-                    avatarCache.get(senderId));
+                    avatarCache.get(senderId), carType); // ← Thêm carType
             return;
         }
 
         if (senderId == null || senderId.isEmpty()) {
-            showNotification(title, body, senderName, carName, roomId, senderId, null);
+            showNotification(title, body, senderName, carName, roomId, senderId, null, carType);
             return;
         }
 
-        FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(senderId)
-                .get()
+        FirebaseFirestore.getInstance().collection("users").document(senderId).get()
                 .addOnSuccessListener(doc -> {
                     String avatarUrl = doc.exists() ? doc.getString("avatarUrl") : null;
                     if (avatarUrl != null && !avatarUrl.isEmpty()) {
-                        final String finalUrl = avatarUrl;
                         executor.execute(() -> {
-                            Bitmap avatar = downloadBitmapCircle(finalUrl);
+                            Bitmap avatar = downloadBitmapCircle(avatarUrl);
                             if (avatar != null) avatarCache.put(senderId, avatar);
                             showNotification(title, body, senderName, carName,
-                                    roomId, senderId, avatar);
+                                    roomId, senderId, avatar, carType); // ← Thêm carType
                         });
                     } else {
                         showNotification(title, body, senderName, carName,
-                                roomId, senderId, null);
+                                roomId, senderId, null, carType);
                     }
                 })
                 .addOnFailureListener(e -> showNotification(title, body, senderName,
-                        carName, roomId, senderId, null));
+                        carName, roomId, senderId, null, carType));
     }
 
     /**
@@ -213,13 +221,20 @@ public class CarviaMessagingService extends FirebaseMessagingService {
     private void showNotification(String title, String body,
                                   String senderName, String carName,
                                   String roomId, String senderId,
-                                  Bitmap avatarBitmap) {
+                                  Bitmap avatarBitmap, String carType) { // ← Thêm carType
         createNotificationChannel();
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        intent.putExtra("OPEN_TAB", "messages");
-        intent.putExtra("ROOM_ID",  roomId);
+
+        // Phân biệt luồng notification dựa vào carType
+        if (carType != null && carType.startsWith("order_")) {
+            intent.putExtra("OPEN_TAB", "manage");
+            intent.putExtra("ORDER_ID", roomId); // roomId đang tạm dùng chứa orderId
+        } else {
+            intent.putExtra("OPEN_TAB", "messages");
+            intent.putExtra("ROOM_ID", roomId);
+        }
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this, roomId.hashCode(), intent,
@@ -283,6 +298,40 @@ public class CarviaMessagingService extends FirebaseMessagingService {
         NotificationManagerCompat manager = NotificationManagerCompat.from(this);
         try {
             manager.notify(notifId, builder.build());
+        } catch (SecurityException e) {
+            Log.w(TAG, "Notification permission denied: " + e.getMessage());
+        }
+    }
+
+    private void showOrderNotification(String title, String body,
+                                       String senderName, String carName,
+                                       String orderId) {
+        createNotificationChannel();
+
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+        // Gửi lệnh mở tab Manage thay vì tab Messages
+        intent.putExtra("OPEN_TAB", "manage");
+        intent.putExtra("ORDER_ID", orderId);
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this, orderId.hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        int notifId = Math.abs(orderId.hashCode() % 10000) + 2000;
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_CHAT)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent);
+
+        try {
+            NotificationManagerCompat.from(this).notify(notifId, builder.build());
         } catch (SecurityException e) {
             Log.w(TAG, "Notification permission denied: " + e.getMessage());
         }

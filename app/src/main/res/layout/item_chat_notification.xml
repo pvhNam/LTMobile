@@ -58,16 +58,14 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:layout_gravity="bottom|end"
-                android:background="@drawable/bg_circle_blue"
-                android:backgroundTint="#0084FF">
+                android:background="@drawable/bg_circle_blue">
 
-                <TextView
+                <ImageView
                     android:id="@+id/tv_notif_type_icon"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:text="💬"
-                    android:textSize="10sp" />
+                    android:padding="4dp"
+                    android:src="@drawable/ic_nav_message" />
             </FrameLayout>
         </FrameLayout>
 

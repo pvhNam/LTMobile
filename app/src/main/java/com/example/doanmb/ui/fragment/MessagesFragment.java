@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.cardview.widget.CardView;
 
 import com.bumptech.glide.Glide;
+import com.example.doanmb.MainActivity;
 import com.example.doanmb.util.ImageLoader;
 import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.example.doanmb.R;
@@ -663,14 +664,27 @@ public class MessagesFragment extends Fragment {
             String senderId   = str(item, "senderId");
             String senderName = str(item, "senderName");
             String roomId     = str(item, "roomId");
-            String docId      = str(item, "docId"); // ✅ lấy docId để update
+            String docId      = str(item, "docId");
 
-            // Tên người gửi làm title (giống Messenger)
             h.tvTitle.setText(senderName.isEmpty() ? (title.isEmpty() ? "Thông báo" : title) : senderName);
-            // Nội dung tin nhắn thực tế — nếu body là dạng "X muốn mua xe Y" thì hiện nguyên,
-            // nếu là tin nhắn thật thì hiện trực tiếp
             h.tvBody.setText(body.isEmpty() ? "Đã gửi một tin nhắn" : body);
-            h.tvTypeIcon.setText("chat".equals(type) ? "💬" : "🔔");
+
+            // ── THÊM BƯỚC 5: Phân biệt loại icon bằng Emoji cho tvTypeIcon ──
+            switch (type) {
+                case "order_confirmed":
+                    h.ivIcon.setImageResource(R.drawable.ic_verified_check); // icon tick xanh
+                    break;
+                case "order_rejected":
+                    h.ivIcon.setImageResource(R.drawable.ic_warning);        // icon cảnh báo
+                    break;
+                case "order_sent":
+                    h.ivIcon.setImageResource(R.drawable.ic_admin_orders);   // icon đơn hàng
+                    break;
+                default: // chat
+                    h.ivIcon.setImageResource(R.drawable.ic_nav_message);
+                    break;
+            }
+            // ────────────────────────────────────────────────────────────────
 
             Object createdAt = item.get("createdAt");
             if (createdAt instanceof com.google.firebase.Timestamp) {
@@ -680,12 +694,10 @@ public class MessagesFragment extends Fragment {
                 h.tvTime.setText("");
             }
 
-            // Hiển thị chấm xanh nếu chưa đọc
             Object read = item.get("read");
             h.viewUnreadDot.setVisibility(
                     Boolean.FALSE.equals(read) ? View.VISIBLE : View.GONE);
 
-            // Avatar
             String initial = (!senderName.isEmpty())
                     ? String.valueOf(senderName.charAt(0)).toUpperCase()
                     : "?";
@@ -713,22 +725,24 @@ public class MessagesFragment extends Fragment {
                         });
             }
 
-            if ("chat".equals(type) && !roomId.isEmpty()) {
-                h.itemView.setOnClickListener(v -> {
-                    int pos = h.getAdapterPosition();
-                    if (pos == RecyclerView.NO_ID) return;
+            // ── THÊM BƯỚC 5: Xử lý Click tùy theo loại thông báo ───────────
+            h.itemView.setOnClickListener(v -> {
+                int pos = h.getAdapterPosition();
+                if (pos == RecyclerView.NO_ID) return;
 
-                    // Đánh dấu đã đọc (ẩn chấm xanh)
-                    notifList.get(pos).put("read", true);
-                    notifyItemChanged(pos);
-                    if (!docId.isEmpty()) {
-                        FirebaseFirestore.getInstance()
-                                .collection("notifications")
-                                .document(docId)
-                                .update("read", true);
-                    }
+                // Đánh dấu đã đọc (ẩn chấm xanh trên UI & update Firestore)
+                notifList.get(pos).put("read", true);
+                notifyItemChanged(pos);
+                if (!docId.isEmpty()) {
+                    FirebaseFirestore.getInstance()
+                            .collection("notifications")
+                            .document(docId)
+                            .update("read", true);
+                }
 
-                    // Lấy thông tin xe từ chat_rooms để truyền CAR_DATA đầy đủ
+                // Điều hướng dựa vào type
+                if ("chat".equals(type) && !roomId.isEmpty()) {
+                    // Mở màn hình chat như cũ
                     FirebaseFirestore.getInstance()
                             .collection("chat_rooms")
                             .document(roomId)
@@ -769,10 +783,15 @@ public class MessagesFragment extends Fragment {
                                         senderName.isEmpty() ? "Người dùng" : senderName);
                                 v.getContext().startActivity(intent);
                             });
-                });
-            } else {
-                h.itemView.setOnClickListener(null);
-            }
+                } else {
+                    // Thông báo đơn hàng → mở tab Quản lí
+                    if (getActivity() instanceof MainActivity) {
+                        MainActivity main = (MainActivity) getActivity();
+                        main.openManageRequestsTab();
+                    }
+                }
+            });
+            // ────────────────────────────────────────────────────────────────
         }
 
         @Override
@@ -784,8 +803,8 @@ public class MessagesFragment extends Fragment {
         }
 
         class VH extends RecyclerView.ViewHolder {
-            TextView  tvTitle, tvBody, tvTime, tvAvatar, tvTypeIcon;
-            ImageView ivAvatar;
+            TextView  tvTitle, tvBody, tvTime, tvAvatar;
+            ImageView ivAvatar, ivIcon; // Khai báo ivIcon thay vì tvTypeIcon
             View      viewUnreadDot;
 
             VH(@NonNull View v) {
@@ -795,8 +814,10 @@ public class MessagesFragment extends Fragment {
                 tvTime       = v.findViewById(R.id.tv_notif_time);
                 tvAvatar     = v.findViewById(R.id.tv_notif_avatar);
                 ivAvatar     = v.findViewById(R.id.iv_notif_avatar);
-                tvTypeIcon   = v.findViewById(R.id.tv_notif_type_icon);
                 viewUnreadDot= v.findViewById(R.id.view_unread_dot);
+
+                // Nhớ đổi ID này cho khớp với ImageView trong file layout XML của bạn
+                ivIcon       = v.findViewById(R.id.tv_notif_type_icon);
             }
         }
     }

@@ -26,6 +26,7 @@ import com.bumptech.glide.Glide;
 import com.example.doanmb.R;
 import com.example.doanmb.adapter.CarImageAdapter;
 import com.example.doanmb.model.Car;
+import com.example.doanmb.util.ChatNotificationHelper;
 import com.example.doanmb.util.FavoriteHelper;
 import com.example.doanmb.util.ImageLoader;
 import com.google.firebase.auth.FirebaseAuth;
@@ -61,20 +62,19 @@ public class CarDetailActivity extends AppCompatActivity {
     private android.widget.RadioGroup rgPaymentMethod;
     private TextView tvDepositInfo;
     private String sellerName = "";
-    private long walletBalance = 0L; // số dư ví của người đang đặt
+    private long walletBalance = 0L;
 
     // Đặt theo ngày / theo chuyến (xe có tài xế)
     private com.google.android.material.button.MaterialButtonToggleGroup toggleBookMode;
     private View layoutDayFields, layoutTripFields;
     private Button btnPickOnMap;
     private TextView tvTripSummary;
-    private long pricePerDay = 0L;   // đơn giá theo ngày (từ bài đăng)
-    private long pricePerKm  = 0L;   // đơn giá theo km (từ bài đăng); 0 = không nhận theo chuyến
-    private boolean tripMode = false; // đang đặt theo chuyến?
+    private long pricePerDay = 0L;
+    private long pricePerKm  = 0L;
+    private boolean tripMode = false;
     private String tripPickup = "", tripDest = "";
     private double tripDistanceKm = 0d;
 
-    // Nhận kết quả chọn điểm từ MapPickerActivity
     private final androidx.activity.result.ActivityResultLauncher<Intent> mapLauncher =
             registerForActivityResult(
                     new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
@@ -96,19 +96,17 @@ public class CarDetailActivity extends AppCompatActivity {
     private String carStatus = "";
     private String statusBeforeHide = "";
 
-    // Header trượt: thanh trắng hiện dần khi cuộn, nút back nổi mờ dần
     private NestedScrollView detailScroll;
     private View imageHero, headerDetail, btnBackFloat, floatTopBar;
     private ImageView btnFavoriteFloat, ivFavoriteDetail, btnMenuFloat;
-    private boolean isFav = false; // xe này đã được mình yêu thích chưa
-    private boolean statusBarDarkIcons = true; // khởi tạo true để lần gọi đầu ép sang icon sáng
+    private boolean isFav = false;
+    private boolean statusBarDarkIcons = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_car_detail);
 
-        // Edge-to-edge: ảnh tràn lên sau thanh trạng thái cho vừa khung
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
 
@@ -121,7 +119,6 @@ public class CarDetailActivity extends AppCompatActivity {
         sellerId = getIntent().getStringExtra("SELLER_ID");
         carType = getIntent().getStringExtra("CAR_TYPE");
 
-        // Thời gian đón do người dùng chọn ở màn Danh mục (xe có tài xế / xe tự lái)
         String pickupTime = getIntent().getStringExtra("PICKUP_TIME");
         if (pickupTime != null && !pickupTime.isEmpty() && etRentStartDate != null) {
             etRentStartDate.setText(pickupTime);
@@ -131,7 +128,6 @@ public class CarDetailActivity extends AppCompatActivity {
         tvCarConditionBadge.setVisibility(View.GONE);
 
         if (car != null) {
-            // Hiển thị tạm ảnh đại diện; loadCarDetail() sẽ nạp đủ ảnh (vuốt) từ Firestore
             List<String> coverImages = new ArrayList<>();
             if (car.getImageUrl() != null && !car.getImageUrl().isEmpty()) {
                 coverImages.add(car.getImageUrl());
@@ -235,7 +231,6 @@ public class CarDetailActivity extends AppCompatActivity {
         if (ivFavoriteDetail != null) ivFavoriteDetail.setOnClickListener(v -> toggleFavorite());
         updateFavoriteIcons();
 
-        // Đẩy thanh tiêu đề trắng xuống dưới thanh trạng thái (edge-to-edge)
         if (headerDetail != null) {
             final int baseTop = headerDetail.getPaddingTop();
             ViewCompat.setOnApplyWindowInsetsListener(headerDetail, (v, insets) -> {
@@ -245,7 +240,6 @@ public class CarDetailActivity extends AppCompatActivity {
             });
         }
 
-        // Thanh nổi né thanh trạng thái
         if (floatTopBar != null) {
             final int baseTopPad = floatTopBar.getPaddingTop();
             ViewCompat.setOnApplyWindowInsetsListener(floatTopBar, (v, insets) -> {
@@ -255,7 +249,6 @@ public class CarDetailActivity extends AppCompatActivity {
             });
         }
 
-        // Chừa chỗ cho thanh điều hướng hệ thống ở đáy nội dung cuộn
         if (detailScroll != null) {
             final int basePad = detailScroll.getPaddingBottom();
             ViewCompat.setOnApplyWindowInsetsListener(detailScroll, (v, insets) -> {
@@ -265,18 +258,15 @@ public class CarDetailActivity extends AppCompatActivity {
             });
         }
 
-        // Trạng thái ban đầu: thanh trắng ẩn (không chặn chạm), icon thanh trạng thái màu sáng
         if (headerDetail != null) headerDetail.setVisibility(View.INVISIBLE);
         setStatusBarDarkIcons(false);
 
-        // Cuộn lên: thanh trắng hiện dần, nút back nổi mờ dần (kiểu collapsing toolbar)
         if (detailScroll != null) {
             detailScroll.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener)
                     (v, x, y, ox, oy) -> updateDetailHeader(y));
         }
     }
 
-    /** Nội suy theo độ cuộn: thanh trắng alpha 0→1, nút back nổi alpha 1→0. */
     private void updateDetailHeader(int scrollY) {
         if (headerDetail == null || imageHero == null || floatTopBar == null) return;
 
@@ -291,25 +281,22 @@ public class CarDetailActivity extends AppCompatActivity {
         floatTopBar.setAlpha(1f - p);
         floatTopBar.setVisibility(p >= 0.99f ? View.INVISIBLE : View.VISIBLE);
 
-        // Qua nửa chặng (thanh trắng đã rõ) → icon thanh trạng thái màu tối
         setStatusBarDarkIcons(p >= 0.5f);
     }
 
-    /** Cập nhật biểu tượng tim cho cả nút nổi (nền tối) và thanh trắng. */
     private void updateFavoriteIcons() {
         int icon = isFav ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline;
         if (btnFavoriteFloat != null) {
             btnFavoriteFloat.setImageResource(icon);
-            btnFavoriteFloat.clearColorFilter(); // trên nền tối: trắng/đỏ đều rõ
+            btnFavoriteFloat.clearColorFilter();
         }
         if (ivFavoriteDetail != null) {
             ivFavoriteDetail.setImageResource(icon);
             if (isFav) ivFavoriteDetail.clearColorFilter();
-            else ivFavoriteDetail.setColorFilter(0xFF1A1A2E); // viền tim tối trên nền trắng
+            else ivFavoriteDetail.setColorFilter(0xFF1A1A2E);
         }
     }
 
-    /** Nạp trạng thái đã-thích để hiện tim đỏ sẵn nếu user từng thích xe này. */
     private void loadFavoriteState() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || carId == null || carId.isEmpty()) return;
@@ -319,7 +306,6 @@ public class CarDetailActivity extends AppCompatActivity {
         });
     }
 
-    /** Bấm tim trong trang chi tiết: thêm/bỏ yêu thích. */
     private void toggleFavorite() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
@@ -370,7 +356,6 @@ public class CarDetailActivity extends AppCompatActivity {
         });
     }
 
-    /** Đổ danh sách ảnh vào pager và dựng chấm chỉ số. */
     private void showImages(List<String> images) {
         if (imageAdapter == null) return;
         imageAdapter.setImages(images);
@@ -381,7 +366,7 @@ public class CarDetailActivity extends AppCompatActivity {
     private void buildDots(int count) {
         if (layoutImageDots == null) return;
         layoutImageDots.removeAllViews();
-        if (count <= 1) return; // 1 ảnh thì không cần chấm
+        if (count <= 1) return;
 
         int size = Math.round(7 * getResources().getDisplayMetrics().density);
         int margin = Math.round(3 * getResources().getDisplayMetrics().density);
@@ -405,7 +390,6 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    /** Chuyển field "imageUrls" của Firestore (List) thành List<String> an toàn. */
     private static List<String> extractImageUrls(Object raw) {
         List<String> urls = new ArrayList<>();
         if (raw instanceof List) {
@@ -420,13 +404,12 @@ public class CarDetailActivity extends AppCompatActivity {
         btnSendRequest.setOnClickListener(v -> sendBuyRequest());
         btnCallSeller.setOnClickListener(v -> callSeller());
         btnChatSeller.setOnClickListener(v -> openChat());
-        
+
         btnSendRentRequest.setOnClickListener(v -> sendRentRequest());
         btnCallRentSeller.setOnClickListener(v -> callSeller());
         btnChatRentSeller.setOnClickListener(v -> openChat());
     }
 
-    /** Nạp số dư ví của người đang đặt + theo dõi ô số ngày để cập nhật tiền cọc. */
     private void setupRentDepositUi() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
@@ -446,8 +429,6 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    // ── Đặt theo ngày / theo chuyến ─────────────────────────────────────────────
-
     private void setupBookModeListeners() {
         if (toggleBookMode != null) {
             toggleBookMode.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
@@ -462,9 +443,6 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Bật/tắt nút chọn hình thức đặt. Chỉ "xe có tài xế" và có đơn giá/km mới cho đặt theo chuyến.
-     */
     private void configureBookMode(boolean driver) {
         boolean allowTrip = driver && pricePerKm > 0;
         if (toggleBookMode != null) {
@@ -477,7 +455,6 @@ public class CarDetailActivity extends AppCompatActivity {
         applyBookMode();
     }
 
-    /** Đổi giao diện form theo hình thức đang chọn. */
     private void applyBookMode() {
         if (layoutDayFields != null) layoutDayFields.setVisibility(tripMode ? View.GONE : View.VISIBLE);
         if (layoutTripFields != null) layoutTripFields.setVisibility(tripMode ? View.VISIBLE : View.GONE);
@@ -488,7 +465,6 @@ public class CarDetailActivity extends AppCompatActivity {
         else updateDepositInfo();
     }
 
-    /** Cập nhật tóm tắt chuyến + tổng tiền theo quãng đường. */
     private void updateTripSummary() {
         if (tvTripSummary == null) return;
         if (tripDistanceKm <= 0 || tripPickup == null || tripDest == null) {
@@ -502,7 +478,6 @@ public class CarDetailActivity extends AppCompatActivity {
                 + "\nTổng tiền chuyến: " + money(total) + " đ (thanh toán tiền mặt)");
     }
 
-    /** Hiển thị tổng tiền, tiền cọc cần trả qua ví và số dư hiện có. */
     private void updateDepositInfo() {
         if (tvDepositInfo == null) return;
         long pricePerDay = parseMoney(car != null ? car.getPrice() : null);
@@ -528,7 +503,6 @@ public class CarDetailActivity extends AppCompatActivity {
         tvDepositInfo.setText(sb.toString());
     }
 
-    /** Lấy số tiền từ chuỗi giá, vd "800.000đ / ngày" -> 800000. */
     private static long parseMoney(String s) {
         if (s == null) return 0;
         String d = s.replaceAll("[^0-9]", "");
@@ -566,7 +540,7 @@ public class CarDetailActivity extends AppCompatActivity {
         List<String> participants = new ArrayList<>();
         participants.add(user.getUid());
         participants.add(sellerId);
-        
+
         roomData.put("participants", participants);
         roomData.put("carId", carId != null ? carId : "");
         roomData.put("carName", car != null ? car.getName() : "Xe");
@@ -610,7 +584,6 @@ public class CarDetailActivity extends AppCompatActivity {
                     String sName     = doc.getString("sellerName");
                     String imageUrl  = doc.getString("imageUrl");
 
-                    // Đơn giá theo ngày/km (bài đăng tài xế mới có); fallback parse từ chuỗi giá
                     Long ppd = doc.getLong("pricePerDay");
                     Long ppk = doc.getLong("pricePerKm");
                     pricePerDay = ppd != null ? ppd : parseMoney(doc.getString("price"));
@@ -628,7 +601,6 @@ public class CarDetailActivity extends AppCompatActivity {
                     }
                     if (!imgs.isEmpty()) {
                         showImages(imgs);
-                        // Tải sẵn các ảnh còn lại để vuốt xem mượt, không chờ mạng
                         for (String u : imgs) ImageLoader.preload(getApplicationContext(), u);
                     }
 
@@ -705,8 +677,6 @@ public class CarDetailActivity extends AppCompatActivity {
 
         applyTypeBadge(driver, rental);
 
-        // Xe có tài xế và xe thuê tự lái đều dùng form đặt/thuê (nhập thời gian, người thuê...),
-        // chỉ xe bán mới dùng form mua.
         if (driver || rental) {
             layoutBuyForm.setVisibility(View.GONE);
             layoutRentForm.setVisibility(View.VISIBLE);
@@ -717,7 +687,6 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    /** Gán nhãn loại xe: Có tài xế (xanh ngọc) / Cho Thuê (xanh dương) / Cần Bán (xanh lá). */
     private void applyTypeBadge(boolean driver, boolean rental) {
         if (driver) {
             tvCarTypeBadge.setText("Có tài xế");
@@ -743,7 +712,6 @@ public class CarDetailActivity extends AppCompatActivity {
         return t.contains("rental") || t.contains("rent") || t.contains("thue") || t.contains("thuê") || t.contains("tu lai");
     }
 
-    /** Menu 3 gạch (chỉ chủ bài đăng): chỉnh sửa, ẩn/hiện, xóa bài viết. */
     private void showOwnerMenu(View anchor) {
         boolean isHidden = "hidden".equals(carStatus);
         androidx.appcompat.widget.PopupMenu menu =
@@ -815,7 +783,6 @@ public class CarDetailActivity extends AppCompatActivity {
                 .show();
     }
 
-    /** Ẩn bài: status = "hidden" (các danh sách bỏ qua); hiện lại: trả về trạng thái trước khi ẩn. */
     private void toggleHidePost() {
         if (carId == null || carId.isEmpty()) return;
 
@@ -864,6 +831,9 @@ public class CarDetailActivity extends AppCompatActivity {
                 .show();
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  GỬI ĐƠN MUA XE — có thêm thông báo cho người bán
+    // ═══════════════════════════════════════════════════════════════════════════
     private void sendBuyRequest() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
@@ -887,9 +857,16 @@ public class CarDetailActivity extends AppCompatActivity {
                 .addOnSuccessListener(ref -> {
                     Toast.makeText(this, "✅ Gửi yêu cầu thành công!", Toast.LENGTH_LONG).show();
                     etBuyerNote.setText("");
+
+                    // ── Thông báo cho người bán ──────────────────────────────
+                    notifySellerOrderSent(user, ref.getId());
+                    // ─────────────────────────────────────────────────────────
                 });
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  GỬI ĐƠN THUÊ XE — có thêm thông báo cho người cho thuê
+    // ═══════════════════════════════════════════════════════════════════════════
     private void sendRentRequest() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
@@ -920,7 +897,6 @@ public class CarDetailActivity extends AppCompatActivity {
         String payMethod   = rgPaymentMethod != null
                 && rgPaymentMethod.getCheckedRadioButtonId() == R.id.rb_pay_transfer ? "transfer" : "cash";
 
-        // Chặn sớm nếu cần cọc mà ví không đủ (holdDeposit cũng kiểm tra lại trong transaction)
         if (needDeposit && walletBalance < deposit) {
             Toast.makeText(this, "Số dư ví không đủ để đặt cọc " + money(deposit)
                     + " đ. Vui lòng nhờ admin nạp tiền.", Toast.LENGTH_LONG).show();
@@ -954,6 +930,10 @@ public class CarDetailActivity extends AppCompatActivity {
                     if (!needDeposit) {
                         btnSendRentRequest.setEnabled(true);
                         Toast.makeText(this, "✅ Gửi yêu cầu thuê xe thành công!", Toast.LENGTH_LONG).show();
+
+                        // ── Thông báo cho người cho thuê ─────────────────────
+                        notifySellerOrderSent(user, ref.getId());
+                        // ─────────────────────────────────────────────────────
                         return;
                     }
                     // Giữ cọc: trừ tiền ví khách
@@ -966,9 +946,12 @@ public class CarDetailActivity extends AppCompatActivity {
                                     Toast.makeText(CarDetailActivity.this,
                                             "✅ Đặt xe thành công! Đã giữ cọc " + money(deposit) + " đ.",
                                             Toast.LENGTH_LONG).show();
+
+                                    // ── Thông báo cho người cho thuê ─────────
+                                    notifySellerOrderSent(user, ref.getId());
+                                    // ─────────────────────────────────────────
                                 }
                                 @Override public void onError(String msg) {
-                                    // Cọc thất bại -> xoá đơn vừa tạo để không treo đơn rác
                                     ref.delete();
                                     btnSendRentRequest.setEnabled(true);
                                     Toast.makeText(CarDetailActivity.this,
@@ -1004,7 +987,7 @@ public class CarDetailActivity extends AppCompatActivity {
         String tripNote = "Chuyến: " + tripPickup + " → " + tripDest
                 + " (" + tripDistanceKm + " km). Tổng: " + money(total) + " đ."
                 + (etRenterNote.getText().toString().trim().isEmpty()
-                    ? "" : " Ghi chú: " + etRenterNote.getText().toString().trim());
+                ? "" : " Ghi chú: " + etRenterNote.getText().toString().trim());
 
         Map<String, Object> order = new HashMap<>();
         order.put("buyerId",      user.getUid());
@@ -1034,10 +1017,38 @@ public class CarDetailActivity extends AppCompatActivity {
                     btnSendRentRequest.setEnabled(true);
                     Toast.makeText(this, "✅ Đã gửi yêu cầu đặt chuyến! Chờ tài xế xác nhận.",
                             Toast.LENGTH_LONG).show();
+
+                    // ── Thông báo cho tài xế ─────────────────────────────────
+                    notifySellerOrderSent(user, ref.getId());
+                    // ─────────────────────────────────────────────────────────
                 })
                 .addOnFailureListener(e -> {
                     btnSendRentRequest.setEnabled(true);
                     Toast.makeText(this, "Lỗi tạo đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  HELPER — lấy tên customer từ Firestore rồi gửi thông báo cho người bán
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void notifySellerOrderSent(FirebaseUser buyer, String orderId) {
+        if (sellerId == null || sellerId.isEmpty()) return;
+
+        // Lấy tên người mua/thuê từ Firestore (displayName của Auth có thể null)
+        db.collection("users").document(buyer.getUid()).get()
+                .addOnSuccessListener(snap -> {
+                    String buyerName = snap.getString("name");
+                    if (buyerName == null || buyerName.isEmpty()) buyerName = "Khách hàng";
+
+                    ChatNotificationHelper.sendOrderNotification(
+                            CarDetailActivity.this,
+                            sellerId,                             // người nhận = người bán/cho thuê
+                            buyer.getUid(),                       // người gửi = customer
+                            buyerName,
+                            car != null ? car.getName() : "",
+                            "order_sent",
+                            orderId
+                    );
                 });
     }
 
