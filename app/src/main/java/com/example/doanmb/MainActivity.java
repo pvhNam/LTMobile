@@ -426,7 +426,9 @@ public class MainActivity extends AppCompatActivity {
                         String imageUrl = doc.getString("imageUrl");
 
                         if (name == null) continue;
-                        if ("sold".equals(status) || "hidden".equals(status)) continue;
+                        // Chỉ hiện xe đã được admin duyệt (active) hoặc đang đặt cọc (holding);
+                        // ẩn pending/rejected/sold/hidden và xe chưa có trạng thái (null)
+                        if (!"active".equals(status) && !"holding".equals(status)) continue;
 
                         Car car = new Car(name,
                                 price    != null ? price    : "",

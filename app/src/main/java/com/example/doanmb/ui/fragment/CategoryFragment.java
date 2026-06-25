@@ -345,7 +345,10 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                         String name = doc.getString("name");
                         if (name == null || name.trim().isEmpty()) continue;
-                        if ("hidden".equals(doc.getString("status"))) continue; // chủ bài đã ẩn
+                        // Chỉ hiện xe đã được admin duyệt (active) hoặc đang đặt cọc (holding);
+                        // ẩn pending/rejected/sold/hidden và xe chưa có trạng thái (null)
+                        String status = doc.getString("status");
+                        if (!"active".equals(status) && !"holding".equals(status)) continue;
 
                         String price = doc.getString("price");
                         String info = doc.getString("info");
