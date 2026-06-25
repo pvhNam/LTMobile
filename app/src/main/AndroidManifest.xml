@@ -73,6 +73,8 @@
             android:theme="@style/Theme.DOANMB.Driver" />
         <activity android:name="com.example.doanmb.ui.activity.AdminRevenueDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
+        <activity android:name="com.example.doanmb.ui.activity.AdminCarDetailActivity"
+            android:theme="@style/Theme.DOANMB.Admin" />
         <activity
             android:name="com.example.doanmb.ui.activity.ChatDetailActivity"
             android:windowSoftInputMode="adjustResize" />

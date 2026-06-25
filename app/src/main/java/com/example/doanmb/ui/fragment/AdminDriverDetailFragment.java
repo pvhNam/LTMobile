@@ -54,6 +54,9 @@ public class AdminDriverDetailFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_admin_driver_detail, container, false);
         db = FirebaseFirestore.getInstance();
 
+        // Ẩn header "ADMIN" + thanh nav của dashboard để màn chi tiết hiển thị toàn phần
+        setAdminChrome(false);
+
         view.findViewById(R.id.btn_dd_back).setOnClickListener(v -> {
             if (getParentFragmentManager().getBackStackEntryCount() > 0) {
                 getParentFragmentManager().popBackStack();
@@ -67,6 +70,23 @@ public class AdminDriverDetailFragment extends Fragment {
 
         loadUser(view);
         return view;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Trả lại header + thanh nav khi rời màn chi tiết
+        setAdminChrome(true);
+    }
+
+    /** Ẩn/hiện header "ADMIN" và thanh điều hướng dưới của AdminDashboard. */
+    private void setAdminChrome(boolean show) {
+        if (getActivity() == null) return;
+        View header = getActivity().findViewById(R.id.admin_header);
+        View nav    = getActivity().findViewById(R.id.admin_bottom_nav_container);
+        int vis = show ? View.VISIBLE : View.GONE;
+        if (header != null) header.setVisibility(vis);
+        if (nav != null) nav.setVisibility(vis);
     }
 
     private void loadUser(View view) {

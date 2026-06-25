@@ -25,16 +25,12 @@ public class CarAdminAdapter extends RecyclerView.Adapter<CarAdminAdapter.ViewHo
         void onApprove(String carId);
         void onReject(String carId);
         void onDelete(String carId);
+        void onOpenDetail(String carId);
     }
 
     private List<Map<String, Object>> cars;
     private List<String> carIds;
     private OnCarActionListener listener;
-
-    public CarAdminAdapter(List<Map<String, Object>> cars, List<String> carIds) {
-        this.cars = cars;
-        this.carIds = carIds;
-    }
 
     public CarAdminAdapter(List<Map<String, Object>> cars, List<String> carIds, OnCarActionListener listener) {
         this.cars = cars;
@@ -81,12 +77,9 @@ public class CarAdminAdapter extends RecyclerView.Adapter<CarAdminAdapter.ViewHo
             holder.ivThumb.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        if (listener == null) {
-            holder.layoutActions.setVisibility(View.GONE);
-            return;
-        }
+        // Bấm vào nội dung item -> mở chi tiết bài đăng
+        holder.itemView.setOnClickListener(v -> listener.onOpenDetail(carId));
 
-        // Luôn hiện layout actions khi có listener
         holder.layoutActions.setVisibility(View.VISIBLE);
 
         // Nút Xóa: luôn hiện

@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.adapter.CarAdminAdapter;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -52,6 +53,7 @@ public class AdminCarsFragment extends Fragment {
             @Override public void onApprove(String carId) { approveCar(carId); }
             @Override public void onReject(String carId)  { rejectCar(carId); }
             @Override public void onDelete(String carId)  { deleteCar(carId); }
+            @Override public void onOpenDetail(String carId) { openDetail(carId); }
         });
         rvCars.setLayoutManager(new LinearLayoutManager(getContext()));
         rvCars.setAdapter(adapter);
@@ -95,20 +97,30 @@ public class AdminCarsFragment extends Fragment {
         carList.clear();
         carIds.clear();
 
+        // Lọc trước, rồi sắp xếp mới nhất lên đầu theo createdAt
+        List<QueryDocumentSnapshot> docs = new ArrayList<>();
         for (QueryDocumentSnapshot doc : snapshots) {
             String status = doc.getString("status");
-
             if (showingPending) {
                 // Chờ duyệt: status == "pending" HOẶC chưa có field status
-                if (status == null || "pending".equals(status)) {
-                    carList.add(doc.getData());
-                    carIds.add(doc.getId());
-                }
+                if (status == null || "pending".equals(status)) docs.add(doc);
             } else {
-                // Tất cả xe
-                carList.add(doc.getData());
-                carIds.add(doc.getId());
+                docs.add(doc); // Tất cả xe
             }
+        }
+
+        docs.sort((a, b) -> {
+            Timestamp ta = a.getTimestamp("createdAt");
+            Timestamp tb = b.getTimestamp("createdAt");
+            if (ta == null && tb == null) return 0;
+            if (ta == null) return 1;   // thiếu ngày -> xuống cuối
+            if (tb == null) return -1;
+            return tb.compareTo(ta);    // giảm dần: mới nhất trước
+        });
+
+        for (QueryDocumentSnapshot doc : docs) {
+            carList.add(doc.getData());
+            carIds.add(doc.getId());
         }
 
         adapter.updateList(carList, carIds);
@@ -122,6 +134,14 @@ public class AdminCarsFragment extends Fragment {
         tvEmpty.setText(emptyMsg);
         tvEmpty.setVisibility(carList.isEmpty() ? View.VISIBLE : View.GONE);
         rvCars.setVisibility(carList.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    private void openDetail(String carId) {
+        android.content.Intent intent =
+                new android.content.Intent(getContext(),
+                        com.example.doanmb.ui.activity.AdminCarDetailActivity.class);
+        intent.putExtra(com.example.doanmb.ui.activity.AdminCarDetailActivity.EXTRA_CAR_ID, carId);
+        startActivity(intent);
     }
 
     private void approveCar(String carId) {
