@@ -842,6 +842,25 @@ public class CarDetailActivity extends AppCompatActivity {
             return;
         }
 
+        // Kiểm tra đã có order pending cho xe này chưa → chặn spam
+        db.collection("orders")
+                .whereEqualTo("buyerId", user.getUid())
+                .whereEqualTo("carId",   carId != null ? carId : "")
+                .whereEqualTo("status",  "pending")
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (!snap.isEmpty()) {
+                        Toast.makeText(this,
+                                "⏳ Đã gửi yêu cầu. Vui lòng chờ người bán phản hồi.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    doSendBuyRequest(user);
+                });
+    }
+
+    private void doSendBuyRequest(FirebaseUser user) {
         Map<String, Object> order = new HashMap<>();
         order.put("buyerId",  user.getUid());
         order.put("sellerId", sellerId != null ? sellerId : "");
@@ -857,10 +876,7 @@ public class CarDetailActivity extends AppCompatActivity {
                 .addOnSuccessListener(ref -> {
                     Toast.makeText(this, "✅ Gửi yêu cầu thành công!", Toast.LENGTH_LONG).show();
                     etBuyerNote.setText("");
-
-                    // ── Thông báo cho người bán ──────────────────────────────
                     notifySellerOrderSent(user, ref.getId());
-                    // ─────────────────────────────────────────────────────────
                 });
     }
 
@@ -875,6 +891,26 @@ public class CarDetailActivity extends AppCompatActivity {
         }
 
         if (tripMode) { sendTripRequest(user); return; }
+
+        // Kiểm tra đã có order pending cho xe này chưa → chặn spam
+        db.collection("orders")
+                .whereEqualTo("buyerId", user.getUid())
+                .whereEqualTo("carId",   carId != null ? carId : "")
+                .whereEqualTo("status",  "pending")
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (!snap.isEmpty()) {
+                        Toast.makeText(this,
+                                "⏳ Đã gửi yêu cầu. Vui lòng chờ người cho thuê phản hồi.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    doSendRentRequest(user);
+                });
+    }
+
+    private void doSendRentRequest(FirebaseUser user) {
 
         String renterName  = etRenterName.getText().toString().trim();
         String renterPhone = etRenterPhone.getText().toString().trim();
@@ -1034,7 +1070,6 @@ public class CarDetailActivity extends AppCompatActivity {
     private void notifySellerOrderSent(FirebaseUser buyer, String orderId) {
         if (sellerId == null || sellerId.isEmpty()) return;
 
-        // Lấy tên người mua/thuê từ Firestore (displayName của Auth có thể null)
         db.collection("users").document(buyer.getUid()).get()
                 .addOnSuccessListener(snap -> {
                     String buyerName = snap.getString("name");
@@ -1042,10 +1077,11 @@ public class CarDetailActivity extends AppCompatActivity {
 
                     ChatNotificationHelper.sendOrderNotification(
                             CarDetailActivity.this,
-                            sellerId,                             // người nhận = người bán/cho thuê
-                            buyer.getUid(),                       // người gửi = customer
+                            sellerId,
+                            buyer.getUid(),
                             buyerName,
                             car != null ? car.getName() : "",
+                            carId != null ? carId : "",   // ← thêm carId
                             "order_sent",
                             orderId
                     );

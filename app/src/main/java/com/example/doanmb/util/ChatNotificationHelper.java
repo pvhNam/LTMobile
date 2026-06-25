@@ -154,6 +154,7 @@ public final class ChatNotificationHelper {
                                              String senderId,
                                              String senderName,
                                              String carName,
+                                             String carId,
                                              String type,
                                              String orderId) {
         if (receiverId == null || receiverId.isEmpty()) return;
@@ -177,9 +178,9 @@ public final class ChatNotificationHelper {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        // 1. Lưu vào Firestore collection "notifications"
-        // docId = receiverId_order_orderId → mỗi đơn có 1 doc riêng
-        String notifDocId = receiverId + "_order_" + safe(orderId);
+        // docId cố định theo buyer + car → mỗi cặp chỉ có 1 doc duy nhất
+        // Gửi lại sẽ update read=false + createdAt=now → nổi lên đầu, không tạo thêm doc mới
+        String notifDocId = receiverId + "_order_" + safe(senderId) + "_" + safe(carId);
 
         Map<String, Object> notif = new HashMap<>();
         notif.put("userId",     receiverId);
@@ -189,12 +190,13 @@ public final class ChatNotificationHelper {
         notif.put("type",       type != null ? type : "order_sent");
         notif.put("orderId",    safe(orderId));
         notif.put("carName",    safe(carName));
+        notif.put("carId",      safe(carId));
         notif.put("senderName", safe(senderName));
-        notif.put("read",       false);
-        notif.put("createdAt",  Timestamp.now());
+        notif.put("read",       false);          // luôn reset về chưa đọc
+        notif.put("createdAt",  Timestamp.now()); // reset thời gian → nổi lên đầu
 
         db.collection("notifications").document(notifDocId).set(notif)
-                .addOnSuccessListener(v -> Log.d(TAG, "Order notif saved: " + notifDocId))
+                .addOnSuccessListener(v -> Log.d(TAG, "Order notif upserted: " + notifDocId))
                 .addOnFailureListener(e -> Log.w(TAG, "Failed to save order notif", e));
 
         // 2. Lấy FCM token → gửi push notification
@@ -210,13 +212,11 @@ public final class ChatNotificationHelper {
                         Log.d(TAG, "No FCM token for order notif: " + receiverId);
                         return;
                     }
-                    // Tái dùng sendFcmV1 — truyền type vào field carType để
-                    // CarviaMessagingService nhận được và phân loại
                     executor.execute(() ->
                             sendFcmV1(context, fcmToken, finalTitle, finalBody,
                                     senderName, carName,
-                                    finalType,     // carType field tái dùng để truyền loại
-                                    safe(orderId), // roomId field tái dùng để truyền orderId
+                                    finalType,
+                                    safe(orderId),
                                     senderId));
                 })
                 .addOnFailureListener(e -> Log.w(TAG, "Failed to get FCM token for order", e));

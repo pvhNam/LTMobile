@@ -25,26 +25,30 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
-
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.firebase.firestore.Query;
+
 public class ManageFragment extends Fragment {
 
+    // Tab pill (giống trang Danh mục)
     private CardView cardTabPosts, cardTabRequests;
     private LinearLayout tabPostsContent, tabRequestsContent;
     private TextView tvTabPosts, tvTabRequests;
     private LinearLayout layoutMyPosts, layoutRequests;
 
+    // Tab 1: Xe đã đăng
     private RecyclerView rvMyPosts;
     private TextView tvMyPostCount, tvEmptyPosts;
     private ProfileCarAdapter myPostsAdapter;
     private List<Car> myCarList = new ArrayList<>();
 
+    // Tab 2: Yêu cầu nhận được
     private RecyclerView rvRequests;
     private TextView tvRequestCount, tvEmptyRequests;
     private RequestAdapter requestAdapter;
@@ -53,7 +57,8 @@ public class ManageFragment extends Fragment {
 
     private FirebaseFirestore db;
     private String currentUserId;
-    private ListenerRegistration requestsListener;
+    private ListenerRegistration requestsListener; // lưu lại để hủy khi fragment destroy
+    private boolean usingCarIdFallback = false;    // tránh gọi loadRequestsByCarId() nhiều lần
 
     @Nullable
     @Override
@@ -96,11 +101,7 @@ public class ManageFragment extends Fragment {
     private void setupTabs() {
         cardTabPosts.setOnClickListener(v -> showTab(true));
         cardTabRequests.setOnClickListener(v -> showTab(false));
-
-        // KIỂM TRA ĐỐI SỐ TỪ NOTIFICATION ĐỂ MỞ TAB YÊU CẦU
-        Bundle args = getArguments();
-        boolean openRequests = args != null && args.getBoolean("OPEN_REQUESTS", false);
-        showTab(!openRequests);
+        showTab(true); // trạng thái ban đầu: đang xem "Xe đã đăng"
     }
 
     private void showTab(boolean showPosts) {
@@ -110,6 +111,7 @@ public class ManageFragment extends Fragment {
         setTabSelected(tabRequestsContent, tvTabRequests, !showPosts);
     }
 
+    // Tab đang chọn = pill trắng + chữ xanh; tab còn lại = trong suốt + chữ trắng (giống trang Danh mục)
     private void setTabSelected(LinearLayout tabContent, TextView tabLabel, boolean selected) {
         if (selected) {
             tabContent.setBackgroundResource(R.drawable.bg_tab_active_pill);
@@ -121,10 +123,12 @@ public class ManageFragment extends Fragment {
     }
 
     private void setupRecyclerViews() {
+        // Tab 1: Xe đã đăng — bấm vào item để xem chi tiết xe
         rvMyPosts.setLayoutManager(new LinearLayoutManager(getContext()));
         myPostsAdapter = new ProfileCarAdapter(myCarList, this::openCarDetail);
         rvMyPosts.setAdapter(myPostsAdapter);
 
+        // Tab 2: Yêu cầu
         rvRequests.setLayoutManager(new LinearLayoutManager(getContext()));
         requestAdapter = new RequestAdapter(orderList, orderIds, new RequestAdapter.OnActionListener() {
             @Override
@@ -140,6 +144,7 @@ public class ManageFragment extends Fragment {
         rvRequests.setAdapter(requestAdapter);
     }
 
+    // Mở màn hình chi tiết xe khi bấm vào tin đã đăng
     private void openCarDetail(Car car) {
         if (getActivity() == null) return;
         Intent intent = new Intent(getActivity(), CarDetailActivity.class);
@@ -150,11 +155,13 @@ public class ManageFragment extends Fragment {
         startActivity(intent);
     }
 
+    // Load xe mình đã đăng
     private void loadMyPosts() {
         db.collection("cars")
                 .whereEqualTo("userId", currentUserId)
                 .get()
                 .addOnSuccessListener(snapshots -> {
+                    // PHÒNG HỘ LUỒNG
                     if (!isAdded() || getActivity() == null) return;
 
                     myCarList.clear();
@@ -186,37 +193,51 @@ public class ManageFragment extends Fragment {
                 });
     }
 
+    // Load yêu cầu mua/thuê xe của mình — real-time
     private void loadRequests() {
+        // Hủy listener cũ nếu có
         if (requestsListener != null) {
             requestsListener.remove();
         }
+        usingCarIdFallback = false;
 
-        // CẬP NHẬT SORT DESCENDING (YÊU CẦU COMPOSITE INDEX)
+        // Thử query theo sellerId trước (KHÔNG dùng orderBy để tránh cần composite index)
         requestsListener = db.collection("orders")
                 .whereEqualTo("sellerId", currentUserId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .addSnapshotListener((snapshots, error) -> {
-                    if (error != null || snapshots == null) {
-                        loadRequestsByCarId();
+                    if (error != null) {
+                        android.util.Log.e("ManageFragment", "loadRequests sellerId error: " + error.getMessage());
+                        if (!usingCarIdFallback) {
+                            usingCarIdFallback = true;
+                            loadRequestsByCarId();
+                        }
                         return;
                     }
-                    if (!isAdded() || getActivity() == null) return;
+                    if (snapshots == null || !isAdded() || getActivity() == null) return;
 
                     if (snapshots.isEmpty()) {
-                        loadRequestsByCarId();
+                        // Không có sellerId → fallback real-time theo carId (chỉ 1 lần)
+                        if (!usingCarIdFallback) {
+                            usingCarIdFallback = true;
+                            loadRequestsByCarId();
+                        }
                         return;
                     }
 
+                    // Có data theo sellerId → dùng kết quả này
+                    usingCarIdFallback = false;
                     orderList.clear();
                     orderIds.clear();
                     for (QueryDocumentSnapshot doc : snapshots) {
                         orderList.add(doc.getData());
                         orderIds.add(doc.getId());
                     }
+                    sortOrdersByCreatedAt(); // sort trong bộ nhớ thay vì orderBy Firestore
                     updateRequestsUI();
                 });
     }
 
+    // Load yêu cầu dựa trên các carId của mình — real-time
     private void loadRequestsByCarId() {
         db.collection("cars")
                 .whereEqualTo("userId", currentUserId)
@@ -232,40 +253,57 @@ public class ManageFragment extends Fragment {
                         return;
                     }
 
-                    db.collection("orders").get()
-                            .addOnSuccessListener(orderSnapshots -> {
-                                List<Map<String, Object>> tempOrders = new ArrayList<>();
+                    // Hủy listener sellerId và thay bằng listener real-time theo carId
+                    // KHÔNG dùng orderBy để tránh cần composite index
+                    if (requestsListener != null) {
+                        requestsListener.remove();
+                    }
 
-                                for (QueryDocumentSnapshot doc : orderSnapshots) {
-                                    String carId = doc.getString("carId");
-                                    if (carId != null && myCarIds.contains(carId)) {
-                                        Map<String, Object> data = doc.getData();
-                                        // Tạm nhúng ID vào Map để tránh mất đồng bộ khi sort
-                                        data.put("_tempDocId", doc.getId());
-                                        tempOrders.add(data);
-                                    }
+                    requestsListener = db.collection("orders")
+                            .whereIn("carId", myCarIds)
+                            .addSnapshotListener((orderSnapshots, error) -> {
+                                if (error != null) {
+                                    android.util.Log.e("ManageFragment", "loadRequestsByCarId error: " + error.getMessage());
+                                    return;
                                 }
-
-                                // CẬP NHẬT SORT AN TOÀN
-                                tempOrders.sort((a, b) -> {
-                                    com.google.firebase.Timestamp ta = (com.google.firebase.Timestamp) a.get("createdAt");
-                                    com.google.firebase.Timestamp tb = (com.google.firebase.Timestamp) b.get("createdAt");
-                                    if (ta == null && tb == null) return 0;
-                                    if (ta == null) return 1;  // Đẩy null xuống cuối
-                                    if (tb == null) return -1;
-                                    return tb.compareTo(ta); // Mới nhất lên đầu
-                                });
+                                if (orderSnapshots == null || !isAdded() || getActivity() == null) return;
 
                                 orderList.clear();
                                 orderIds.clear();
-                                for (Map<String, Object> data : tempOrders) {
-                                    orderIds.add((String) data.remove("_tempDocId")); // Tách ID ra lại
-                                    orderList.add(data);
+                                for (QueryDocumentSnapshot doc : orderSnapshots) {
+                                    orderList.add(doc.getData());
+                                    orderIds.add(doc.getId());
                                 }
-
+                                sortOrdersByCreatedAt(); // sort trong bộ nhớ thay vì orderBy Firestore
                                 updateRequestsUI();
                             });
-                });
+                })
+                .addOnFailureListener(e ->
+                        android.util.Log.e("ManageFragment", "loadRequestsByCarId cars query error: " + e.getMessage())
+                );
+    }
+
+    // Sắp xếp orderList + orderIds theo createdAt giảm dần (mới nhất lên đầu)
+    // Dùng sort trong bộ nhớ thay vì orderBy Firestore để không cần composite index
+    private void sortOrdersByCreatedAt() {
+        List<AbstractMap.SimpleEntry<String, Map<String, Object>>> paired = new ArrayList<>();
+        for (int i = 0; i < orderList.size(); i++) {
+            paired.add(new AbstractMap.SimpleEntry<>(orderIds.get(i), orderList.get(i)));
+        }
+        paired.sort((a, b) -> {
+            com.google.firebase.Timestamp ta = (com.google.firebase.Timestamp) a.getValue().get("createdAt");
+            com.google.firebase.Timestamp tb = (com.google.firebase.Timestamp) b.getValue().get("createdAt");
+            if (ta == null && tb == null) return 0;
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return tb.compareTo(ta);
+        });
+        orderList.clear();
+        orderIds.clear();
+        for (AbstractMap.SimpleEntry<String, Map<String, Object>> entry : paired) {
+            orderIds.add(entry.getKey());
+            orderList.add(entry.getValue());
+        }
     }
 
     private void updateRequestsUI() {
@@ -275,6 +313,7 @@ public class ManageFragment extends Fragment {
         rvRequests.setVisibility(orderList.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
+    // Xác nhận yêu cầu → xe chuyển sang "sold/rented", order → confirmed
     private void confirmRequest(String orderId, String carId) {
         Map<String, Object> orderUpdate = new HashMap<>();
         orderUpdate.put("status", "confirmed");
@@ -285,6 +324,7 @@ public class ManageFragment extends Fragment {
             carUpdate.put("status", "sold");
             db.collection("cars").document(carId).update(carUpdate)
                     .addOnSuccessListener(v -> {
+                        // PHÒNG HỘ CONTEXT
                         if (getContext() != null) {
                             Toast.makeText(getContext(), "✅ Đã xác nhận! Xe sẽ được ẩn khỏi danh sách.", Toast.LENGTH_SHORT).show();
                             loadMyPosts();
@@ -298,9 +338,12 @@ public class ManageFragment extends Fragment {
             }
         }
 
+        // ── THÊM BƯỚC 4: thông báo cho người mua/thuê ─────────────────────────
         notifyBuyerOrderStatus(orderId, "order_confirmed");
+        // ───────────────────────────────────────────────────────────────────────
     }
 
+    // Từ chối yêu cầu → xe về trạng thái bình thường
     private void rejectRequest(String orderId, String carId) {
         Map<String, Object> orderUpdate = new HashMap<>();
         orderUpdate.put("status", "rejected");
@@ -311,6 +354,7 @@ public class ManageFragment extends Fragment {
             carUpdate.put("status", "active");
             db.collection("cars").document(carId).update(carUpdate)
                     .addOnSuccessListener(v -> {
+                        // PHÒNG HỘ CONTEXT
                         if (getContext() != null) {
                             Toast.makeText(getContext(), "Đã từ chối yêu cầu. Xe tiếp tục hiển thị.", Toast.LENGTH_SHORT).show();
                             loadMyPosts();
@@ -324,7 +368,9 @@ public class ManageFragment extends Fragment {
             }
         }
 
+        // ── THÊM BƯỚC 4: thông báo cho người mua/thuê ─────────────────────────
         notifyBuyerOrderStatus(orderId, "order_rejected");
+        // ───────────────────────────────────────────────────────────────────────
     }
 
     private void notifyBuyerOrderStatus(String orderId, String type) {
@@ -334,6 +380,7 @@ public class ManageFragment extends Fragment {
 
                     String buyerId  = snap.getString("buyerId");
                     String carName  = snap.getString("carName");
+                    String carId    = snap.getString("carId");
 
                     if (buyerId == null || buyerId.isEmpty()) return;
 
@@ -351,6 +398,7 @@ public class ManageFragment extends Fragment {
                                         myUid,
                                         sellerName,
                                         carName != null ? carName : "",
+                                        carId   != null ? carId   : "",  // ← thêm carId
                                         type,
                                         orderId
                                 );
@@ -370,6 +418,7 @@ public class ManageFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        // Quan trọng: hủy listener khi fragment bị destroy, tránh memory leak
         if (requestsListener != null) {
             requestsListener.remove();
             requestsListener = null;
