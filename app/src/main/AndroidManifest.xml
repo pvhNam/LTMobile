@@ -25,7 +25,7 @@
             android:value="${MAPS_API_KEY}" />
 
         <activity
-            android:name="com.example.doanmb.ui.activity.SplashActivity"
+            android:name="com.example.doanmb.ui.auth.view.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.DOANMB">
             <intent-filter>
@@ -35,42 +35,42 @@
         </activity>
 
         <activity
-            android:name="com.example.doanmb.MainActivity"
+            android:name="com.example.doanmb.ui.home.view.MainActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
-        <activity android:name="com.example.doanmb.ui.activity.CarDetailActivity" android:exported="false" />
+        <activity android:name="com.example.doanmb.ui.car.view.CarDetailActivity" android:exported="false" />
         <activity
-            android:name="com.example.doanmb.ui.activity.MapPickerActivity"
+            android:name="com.example.doanmb.ui.car.view.MapPickerActivity"
             android:exported="false" />
-        <activity android:name="com.example.doanmb.ui.activity.FavoriteCarsActivity" android:exported="false" />
-        <activity android:name="com.example.doanmb.ui.activity.LoginActivity" />
-        <activity android:name="com.example.doanmb.ui.activity.RegisterActivity" />
-        <activity android:name="com.example.doanmb.ui.activity.ForgotPassActivity" />
-        <activity android:name="com.example.doanmb.ui.activity.AdminDashboardActivity"
+        <activity android:name="com.example.doanmb.ui.car.view.FavoriteCarsActivity" android:exported="false" />
+        <activity android:name="com.example.doanmb.ui.auth.view.LoginActivity" />
+        <activity android:name="com.example.doanmb.ui.auth.view.RegisterActivity" />
+        <activity android:name="com.example.doanmb.ui.auth.view.ForgotPassActivity" />
+        <activity android:name="com.example.doanmb.ui.admin.view.AdminDashboardActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
-        <activity android:name="com.example.doanmb.ui.activity.DriverDashboardActivity"
+        <activity android:name="com.example.doanmb.ui.driver.view.DriverDashboardActivity"
             android:theme="@style/Theme.DOANMB.Driver" />
-        <activity android:name="com.example.doanmb.ui.activity.DriverRegisterActivity"
+        <activity android:name="com.example.doanmb.ui.driver.view.DriverRegisterActivity"
             android:theme="@style/Theme.DOANMB.Driver" />
-        <activity android:name="com.example.doanmb.ui.activity.AdminRevenueDetailActivity"
+        <activity android:name="com.example.doanmb.ui.admin.view.AdminRevenueDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
         <activity
-            android:name="com.example.doanmb.ui.activity.ChatDetailActivity"
+            android:name="com.example.doanmb.ui.chat.view.ChatDetailActivity"
             android:windowSoftInputMode="adjustResize" />
-        <activity android:name=".ui.activity.FullscreenImageActivity"
+        <activity android:name=".ui.media.view.FullscreenImageActivity"
                android:screenOrientation="fullSensor"
                android:theme="@style/Theme.MaterialComponents.NoActionBar" />
 
-           <activity android:name=".ui.activity.VideoPlayerActivity"
+           <activity android:name=".ui.media.view.VideoPlayerActivity"
                android:screenOrientation="fullSensor"
                android:configChanges="orientation|screenSize"
                android:theme="@style/Theme.MaterialComponents.NoActionBar" />
         <activity
-            android:name=".ui.activity.FullscreenMediaActivity"
+            android:name=".ui.media.view.FullscreenMediaActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar"
             android:screenOrientation="portrait"
             android:exported="false" />
-        <activity android:name=".ui.activity.AboutUsActivity" />
+        <activity android:name=".ui.profile.view.AboutUsActivity" />
     </application>
 </manifest>
