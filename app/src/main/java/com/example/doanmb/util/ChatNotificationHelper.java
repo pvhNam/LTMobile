@@ -288,6 +288,58 @@ public final class ChatNotificationHelper {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+// THÔNG BÁO NHẮC NHỞ — gửi lại mỗi 10 phút nếu đơn vẫn pending
+// ─────────────────────────────────────────────────────────────────────────
+
+    public static void sendReminderNotification(Context context,
+                                                String sellerId,
+                                                String buyerId,
+                                                String buyerName,
+                                                String carName,
+                                                String carId,
+                                                String orderId) {
+        if (sellerId == null || sellerId.isEmpty()) return;
+
+        String title = "⏰ Nhắc nhở: Có yêu cầu chờ xử lý!";
+        String body  = safe(buyerName) + " vẫn đang chờ bạn phản hồi về xe \""
+                + safe(carName) + "\". Hãy xử lý sớm nhé!";
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // Dùng cùng docId với order_sent → ghi đè lên notification cũ
+        // createdAt=now() → nổi lên đầu, read=false → chấm xanh xuất hiện lại
+        String notifDocId = sellerId + "_order_" + safe(buyerId) + "_" + safe(carId);
+
+        Map<String, Object> notif = new HashMap<>();
+        notif.put("userId",     sellerId);
+        notif.put("senderId",   safe(buyerId));
+        notif.put("title",      title);
+        notif.put("body",       body);
+        notif.put("type",       "order_sent");
+        notif.put("orderId",    safe(orderId));
+        notif.put("carName",    safe(carName));
+        notif.put("carId",      safe(carId));
+        notif.put("senderName", safe(buyerName));
+        notif.put("read",       false);
+        notif.put("createdAt",  Timestamp.now());
+
+        db.collection("notifications").document(notifDocId).set(notif)
+                .addOnSuccessListener(v -> Log.d(TAG, "Reminder upserted: " + notifDocId))
+                .addOnFailureListener(e -> Log.w(TAG, "Failed reminder notif", e));
+
+        final String fTitle = title, fBody = body;
+        db.collection("users").document(sellerId).get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) return;
+                    String fcmToken = doc.getString("fcmToken");
+                    if (fcmToken == null || fcmToken.isEmpty()) return;
+                    executor.execute(() -> sendFcmV1(context, fcmToken, fTitle, fBody,
+                            buyerName, carName, "order_sent", safe(orderId), buyerId));
+                });
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
     // OAUTH2 ACCESS TOKEN
     // ─────────────────────────────────────────────────────────────────────────
 

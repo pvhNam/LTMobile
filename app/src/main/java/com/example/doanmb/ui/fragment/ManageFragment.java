@@ -321,6 +321,7 @@ public class ManageFragment extends Fragment {
 
     // Xác nhận yêu cầu → xe chuyển sang "sold/rented", order → confirmed
     private void confirmRequest(String orderId, String carId) {
+        com.example.doanmb.service.OrderReminderService.cancel(requireContext(), orderId);
         Map<String, Object> orderUpdate = new HashMap<>();
         orderUpdate.put("status", "confirmed");
         db.collection("orders").document(orderId).update(orderUpdate);
@@ -351,6 +352,7 @@ public class ManageFragment extends Fragment {
 
     // Từ chối yêu cầu → xe về trạng thái bình thường
     private void rejectRequest(String orderId, String carId) {
+        com.example.doanmb.service.OrderReminderService.cancel(requireContext(), orderId);
         Map<String, Object> orderUpdate = new HashMap<>();
         orderUpdate.put("status", "rejected");
         db.collection("orders").document(orderId).update(orderUpdate);

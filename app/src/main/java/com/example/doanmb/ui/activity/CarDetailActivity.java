@@ -877,6 +877,18 @@ public class CarDetailActivity extends AppCompatActivity {
                     Toast.makeText(this, "✅ Gửi yêu cầu thành công!", Toast.LENGTH_LONG).show();
                     etBuyerNote.setText("");
                     notifySellerOrderSent(user, ref.getId());
+                    // ── Lên lịch nhắc nhở người bán mỗi 10 phút ──────────────────
+                    String buyerName = user.getDisplayName();
+                    if (buyerName == null || buyerName.isEmpty()) buyerName = "Khách hàng";
+                    com.example.doanmb.service.OrderReminderService.schedule(
+                            CarDetailActivity.this,
+                            ref.getId(),
+                            sellerId != null ? sellerId : "",
+                            user.getUid(),
+                            buyerName,
+                            car != null ? car.getName() : "",
+                            carId != null ? carId : ""
+                    );
                 });
     }
 
@@ -969,6 +981,15 @@ public class CarDetailActivity extends AppCompatActivity {
 
                         // ── Thông báo cho người cho thuê ─────────────────────
                         notifySellerOrderSent(user, ref.getId());
+                        com.example.doanmb.service.OrderReminderService.schedule(
+                                CarDetailActivity.this,
+                                ref.getId(),
+                                sellerId != null ? sellerId : "",
+                                user.getUid(),
+                                renterName,
+                                car != null ? car.getName() : "",
+                                carId != null ? carId : ""
+                        );
                         // ─────────────────────────────────────────────────────
                         return;
                     }
@@ -985,6 +1006,15 @@ public class CarDetailActivity extends AppCompatActivity {
 
                                     // ── Thông báo cho người cho thuê ─────────
                                     notifySellerOrderSent(user, ref.getId());
+                                    com.example.doanmb.service.OrderReminderService.schedule(
+                                            CarDetailActivity.this,
+                                            ref.getId(),
+                                            sellerId != null ? sellerId : "",
+                                            user.getUid(),
+                                            renterName,
+                                            car != null ? car.getName() : "",
+                                            carId != null ? carId : ""
+                                    );
                                     // ─────────────────────────────────────────
                                 }
                                 @Override public void onError(String msg) {
