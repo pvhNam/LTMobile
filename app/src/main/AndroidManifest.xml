@@ -30,7 +30,7 @@
             android:value="${MAPS_API_KEY}" />
 
         <service
-            android:name=".service.CarviaMessagingService"
+            android:name=".core.service.CarviaMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
@@ -38,11 +38,11 @@
         </service>
 
         <service
-            android:name=".service.OrderReminderService"
+            android:name=".core.service.OrderReminderService"
             android:exported="false" />
 
         <receiver
-            android:name=".service.OrderReminderReceiver"
+            android:name=".core.service.OrderReminderReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.example.doanmb.ACTION_CHECK_REMINDER" />
@@ -61,7 +61,7 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/colorPrimary" />
         <activity
-            android:name="com.example.doanmb.ui.activity.SplashActivity"
+            android:name="com.example.doanmb.ui.auth.view.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.DOANMB">
             <intent-filter>
@@ -71,53 +71,53 @@
         </activity>
 
         <activity
-            android:name="com.example.doanmb.MainActivity"
+            android:name="com.example.doanmb.ui.home.view.MainActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
-        <activity android:name="com.example.doanmb.ui.activity.CarDetailActivity" android:exported="false" />
-        <activity android:name="com.example.doanmb.ui.activity.MapPickerActivity" android:exported="false" />
-        <activity android:name="com.example.doanmb.ui.activity.FavoriteCarsActivity" android:exported="false" />
-        <activity android:name="com.example.doanmb.ui.activity.LoginActivity" />
-        <activity android:name="com.example.doanmb.ui.activity.RegisterActivity" />
-        <activity android:name="com.example.doanmb.ui.activity.ForgotPassActivity" />
-        <activity android:name="com.example.doanmb.ui.activity.AdminDashboardActivity"
+        <activity android:name="com.example.doanmb.ui.car.view.CarDetailActivity" android:exported="false" />
+        <activity android:name="com.example.doanmb.ui.car.view.MapPickerActivity" android:exported="false" />
+        <activity android:name="com.example.doanmb.ui.car.view.FavoriteCarsActivity" android:exported="false" />
+        <activity android:name="com.example.doanmb.ui.auth.view.LoginActivity" />
+        <activity android:name="com.example.doanmb.ui.auth.view.RegisterActivity" />
+        <activity android:name="com.example.doanmb.ui.auth.view.ForgotPassActivity" />
+        <activity android:name="com.example.doanmb.ui.admin.view.AdminDashboardActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
-        <activity android:name="com.example.doanmb.ui.activity.DriverDashboardActivity"
+        <activity android:name="com.example.doanmb.ui.driver.view.DriverDashboardActivity"
             android:theme="@style/Theme.DOANMB.Driver" />
-        <activity android:name="com.example.doanmb.ui.activity.DriverRegisterActivity"
+        <activity android:name="com.example.doanmb.ui.driver.view.DriverRegisterActivity"
             android:theme="@style/Theme.DOANMB.Driver" />
-        <activity android:name="com.example.doanmb.ui.activity.AdminRevenueDetailActivity"
+        <activity android:name="com.example.doanmb.ui.admin.view.AdminRevenueDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
-        <activity android:name="com.example.doanmb.ui.activity.AdminCarDetailActivity"
+        <activity android:name="com.example.doanmb.ui.admin.view.AdminCarDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
-        <activity android:name="com.example.doanmb.ui.activity.AdminUserDetailActivity"
+        <activity android:name="com.example.doanmb.ui.admin.view.AdminUserDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
         <activity
-            android:name="com.example.doanmb.ui.activity.ChatDetailActivity"
+            android:name="com.example.doanmb.ui.chat.view.ChatDetailActivity"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".ui.activity.FullscreenImageActivity"
+            android:name=".ui.media.view.FullscreenImageActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/Theme.MaterialComponents.NoActionBar" />
 
         <activity
-            android:name=".ui.activity.VideoPlayerActivity"
+            android:name=".ui.media.view.VideoPlayerActivity"
             android:screenOrientation="fullSensor"
             android:configChanges="orientation|screenSize"
             android:theme="@style/Theme.MaterialComponents.NoActionBar" />
 
         <activity
-            android:name=".ui.activity.FullscreenMediaActivity"
+            android:name=".ui.media.view.FullscreenMediaActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar"
             android:screenOrientation="portrait"
             android:exported="false" />
-        <activity android:name=".ui.activity.AboutUsActivity" />
-        <activity android:name=".ui.activity.GiftsActivity" />
-        <activity android:name=".ui.activity.ReferralActivity" />
-        <activity android:name=".ui.activity.PrivacyActivity" />
-        <activity android:name=".ui.activity.SupportActivity" />
-        <activity android:name=".ui.activity.ReviewActivity" />
+        <activity android:name=".ui.profile.view.AboutUsActivity" />
+        <activity android:name=".ui.profile.view.GiftsActivity" />
+        <activity android:name=".ui.profile.view.ReferralActivity" />
+        <activity android:name=".ui.profile.view.PrivacyActivity" />
+        <activity android:name=".ui.profile.view.SupportActivity" />
+        <activity android:name=".ui.car.view.ReviewActivity" />
     </application>
 </manifest>
