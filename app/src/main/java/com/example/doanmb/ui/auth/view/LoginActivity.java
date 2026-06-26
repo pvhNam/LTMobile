@@ -2,29 +2,28 @@ package com.example.doanmb.ui.auth.view;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
-import com.example.doanmb.ui.home.view.MainActivity;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.view.AdminDashboardActivity;
+import com.example.doanmb.ui.auth.viewmodel.AuthDestination;
+import com.example.doanmb.ui.auth.viewmodel.LoginViewModel;
 import com.example.doanmb.ui.driver.view.DriverDashboardActivity;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.auth.FirebaseUser;
+import com.example.doanmb.ui.home.view.MainActivity;
 
 public class LoginActivity extends AppCompatActivity {
 
     private EditText etEmail, etPassword;
     private Button btnDoLogin;
-    private TextView tvGoToRegister,tvforgot;
-    private FirebaseAuth mAuth;
-    private FirebaseFirestore db;
+    private TextView tvGoToRegister, tvforgot;
+
+    private LoginViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,8 +35,7 @@ public class LoginActivity extends AppCompatActivity {
             getSupportActionBar().setTitle("Dang nhap");
         }
 
-        mAuth = FirebaseAuth.getInstance();
-        db = FirebaseFirestore.getInstance();
+        viewModel = new ViewModelProvider(this).get(LoginViewModel.class);
 
         etEmail = findViewById(R.id.et_email);
         etPassword = findViewById(R.id.et_password);
@@ -45,84 +43,43 @@ public class LoginActivity extends AppCompatActivity {
         tvGoToRegister = findViewById(R.id.tv_go_to_register);
         tvforgot = findViewById(R.id.tv_forgot_password);
 
-        btnDoLogin.setOnClickListener(v -> loginUser());
+        btnDoLogin.setOnClickListener(v ->
+                viewModel.login(etEmail.getText().toString(), etPassword.getText().toString()));
 
         tvGoToRegister.setOnClickListener(v -> {
             startActivity(new Intent(this, RegisterActivity.class));
             finish();
         });
 
-        tvforgot.setOnClickListener(v -> {
-            startActivity(new Intent(this, ForgotPassActivity.class));
+        tvforgot.setOnClickListener(v ->
+                startActivity(new Intent(this, ForgotPassActivity.class)));
+
+        observeViewModel();
+    }
+
+    private void observeViewModel() {
+        viewModel.getMessage().observe(this, msg -> {
+            if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
         });
+        viewModel.getDestination().observe(this, this::navigateTo);
     }
 
-    private void loginUser() {
-        String loginInput = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-
-        if (loginInput.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập đầy đủ thông tin!", Toast.LENGTH_SHORT).show();
-            return;
+    private void navigateTo(AuthDestination destination) {
+        if (destination == null) return;
+        Intent intent;
+        switch (destination) {
+            case ADMIN:
+                intent = new Intent(this, AdminDashboardActivity.class);
+                break;
+            case DRIVER:
+                intent = new Intent(this, DriverDashboardActivity.class);
+                break;
+            default:
+                intent = new Intent(this, MainActivity.class);
+                break;
         }
-
-        if (loginInput.contains("@")) {
-            if (!Patterns.EMAIL_ADDRESS.matcher(loginInput).matches()) {
-                Toast.makeText(this, "Email khong hop le!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            signIn(loginInput, password);
-            return;
-        }
-        // tìm kiếm phone trong db
-        db.collection("users")
-                .whereEqualTo("phone", loginInput)
-                .limit(1)
-                .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    if (!querySnapshot.isEmpty()) {
-                        //lấy email dựa theo sđt
-                        String email = querySnapshot.getDocuments().get(0).getString("email");
-                        // nếu email không có thì gán email mặc định
-                        if (email == null || email.trim().isEmpty()) {
-                            email = loginInput + "@doanmb.com";
-                        }
-
-                        signIn(email, password);
-                    } else {
-                        signIn(loginInput + "@doanmb.com", password);
-                    }
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Khong tim thay tai khoan!", Toast.LENGTH_SHORT).show()
-                );
-    }
-
-    private void signIn(String email, String password) {
-        mAuth.signInWithEmailAndPassword(email, password)
-                .addOnSuccessListener(authResult -> {
-                    FirebaseUser user = authResult.getUser();
-                    if (user == null) { finish(); return; }
-                    db.collection("users").document(user.getUid()).get()
-                            .addOnSuccessListener(doc -> {
-                                String role = doc.getString("role");
-                                boolean isDriver = Boolean.TRUE.equals(doc.getBoolean("isDriver"));
-                                Toast.makeText(this, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
-                                if ("ADMIN".equals(role)) {
-                                    startActivity(new Intent(this, AdminDashboardActivity.class));
-                                } else if (isDriver) {
-                                    startActivity(new Intent(this, DriverDashboardActivity.class));
-                                } else {
-                                    startActivity(new Intent(this, MainActivity.class));
-                                }
-                                finish();
-                            })
-                            .addOnFailureListener(e -> finish());
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Sai email/số điện thoại hoặc mật khẩu!", Toast.LENGTH_SHORT).show()
-                );
+        startActivity(intent);
+        finish();
     }
 
     @Override
