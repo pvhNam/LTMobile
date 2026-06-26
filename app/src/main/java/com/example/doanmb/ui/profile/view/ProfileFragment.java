@@ -162,6 +162,10 @@ public class ProfileFragment extends Fragment {
         });
 
         cardUserProfile.setOnClickListener(v -> switchSubScreen(2));
+        if (tvWalletBalance != null) {
+            tvWalletBalance.setOnClickListener(v ->
+                    startActivity(new Intent(getActivity(), WalletActivity.class)));
+        }
         btnBackToMain.setOnClickListener(v -> switchSubScreen(1));
         menuPersonalInfoClick.setOnClickListener(v -> switchSubScreen(3));
         if (menuFavoriteCars != null) {
@@ -321,7 +325,7 @@ public class ProfileFragment extends Fragment {
                     if (tvWalletBalance != null) {
                         Double balance = doc.getDouble("balance");
                         long bal = balance != null ? Math.round(balance) : 0L;
-                        tvWalletBalance.setText("💰 Số dư ví: "
+                        tvWalletBalance.setText("Số dư ví: "
                                 + java.text.NumberFormat.getInstance(new java.util.Locale("vi", "VN")).format(bal) + " đ");
                     }
                     if (phoneVerified != null && phoneVerified) {

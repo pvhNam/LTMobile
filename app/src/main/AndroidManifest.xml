@@ -113,6 +113,8 @@
             android:theme="@style/Theme.AppCompat.NoActionBar"
             android:screenOrientation="portrait"
             android:exported="false" />
+        <activity android:name=".ui.profile.view.WalletActivity" android:exported="false" />
+        <activity android:name=".ui.profile.view.VnpayPaymentActivity" android:exported="false" />
         <activity android:name=".ui.profile.view.AboutUsActivity" />
         <activity android:name=".ui.profile.view.GiftsActivity" />
         <activity android:name=".ui.profile.view.ReferralActivity" />

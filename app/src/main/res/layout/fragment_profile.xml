@@ -152,7 +152,10 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="💰 Số dư ví: 0 đ"
+                                android:drawableStart="@drawable/ic_wallet_small"
+                                android:drawablePadding="6dp"
+                                android:gravity="center_vertical"
+                                android:text="Số dư ví: 0 đ"
                                 android:textColor="#2E7D32"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
