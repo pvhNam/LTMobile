@@ -220,6 +220,24 @@ public class ProfileFragment extends Fragment {
         if (menuReview != null) {
             menuReview.setOnClickListener(v -> startActivity(new Intent(getActivity(), ReviewActivity.class)));
         }
+        // logic phần chọn giới tính
+        if (edtInfoGender != null) {
+            edtInfoGender.setOnClickListener(v -> {
+                String[] genders = {"Nam", "Nữ"};
+
+                // Lấy giới tính đang hiển thị hiện tại để chọn sẵn trong danh sách
+                int checkedItem = edtInfoGender.getText().toString().trim().equals("Nữ") ? 1 : 0;
+
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                        .setTitle("Chọn giới tính")
+                        .setSingleChoiceItems(genders, checkedItem, (dialog, which) -> {
+                            edtInfoGender.setText(genders[which]);
+                            dialog.dismiss();
+                        })
+                        .create()
+                        .show();
+            });
+        }
     }
 
     private void openDriverDashboard() {
@@ -373,7 +391,18 @@ public class ProfileFragment extends Fragment {
             Toast.makeText(getContext(), "Họ và tên không được để trống", Toast.LENGTH_SHORT).show();
             return;
         }
+// --- validate sđt---
+        if (updatedPhone.isEmpty()) {
+            Toast.makeText(getContext(), "Số điện thoại không được để trống", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
+        // Regex kiểm tra số điện thoại VN: Bắt đầu bằng số 0, tiếp theo là 9 chữ số (Tổng cộng 10 số)
+        String phoneRegex = "^0[0-9]{9}$";
+        if (!updatedPhone.matches(phoneRegex)) {
+            Toast.makeText(getContext(), "Số điện thoại không hợp lệ! Vui lòng nhập đủ 10 chữ số bắt đầu bằng số 0", Toast.LENGTH_LONG).show();
+            return;
+        }
         Map<String, Object> updateData = new HashMap<>();
         updateData.put("name", updatedName);
         updateData.put("dob", updatedDob);
