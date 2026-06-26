@@ -8,21 +8,19 @@ import android.view.View;
 import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
-import com.example.doanmb.ui.home.view.MainActivity;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.view.AdminDashboardActivity;
+import com.example.doanmb.ui.auth.viewmodel.AuthDestination;
+import com.example.doanmb.ui.auth.viewmodel.SplashViewModel;
 import com.example.doanmb.ui.driver.view.DriverDashboardActivity;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.example.doanmb.ui.home.view.MainActivity;
 
 public class SplashActivity extends AppCompatActivity {
 
     private Button btnNext;
-    private FirebaseAuth mAuth;
-    private FirebaseFirestore db;
+    private SplashViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,17 +28,16 @@ public class SplashActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) getSupportActionBar().hide();
         setContentView(R.layout.activity_splash);
 
-        mAuth = FirebaseAuth.getInstance();
-        db   = FirebaseFirestore.getInstance();
+        viewModel = new ViewModelProvider(this).get(SplashViewModel.class);
         btnNext = findViewById(R.id.btn_next);
 
-        FirebaseUser currentUser = mAuth.getCurrentUser();
+        viewModel.getDestination().observe(this, this::navigateTo);
 
-        if (currentUser != null) {
+        if (viewModel.isLoggedIn()) {
             // Đã đăng nhập → tự chuyển sau 1.5 giây
             btnNext.setVisibility(View.GONE);
             new Handler(Looper.getMainLooper()).postDelayed(
-                    () -> navigateByRole(currentUser.getUid()), 1500);
+                    () -> viewModel.resolveDestination(), 1500);
         } else {
             // Chưa đăng nhập → hiện nút Tiếp theo
             btnNext.setVisibility(View.VISIBLE);
@@ -51,21 +48,21 @@ public class SplashActivity extends AppCompatActivity {
         }
     }
 
-    private void navigateByRole(String uid) {
-        db.collection("users").document(uid).get()
-                .addOnSuccessListener((DocumentSnapshot doc) -> {
-                    String role = doc.getString("role");
-                    boolean isDriver = Boolean.TRUE.equals(doc.getBoolean("isDriver"));
-                    Intent intent;
-                    if ("ADMIN".equals(role)) intent = new Intent(this, AdminDashboardActivity.class);
-                    else if (isDriver)        intent = new Intent(this, DriverDashboardActivity.class);
-                    else                      intent = new Intent(this, MainActivity.class);
-                    startActivity(intent);
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    startActivity(new Intent(this, MainActivity.class));
-                    finish();
-                });
+    private void navigateTo(AuthDestination destination) {
+        if (destination == null) return;
+        Intent intent;
+        switch (destination) {
+            case ADMIN:
+                intent = new Intent(this, AdminDashboardActivity.class);
+                break;
+            case DRIVER:
+                intent = new Intent(this, DriverDashboardActivity.class);
+                break;
+            default:
+                intent = new Intent(this, MainActivity.class);
+                break;
+        }
+        startActivity(intent);
+        finish();
     }
 }
