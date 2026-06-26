@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -41,7 +40,7 @@ public class AdminUsersFragment extends Fragment {
         tvUserCount = view.findViewById(R.id.tv_user_count);
         tvEmpty = view.findViewById(R.id.tv_empty_users);
 
-        adapter = new UserAdminAdapter(userList, userIds, this::changeUserRole, this::topUpUser);
+        adapter = new UserAdminAdapter(userList, userIds);
         rvUsers.setLayoutManager(new LinearLayoutManager(getContext()));
         rvUsers.setAdapter(adapter);
 
@@ -62,37 +61,6 @@ public class AdminUsersFragment extends Fragment {
             tvUserCount.setText(userList.size() + " người dùng");
             tvEmpty.setVisibility(userList.isEmpty() ? View.VISIBLE : View.GONE);
             rvUsers.setVisibility(userList.isEmpty() ? View.GONE : View.VISIBLE);
-        });
-    }
-
-    private void changeUserRole(String userId, String newRole) {
-        db.collection("users").document(userId)
-                .update("role", newRole)
-                .addOnSuccessListener(v -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "Đã đổi quyền thành " + newRole, Toast.LENGTH_SHORT).show();
-                    loadUsers();
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
-    private void topUpUser(String userId, String userName, long amount) {
-        com.example.doanmb.util.WalletHelper.topUp(userId, amount, new com.example.doanmb.util.WalletHelper.Callback() {
-            @Override
-            public void onSuccess() {
-                if (!isAdded()) return;
-                Toast.makeText(getContext(),
-                        "✅ Đã nạp " + amount + " đ cho " + userName, Toast.LENGTH_SHORT).show();
-                loadUsers();
-            }
-            @Override
-            public void onError(String message) {
-                if (!isAdded()) return;
-                Toast.makeText(getContext(), "Lỗi nạp tiền: " + message, Toast.LENGTH_SHORT).show();
-            }
         });
     }
 

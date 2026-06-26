@@ -789,7 +789,7 @@ public class CarDetailActivity extends AppCompatActivity {
         boolean isHidden = "hidden".equals(carStatus);
         Map<String, Object> update = new HashMap<>();
         if (isHidden) {
-            String restored = statusBeforeHide.isEmpty() ? "approved" : statusBeforeHide;
+            String restored = statusBeforeHide.isEmpty() ? "active" : statusBeforeHide;
             update.put("status", restored);
             update.put("statusBeforeHide", com.google.firebase.firestore.FieldValue.delete());
             db.collection("cars").document(carId).update(update)
