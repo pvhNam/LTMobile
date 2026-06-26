@@ -26,10 +26,13 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.google.firebase.firestore.Query;
 
 public class ManageFragment extends Fragment {
 
@@ -55,6 +58,7 @@ public class ManageFragment extends Fragment {
     private FirebaseFirestore db;
     private String currentUserId;
     private ListenerRegistration requestsListener; // lưu lại để hủy khi fragment destroy
+    private boolean usingCarIdFallback = false;    // tránh gọi loadRequestsByCarId() nhiều lần
 
     @Nullable
     @Override
@@ -72,6 +76,12 @@ public class ManageFragment extends Fragment {
         if (currentUserId != null) {
             loadMyPosts();
             loadRequests();
+        }
+
+        // Nếu được điều hướng đến với yêu cầu mở tab Yêu cầu (từ notification)
+        Bundle args = getArguments();
+        if (args != null && args.getBoolean("showRequests", false)) {
+            showTab(false); // false = tab Yêu cầu nhận được
         }
 
         return view;
@@ -195,34 +205,45 @@ public class ManageFragment extends Fragment {
         if (requestsListener != null) {
             requestsListener.remove();
         }
+        usingCarIdFallback = false;
 
-        // Thử query theo sellerId trước
+        // Thử query theo sellerId trước (KHÔNG dùng orderBy để tránh cần composite index)
         requestsListener = db.collection("orders")
                 .whereEqualTo("sellerId", currentUserId)
                 .addSnapshotListener((snapshots, error) -> {
-                    if (error != null || snapshots == null) {
-                        loadRequestsByCarId();
+                    if (error != null) {
+                        android.util.Log.e("ManageFragment", "loadRequests sellerId error: " + error.getMessage());
+                        if (!usingCarIdFallback) {
+                            usingCarIdFallback = true;
+                            loadRequestsByCarId();
+                        }
                         return;
                     }
-                    if (!isAdded() || getActivity() == null) return;
+                    if (snapshots == null || !isAdded() || getActivity() == null) return;
 
                     if (snapshots.isEmpty()) {
-                        // Không có sellerId → fallback query theo carId
-                        loadRequestsByCarId();
+                        // Không có sellerId → fallback real-time theo carId (chỉ 1 lần)
+                        if (!usingCarIdFallback) {
+                            usingCarIdFallback = true;
+                            loadRequestsByCarId();
+                        }
                         return;
                     }
 
+                    // Có data theo sellerId → dùng kết quả này
+                    usingCarIdFallback = false;
                     orderList.clear();
                     orderIds.clear();
                     for (QueryDocumentSnapshot doc : snapshots) {
                         orderList.add(doc.getData());
                         orderIds.add(doc.getId());
                     }
+                    sortOrdersByCreatedAt(); // sort trong bộ nhớ thay vì orderBy Firestore
                     updateRequestsUI();
                 });
     }
 
-    // Load yêu cầu dựa trên các carId của mình
+    // Load yêu cầu dựa trên các carId của mình — real-time
     private void loadRequestsByCarId() {
         db.collection("cars")
                 .whereEqualTo("userId", currentUserId)
@@ -238,21 +259,57 @@ public class ManageFragment extends Fragment {
                         return;
                     }
 
-                    // Lấy tất cả orders rồi lọc theo carId
-                    db.collection("orders").get()
-                            .addOnSuccessListener(orderSnapshots -> {
+                    // Hủy listener sellerId và thay bằng listener real-time theo carId
+                    // KHÔNG dùng orderBy để tránh cần composite index
+                    if (requestsListener != null) {
+                        requestsListener.remove();
+                    }
+
+                    requestsListener = db.collection("orders")
+                            .whereIn("carId", myCarIds)
+                            .addSnapshotListener((orderSnapshots, error) -> {
+                                if (error != null) {
+                                    android.util.Log.e("ManageFragment", "loadRequestsByCarId error: " + error.getMessage());
+                                    return;
+                                }
+                                if (orderSnapshots == null || !isAdded() || getActivity() == null) return;
+
                                 orderList.clear();
                                 orderIds.clear();
                                 for (QueryDocumentSnapshot doc : orderSnapshots) {
-                                    String carId = doc.getString("carId");
-                                    if (carId != null && myCarIds.contains(carId)) {
-                                        orderList.add(doc.getData());
-                                        orderIds.add(doc.getId());
-                                    }
+                                    orderList.add(doc.getData());
+                                    orderIds.add(doc.getId());
                                 }
+                                sortOrdersByCreatedAt(); // sort trong bộ nhớ thay vì orderBy Firestore
                                 updateRequestsUI();
                             });
-                });
+                })
+                .addOnFailureListener(e ->
+                        android.util.Log.e("ManageFragment", "loadRequestsByCarId cars query error: " + e.getMessage())
+                );
+    }
+
+    // Sắp xếp orderList + orderIds theo createdAt giảm dần (mới nhất lên đầu)
+    // Dùng sort trong bộ nhớ thay vì orderBy Firestore để không cần composite index
+    private void sortOrdersByCreatedAt() {
+        List<AbstractMap.SimpleEntry<String, Map<String, Object>>> paired = new ArrayList<>();
+        for (int i = 0; i < orderList.size(); i++) {
+            paired.add(new AbstractMap.SimpleEntry<>(orderIds.get(i), orderList.get(i)));
+        }
+        paired.sort((a, b) -> {
+            com.google.firebase.Timestamp ta = (com.google.firebase.Timestamp) a.getValue().get("createdAt");
+            com.google.firebase.Timestamp tb = (com.google.firebase.Timestamp) b.getValue().get("createdAt");
+            if (ta == null && tb == null) return 0;
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return tb.compareTo(ta);
+        });
+        orderList.clear();
+        orderIds.clear();
+        for (AbstractMap.SimpleEntry<String, Map<String, Object>> entry : paired) {
+            orderIds.add(entry.getKey());
+            orderList.add(entry.getValue());
+        }
     }
 
     private void updateRequestsUI() {
@@ -264,6 +321,7 @@ public class ManageFragment extends Fragment {
 
     // Xác nhận yêu cầu → xe chuyển sang "sold/rented", order → confirmed
     private void confirmRequest(String orderId, String carId) {
+        com.example.doanmb.service.OrderReminderService.cancel(requireContext(), orderId);
         Map<String, Object> orderUpdate = new HashMap<>();
         orderUpdate.put("status", "confirmed");
         db.collection("orders").document(orderId).update(orderUpdate);
@@ -286,10 +344,15 @@ public class ManageFragment extends Fragment {
                 loadRequests();
             }
         }
+
+        // ── THÊM BƯỚC 4: thông báo cho người mua/thuê ─────────────────────────
+        notifyBuyerOrderStatus(orderId, "order_confirmed");
+        // ───────────────────────────────────────────────────────────────────────
     }
 
     // Từ chối yêu cầu → xe về trạng thái bình thường
     private void rejectRequest(String orderId, String carId) {
+        com.example.doanmb.service.OrderReminderService.cancel(requireContext(), orderId);
         Map<String, Object> orderUpdate = new HashMap<>();
         orderUpdate.put("status", "rejected");
         db.collection("orders").document(orderId).update(orderUpdate);
@@ -312,6 +375,43 @@ public class ManageFragment extends Fragment {
                 loadRequests();
             }
         }
+
+        // ── THÊM BƯỚC 4: thông báo cho người mua/thuê ─────────────────────────
+        notifyBuyerOrderStatus(orderId, "order_rejected");
+        // ───────────────────────────────────────────────────────────────────────
+    }
+
+    private void notifyBuyerOrderStatus(String orderId, String type) {
+        db.collection("orders").document(orderId).get()
+                .addOnSuccessListener(snap -> {
+                    if (snap == null || !snap.exists()) return;
+
+                    String buyerId  = snap.getString("buyerId");
+                    String carName  = snap.getString("carName");
+                    String carId    = snap.getString("carId");
+
+                    if (buyerId == null || buyerId.isEmpty()) return;
+
+                    FirebaseUser me = FirebaseAuth.getInstance().getCurrentUser();
+                    String myUid = me != null ? me.getUid() : "";
+
+                    db.collection("users").document(myUid).get()
+                            .addOnSuccessListener(userSnap -> {
+                                String sellerName = userSnap.getString("name");
+                                if (sellerName == null || sellerName.isEmpty()) sellerName = "Chủ xe";
+
+                                com.example.doanmb.util.ChatNotificationHelper.sendOrderNotification(
+                                        requireContext(),
+                                        buyerId,
+                                        myUid,
+                                        sellerName,
+                                        carName != null ? carName : "",
+                                        carId   != null ? carId   : "",  // ← thêm carId
+                                        type,
+                                        orderId
+                                );
+                            });
+                });
     }
 
     @Override

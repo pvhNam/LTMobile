@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.adapter.BannerAdapter;
 import com.example.doanmb.ui.activity.CarDetailActivity;
+import com.example.doanmb.ui.activity.ChatDetailActivity;
 import com.example.doanmb.ui.fragment.CategoryFragment;
 import com.example.doanmb.ui.fragment.ManageFragment;
 import com.example.doanmb.ui.fragment.MessagesFragment;
@@ -132,10 +133,60 @@ public class MainActivity extends AppCompatActivity {
         loadCarsFromFirestore();
         setupSearch();
         setupBottomNavigation();
+        handleNotificationIntent(getIntent());
         setupSwipeRefresh();
         setupQuickActions();
         setupBackNavigation();
         setupGlassNav();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleNotificationIntent(intent);
+    }
+
+    public void openManageRequestsTab() {
+        Fragment old = fragmentCache.get(R.id.nav_manage);
+        if (old != null) getSupportFragmentManager().beginTransaction().remove(old).commitNow();
+
+        ManageFragment fragment = new ManageFragment();
+        Bundle args = new Bundle();
+        // Cập nhật key thành "showRequests" theo đúng yêu cầu của bạn
+        args.putBoolean("showRequests", true);
+        fragment.setArguments(args);
+
+        fragmentCache.put(R.id.nav_manage, fragment);
+        getSupportFragmentManager().beginTransaction()
+                .add(R.id.fragment_container, fragment).commitNow();
+
+        bottomNavigationView.setSelectedItemId(R.id.nav_manage);
+    }
+
+    private void handleNotificationIntent(Intent intent) {
+        if (intent == null) return;
+
+        // Giữ lại logic cũ phòng trường hợp app đang dùng
+        String openTab = intent.getStringExtra("OPEN_TAB");
+        if ("manage".equals(openTab)) {
+            openManageRequestsTab();
+        } else if ("messages".equals(openTab)) {
+            bottomNavigationView.setSelectedItemId(R.id.nav_messages);
+            String roomId = intent.getStringExtra("ROOM_ID");
+            if (roomId != null && !roomId.isEmpty()) {
+                Intent i = new Intent(this, ChatDetailActivity.class);
+                i.putExtra("ROOM_ID", roomId);
+                startActivity(i);
+            }
+        }
+
+        String navigateTo = intent.getStringExtra("navigateTo");
+        if ("manage_requests".equals(navigateTo)) {
+            // Gọi hàm có sẵn, hàm này đã xử lý việc chọn bottom nav và truyền Bundle
+            openManageRequestsTab();
+        }
+
     }
 
     /**
