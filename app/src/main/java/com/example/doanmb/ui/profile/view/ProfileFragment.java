@@ -418,7 +418,7 @@ public class ProfileFragment extends Fragment {
         db.collection("users").document(currentUserId)
                 .update(updateData)
                 .addOnSuccessListener(unused -> {
-                    Toast.makeText(getContext(), "✅ Lưu thông tin thành công!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Lưu thông tin thành công!", Toast.LENGTH_SHORT).show();
                     loadUserInfo(currentUserId);
                     switchSubScreen(2);
                 })
