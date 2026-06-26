@@ -44,6 +44,7 @@ public final class WalletRepository {
     public static final String TYPE_PAYOUT     = "payout";     // trả tiền về ví tài xế/chủ xe
     public static final String TYPE_COMMISSION = "commission"; // hoa hồng về app_wallet
     public static final String TYPE_REFUND     = "refund";     // hoàn cọc về ví khách
+    public static final String TYPE_WITHDRAW   = "withdraw";   // rút tiền khỏi ví về tài khoản
 
     /** Callback đơn giản cho mọi thao tác ví. */
     public interface Callback {
@@ -72,13 +73,43 @@ public final class WalletRepository {
 
     /** Admin cộng tiền thẳng vào ví user (dùng để test). */
     public static void topUp(@NonNull String userId, long amount, @Nullable Callback cb) {
+        topUpInternal(userId, amount, "Admin nạp tiền", cb);
+    }
+
+    /** Người dùng tự nạp tiền vào ví của chính mình (sau khi thanh toán VNPay thành công). */
+    public static void userTopUp(@NonNull String userId, long amount, @Nullable Callback cb) {
+        topUpInternal(userId, amount, "Nạp tiền qua VNPay", cb);
+    }
+
+    private static void topUpInternal(@NonNull String userId, long amount,
+                                      @NonNull String note, @Nullable Callback cb) {
         if (amount <= 0) { fail(cb, "Số tiền nạp phải lớn hơn 0"); return; }
 
         DocumentReference userRef = db().collection(COL_USERS).document(userId);
         db().runTransaction(tr -> {
             tr.update(userRef, "balance", FieldValue.increment(amount));
             tr.set(db().collection(COL_TRANSACTIONS).document(),
-                    log(TYPE_TOPUP, amount, null, userId, null, "Admin nạp tiền"));
+                    log(TYPE_TOPUP, amount, null, userId, null, note));
+            return null;
+        }).addOnSuccessListener(v -> ok(cb))
+          .addOnFailureListener(e -> fail(cb, e.getMessage()));
+    }
+
+    // ── Rút tiền (trừ ví về tài khoản) ──────────────────────────────────────
+
+    /** Người dùng rút tiền khỏi ví (giả lập về tài khoản ngân hàng). Báo lỗi nếu số dư không đủ. */
+    public static void withdraw(@NonNull String userId, long amount, @Nullable Callback cb) {
+        if (amount <= 0) { fail(cb, "Số tiền rút phải lớn hơn 0"); return; }
+
+        DocumentReference userRef = db().collection(COL_USERS).document(userId);
+        db().runTransaction(tr -> {
+            long balance = readBalance(tr.get(userRef));
+            if (balance < amount) {
+                throw new IllegalStateException("Số dư không đủ để rút");
+            }
+            tr.update(userRef, "balance", FieldValue.increment(-amount));
+            tr.set(db().collection(COL_TRANSACTIONS).document(),
+                    log(TYPE_WITHDRAW, amount, userId, null, null, "Rút tiền về tài khoản"));
             return null;
         }).addOnSuccessListener(v -> ok(cb))
           .addOnFailureListener(e -> fail(cb, e.getMessage()));
