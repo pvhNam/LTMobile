@@ -311,28 +311,12 @@
                         android:padding="10dp" android:hint="Yêu cầu thêm (nếu có)..."
                         android:gravity="top" android:inputType="textMultiLine"/>
 
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Thanh toán phần còn lại bằng" android:textColor="@color/color_on_surface_secondary"
-                        android:textSize="13sp" android:layout_marginBottom="4dp"/>
-                    <RadioGroup android:id="@+id/rg_payment_method"
-                        android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:orientation="horizontal" android:layout_marginBottom="12dp">
-                        <RadioButton android:id="@+id/rb_pay_cash"
-                            android:layout_width="0dp" android:layout_height="wrap_content"
-                            android:layout_weight="1" android:checked="true"
-                            android:text="💵 Tiền mặt" android:textSize="14sp"/>
-                        <RadioButton android:id="@+id/rb_pay_transfer"
-                            android:layout_width="0dp" android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="🏦 Chuyển khoản" android:textSize="14sp"/>
-                    </RadioGroup>
-
                     <TextView android:id="@+id/tv_deposit_info"
                         android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:background="@drawable/bg_info_card" android:padding="12dp"
                         android:layout_marginBottom="16dp" android:textSize="13sp"
                         android:textColor="@color/color_on_surface" android:lineSpacingExtra="4dp"
-                        android:text="Nhập số ngày thuê để xem tiền cọc."/>
+                        android:text="Nhập số ngày thuê để xem tổng tiền."/>
 
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:background="@color/stat_card_orange" android:padding="10dp" android:layout_marginBottom="16dp"

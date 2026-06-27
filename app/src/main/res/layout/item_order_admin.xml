@@ -90,28 +90,6 @@
                 android:textColor="#424242"
                 android:textSize="13sp" />
         </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Loại"
-                android:textColor="@color/color_on_surface_tertiary"
-                android:textSize="11sp" />
-
-            <TextView
-                android:id="@+id/tv_order_type"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="--"
-                android:textColor="#424242"
-                android:textSize="13sp" />
-        </LinearLayout>
     </LinearLayout>
 
     <!-- Nút hành động (chỉ hiện khi đơn đang pending) -->
