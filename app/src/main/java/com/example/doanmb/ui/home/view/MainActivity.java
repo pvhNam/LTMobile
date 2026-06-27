@@ -15,7 +15,9 @@ import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
@@ -36,6 +38,7 @@ import com.example.doanmb.ui.car.adapter.CarSaleAdapter;
 import com.example.doanmb.data.model.Car;
 import com.example.doanmb.data.repository.FavoriteRepository;
 import com.example.doanmb.core.util.ImageLoader;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import android.os.Build;
 import android.view.ViewGroup;
@@ -73,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
     private BlurView blurNav;
     private FrameLayout fragmentContainer;
     private View homeLayout;
+    private View headerLayout;
     private SwipeRefreshLayout swipeRefreshLayout;
     private NestedScrollView nestedScroll;
 
@@ -109,7 +113,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
+        // Edge-to-edge ĐỒNG NHẤT trên mọi máy (Android 9 → 15+): app tự vẽ tràn,
+        // tự chừa thanh trạng thái/điều hướng bằng WindowInsets → không lệ thuộc số dp cố định.
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
+
+        // Nền sáng (pastel) → icon thanh trạng thái màu tối cho dễ nhìn
+        WindowInsetsControllerCompat insetsController =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        insetsController.setAppearanceLightStatusBars(true);
 
         db = FirebaseFirestore.getInstance();
 
@@ -283,16 +295,14 @@ public class MainActivity extends AppCompatActivity {
         blurNav              = findViewById(R.id.blur_nav);
         fragmentContainer    = findViewById(R.id.fragment_container);
         homeLayout           = findViewById(R.id.home_layout);
+        headerLayout         = findViewById(R.id.header_layout);
         swipeRefreshLayout   = findViewById(R.id.swipe_refresh);
         nestedScroll         = findViewById(R.id.nested_scroll);
-        // Chừa đáy danh sách cho thanh menu + thanh điều hướng hệ thống (tránh che nội dung cuối)
-        final int baseScrollPadBottom = nestedScroll.getPaddingBottom();
-        ViewCompat.setOnApplyWindowInsetsListener(nestedScroll, (v, insets) -> {
-            int navBarHeight = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
-            v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(),
-                    baseScrollPadBottom + navBarHeight);
-            return insets;
-        });
+
+        // Chừa thanh trạng thái thật cho header + chừa đáy cho thanh menu/điều hướng hệ thống.
+        // Vì header nằm TRONG nestedScroll nên phải xử lý cả hai trong MỘT listener trên
+        // nestedScroll (đặt listener riêng cho header con sẽ không chạy — xem EdgeToEdgeUtil).
+        EdgeToEdgeUtil.applyHeaderAndScroll(nestedScroll, headerLayout);
 
         // Quick action buttons
         btnBuyCar    = findViewById(R.id.btn_buy_car);

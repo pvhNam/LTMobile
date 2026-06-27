@@ -1,11 +1,17 @@
 package com.example.doanmb.ui.car.view;
 
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -200,6 +206,7 @@ public class CarDetailActivity extends AppCompatActivity {
         etRenterPhone = findViewById(R.id.etRenterPhone);
         etRenterCCCD = findViewById(R.id.etRenterCCCD);
         etRentStartDate = findViewById(R.id.etRentStartDate);
+        setupStartDatePicker();
         etRentDays = findViewById(R.id.etRentDays);
         etRenterNote = findViewById(R.id.etRenterNote);
         btnSendRentRequest = findViewById(R.id.btnSendRentRequest);
@@ -408,7 +415,7 @@ public class CarDetailActivity extends AppCompatActivity {
         btnCallSeller.setOnClickListener(v -> callSeller());
         btnChatSeller.setOnClickListener(v -> openChat());
 
-        btnSendRentRequest.setOnClickListener(v -> sendRentRequest());
+        btnSendRentRequest.setOnClickListener(v -> showRentalTermsThenSend());
         btnCallRentSeller.setOnClickListener(v -> callSeller());
         btnChatRentSeller.setOnClickListener(v -> openChat());
     }
@@ -893,6 +900,107 @@ public class CarDetailActivity extends AppCompatActivity {
                             carId != null ? carId : ""
                     );
                 });
+    }
+
+    /** Ô "Ngày bắt đầu thuê": bấm mở lịch chọn ngày, luôn lưu dạng dd/MM/yyyy (tránh nhập tay sai). */
+    private void setupStartDatePicker() {
+        if (etRentStartDate == null) return;
+        final java.text.SimpleDateFormat sdf =
+                new java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US);
+        etRentStartDate.setOnClickListener(v -> {
+            java.util.Calendar c = java.util.Calendar.getInstance();
+            String cur = etRentStartDate.getText().toString().trim();
+            try {
+                java.util.Date d = sdf.parse(cur);
+                if (d != null) c.setTime(d);
+            } catch (Exception ignore) { }
+            DatePickerDialog dlg = new DatePickerDialog(this, (picker, year, month, day) -> {
+                java.util.Calendar picked = java.util.Calendar.getInstance();
+                picked.set(java.util.Calendar.YEAR, year);
+                picked.set(java.util.Calendar.MONTH, month);
+                picked.set(java.util.Calendar.DAY_OF_MONTH, day);
+                etRentStartDate.setText(sdf.format(picked.getTime()));
+            }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH),
+                    c.get(java.util.Calendar.DAY_OF_MONTH));
+            dlg.show();
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  ĐIỀU KHOẢN THUÊ XE — buộc đọc 10s, tích đồng ý rồi mới được gửi yêu cầu
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void showRentalTermsThenSend() {
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập để thuê xe!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_rental_terms, null);
+        TextView tvCountdown = view.findViewById(R.id.tv_terms_countdown);
+        CheckBox cbAgree     = view.findViewById(R.id.cb_terms_agree);
+        Button btnCancel     = view.findViewById(R.id.btn_terms_cancel);
+        Button btnConfirm    = view.findViewById(R.id.btn_terms_confirm);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(view)
+                .setCancelable(false)   // không cho tắt bằng nút back / chạm ra ngoài
+                .create();
+
+        // Liquid Glass: nền cửa sổ trong suốt để lộ card kính bo góc; dim + blur thật phía sau
+        Window w = dialog.getWindow();
+        if (w != null) {
+            try {
+                w.setBackgroundDrawableResource(android.R.color.transparent);
+                w.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT);
+                w.setDimAmount(0.3f);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    // Blur nội dung sau card (frosted) + blur cả vùng nền phía sau cửa sổ — nhẹ thôi
+                    w.setBackgroundBlurRadius(24);
+                    w.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+                    WindowManager.LayoutParams lp = w.getAttributes();
+                    lp.setBlurBehindRadius(12);
+                    w.setAttributes(lp);
+                }
+            } catch (Throwable ignore) {
+                // Một số máy không hỗ trợ blur/thuộc tính cửa sổ → bỏ qua, dialog vẫn hiện
+            }
+        }
+
+        // Khóa mọi tương tác trong 10 giây để người dùng đọc kỹ điều khoản
+        cbAgree.setEnabled(false);
+        btnCancel.setEnabled(false);
+        btnConfirm.setEnabled(false);
+        btnCancel.setAlpha(0.5f);
+        btnConfirm.setAlpha(0.5f);
+
+        final CountDownTimer timer = new CountDownTimer(10_000, 1_000) {
+            @Override public void onTick(long ms) {
+                tvCountdown.setText("⏳ Vui lòng đọc kỹ điều khoản… còn " + (ms / 1000 + 1) + " giây");
+            }
+            @Override public void onFinish() {
+                tvCountdown.setText("✅ Bạn có thể tích đồng ý để tiếp tục");
+                tvCountdown.setTextColor(0xFF0E8C91);
+                cbAgree.setEnabled(true);
+                btnCancel.setEnabled(true);
+                btnCancel.setAlpha(1f);
+            }
+        }.start();
+
+        // Chỉ bật nút xác nhận khi đã tích đồng ý
+        cbAgree.setOnCheckedChangeListener((b, checked) -> {
+            btnConfirm.setEnabled(checked);
+            btnConfirm.setAlpha(checked ? 1f : 0.5f);
+        });
+
+        btnCancel.setOnClickListener(v -> { timer.cancel(); dialog.dismiss(); });
+        btnConfirm.setOnClickListener(v -> {
+            timer.cancel();
+            dialog.dismiss();
+            sendRentRequest();   // đã đồng ý điều khoản → tiến hành gửi yêu cầu thuê
+        });
+
+        dialog.show();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

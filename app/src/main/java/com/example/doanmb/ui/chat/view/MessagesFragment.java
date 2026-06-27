@@ -659,6 +659,7 @@ public class MessagesFragment extends Fragment {
             String senderName = str(item, "senderName");
             String roomId     = str(item, "roomId");
             String docId      = str(item, "docId");
+            String orderId    = str(item, "orderId");
 
             h.tvTitle.setText(senderName.isEmpty() ? (title.isEmpty() ? "Thông báo" : title) : senderName);
             h.tvBody.setText(body.isEmpty() ? "Đã gửi một tin nhắn" : body);
@@ -673,6 +674,10 @@ public class MessagesFragment extends Fragment {
                     break;
                 case "order_sent":
                     h.ivIcon.setImageResource(R.drawable.ic_admin_orders);   // icon đơn hàng
+                    break;
+                case "invoice":
+                case "invoice_paid":
+                    h.ivIcon.setImageResource(R.drawable.ic_admin_orders);   // hóa đơn
                     break;
                 default: // chat
                     h.ivIcon.setImageResource(R.drawable.ic_nav_message);
@@ -732,6 +737,15 @@ public class MessagesFragment extends Fragment {
                             .collection("notifications")
                             .document(docId)
                             .update("read", true);
+                }
+
+                // Hóa đơn → mở màn thanh toán hóa đơn
+                if ("invoice".equals(type) && !orderId.isEmpty()) {
+                    Intent invoice = new Intent(v.getContext(),
+                            com.example.doanmb.ui.car.view.InvoiceActivity.class);
+                    invoice.putExtra("ORDER_ID", orderId);
+                    v.getContext().startActivity(invoice);
+                    return;
                 }
 
                 // Điều hướng dựa vào type
