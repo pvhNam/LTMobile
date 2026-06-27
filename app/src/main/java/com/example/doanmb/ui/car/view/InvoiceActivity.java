@@ -75,7 +75,8 @@ public class InvoiceActivity extends AppCompatActivity {
             String ownerName = doc.getString("sellerName");
             sellerId         = doc.getString("sellerId");
             carId            = doc.getString("carId");
-            long rental      = getLong(doc.getLong("totalAmount"));
+            Long rentalDue   = doc.getLong("rentalDue");
+            long rental      = rentalDue != null ? rentalDue : getLong(doc.getLong("totalAmount"));
             long penalty     = getLong(doc.getLong("penaltyAmount"));
             long lateDays    = getLong(doc.getLong("lateDays"));
             Long total       = doc.getLong("invoiceTotal");

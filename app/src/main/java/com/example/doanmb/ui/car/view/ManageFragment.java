@@ -404,30 +404,37 @@ public class ManageFragment extends Fragment {
     private void markReturned(String orderId, Map<String, Object> order) {
         long days        = parseIntSafe((String) order.get("days"));
         long total       = toLong(order.get("totalAmount"));
+        long deposit     = toLong(order.get("depositAmount"));
+        long rentalDue   = Math.max(0, total - deposit);   // tiền thuê còn lại sau khi đã giữ cọc
         long pricePerDay = days > 0 ? total / days : total;
         long lateDays    = computeLateDays(order);
         long penalty     = 0;
         if (lateDays >= 1) {
             penalty = Math.round(1.5 * pricePerDay) + (lateDays - 1) * Math.round(2.0 * pricePerDay);
         }
-        long invoiceTotal = total + penalty;
+        long invoiceTotal = rentalDue + penalty;
         final String reason = lateDays > 0
-                ? "Trả xe trễ " + lateDays + " ngày. Hóa đơn gồm tiền thuê và phí phạt (150% ngày đầu, 200% các ngày sau)."
-                : "Thanh toán tiền thuê xe khi kết thúc chuyến.";
+                ? "Trả xe trễ " + lateDays + " ngày. Hóa đơn gồm tiền thuê còn lại (đã trừ cọc) và phí phạt (150% ngày đầu, 200% các ngày sau)."
+                : "Thanh toán tiền thuê còn lại (đã trừ cọc) khi kết thúc chuyến.";
 
-        final long fPenalty = penalty, fLate = lateDays, fInvoice = invoiceTotal, fTotal = total;
+        final long fPenalty = penalty, fLate = lateDays, fInvoice = invoiceTotal,
+                fTotal = total, fRentalDue = rentalDue, fDeposit = deposit;
         new AlertDialog.Builder(requireContext())
                 .setTitle("Xác nhận đã trả xe")
                 .setMessage((lateDays > 0
                         ? "⚠️ Khách trả TRỄ " + lateDays + " ngày.\nPhí phạt: " + money(fPenalty) + "\n"
                         : "Khách trả đúng hạn.\n")
-                        + "Tiền thuê: " + money(fTotal) + "\nTổng hóa đơn: " + money(fInvoice))
+                        + "Tiền thuê: " + money(fTotal)
+                        + "\nĐã giữ cọc: " + money(fDeposit)
+                        + "\nCòn lại phải trả: " + money(fRentalDue)
+                        + "\nTổng hóa đơn: " + money(fInvoice))
                 .setPositiveButton("Gửi hóa đơn", (d, w) -> {
                     Map<String, Object> up = new HashMap<>();
                     up.put("status", "awaiting_payment");
                     up.put("returnedAt", Timestamp.now());
                     up.put("lateDays", fLate);
                     up.put("penaltyAmount", fPenalty);
+                    up.put("rentalDue", fRentalDue);
                     up.put("invoiceTotal", fInvoice);
                     up.put("invoiceStatus", "unpaid");
                     up.put("invoiceReason", reason);

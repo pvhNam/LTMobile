@@ -154,15 +154,18 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
         tvPayment.setText(paymentLabel(doc.getString("paymentMethod")));
         tvDepositStatus.setText(depositStatusLabel(doc.getString("depositStatus")));
 
-        bindActions(status);
+        bindActions(status, doc.getString("type"), doc.getString("depositStatus"));
     }
 
-    /** Hiện nút theo trạng thái đơn: pending → Xác nhận, confirmed → Hoàn thành. */
-    private void bindActions(String status) {
+    /** Hiện nút theo trạng thái đơn: pending → Xác nhận; confirmed → Hoàn thành (mua) / Nhả cọc (thuê). */
+    private void bindActions(String status, String type, String depositStatus) {
         boolean isPending = "pending".equals(status);
         boolean isConfirmed = "confirmed".equals(status);
+        boolean isRental = "Thuê xe".equals(type) || "Có tài xế".equals(type);
+        // Thuê xe đã nhả cọc -> admin hết việc (chờ trả xe & thanh toán hóa đơn)
+        boolean rentalSettled = isConfirmed && isRental && "settled".equals(depositStatus);
 
-        if (!isPending && !isConfirmed) {
+        if ((!isPending && !isConfirmed) || rentalSettled) {
             layoutActions.setVisibility(View.GONE);
             return;
         }
@@ -173,7 +176,7 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
             btnPrimary.setText("Xác nhận");
             btnPrimary.setOnClickListener(v -> confirmOrder());
         } else {
-            btnPrimary.setText("Hoàn thành");
+            btnPrimary.setText(isRental ? "Nhả cọc" : "Hoàn thành");
             btnPrimary.setOnClickListener(v -> askCompleteOrder());
         }
     }
@@ -202,17 +205,22 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
             if (!doc.exists()) return;
             String depositStatus = doc.getString("depositStatus");
             String sellerId = doc.getString("sellerId");
+            String type = doc.getString("type");
             Long deposit = doc.getLong("depositAmount");
+            boolean isRental = "Thuê xe".equals(type) || "Có tài xế".equals(type);
 
             // Đơn không có cọc giữ qua ví -> chỉ đánh dấu hoàn thành
             if (!"held".equals(depositStatus) || sellerId == null || sellerId.isEmpty()
                     || deposit == null || deposit <= 0) {
-                markCompleted(null);
+                markCompleted("completed", null);
                 return;
             }
 
             WalletRepository.settle(sellerId, deposit, orderId, new WalletRepository.Callback() {
-                @Override public void onSuccess() { markCompleted("settled"); }
+                @Override public void onSuccess() {
+                    // Thuê xe: nhả cọc nhưng GIỮ "confirmed" để còn trả xe + thanh toán hóa đơn
+                    markCompleted(isRental ? "confirmed" : "completed", "settled");
+                }
                 @Override public void onError(String message) {
                     Toast.makeText(AdminOrderDetailActivity.this,
                             "Lỗi chia tiền: " + message, Toast.LENGTH_SHORT).show();
@@ -221,13 +229,16 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
         });
     }
 
-    private void markCompleted(String newDepositStatus) {
+    private void markCompleted(String newStatus, String newDepositStatus) {
         Map<String, Object> update = new HashMap<>();
-        update.put("status", "completed");
+        if (newStatus != null)        update.put("status", newStatus);
         if (newDepositStatus != null) update.put("depositStatus", newDepositStatus);
+        boolean released = "settled".equals(newDepositStatus) && "confirmed".equals(newStatus);
         db.collection("orders").document(orderId).update(update)
                 .addOnSuccessListener(v -> {
-                    Toast.makeText(this, "✅ Đơn đã hoàn thành & chia tiền", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, released
+                            ? "✅ Đã nhả cọc cho chủ xe (đã trừ 15% hoa hồng)"
+                            : "✅ Đơn đã hoàn thành & chia tiền", Toast.LENGTH_SHORT).show();
                     loadOrder();
                 });
     }

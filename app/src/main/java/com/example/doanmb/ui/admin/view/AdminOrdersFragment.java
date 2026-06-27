@@ -148,18 +148,23 @@ public class AdminOrdersFragment extends Fragment {
             if (!isAdded() || !doc.exists()) return;
             String depositStatus = doc.getString("depositStatus");
             String sellerId       = doc.getString("sellerId");
+            String type           = doc.getString("type");
             Long   deposit        = doc.getLong("depositAmount");
+            boolean isRental = "Thuê xe".equals(type) || "Có tài xế".equals(type);
 
             // Đơn không có cọc giữ qua ví -> chỉ đánh dấu hoàn thành
             if (!"held".equals(depositStatus) || sellerId == null || sellerId.isEmpty()
                     || deposit == null || deposit <= 0) {
-                markCompleted(orderId, null);
+                markCompleted(orderId, "completed", null);
                 return;
             }
 
             WalletRepository.settle(sellerId, deposit, orderId,
                     new WalletRepository.Callback() {
-                        @Override public void onSuccess() { markCompleted(orderId, "settled"); }
+                        @Override public void onSuccess() {
+                            // Thuê xe: nhả cọc nhưng GIỮ "confirmed" để còn trả xe + thanh toán hóa đơn
+                            markCompleted(orderId, isRental ? "confirmed" : "completed", "settled");
+                        }
                         @Override public void onError(String message) {
                             if (!isAdded()) return;
                             Toast.makeText(getContext(), "Lỗi chia tiền: " + message, Toast.LENGTH_SHORT).show();
@@ -168,14 +173,17 @@ public class AdminOrdersFragment extends Fragment {
         });
     }
 
-    private void markCompleted(String orderId, String newDepositStatus) {
+    private void markCompleted(String orderId, String newStatus, String newDepositStatus) {
         Map<String, Object> update = new HashMap<>();
-        update.put("status", "completed");
+        if (newStatus != null)        update.put("status", newStatus);
         if (newDepositStatus != null) update.put("depositStatus", newDepositStatus);
+        boolean released = "settled".equals(newDepositStatus) && "confirmed".equals(newStatus);
         db.collection("orders").document(orderId).update(update)
                 .addOnSuccessListener(v -> {
                     if (!isAdded()) return;
-                    Toast.makeText(getContext(), "✅ Đơn đã hoàn thành & chia tiền", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), released
+                            ? "✅ Đã nhả cọc cho chủ xe (đã trừ 15% hoa hồng)"
+                            : "✅ Đơn đã hoàn thành & chia tiền", Toast.LENGTH_SHORT).show();
                     loadOrders();
                 });
     }

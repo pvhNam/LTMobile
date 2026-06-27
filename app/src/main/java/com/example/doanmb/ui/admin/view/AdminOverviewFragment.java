@@ -53,6 +53,7 @@ public class AdminOverviewFragment extends Fragment {
         btnViewCars          = view.findViewById(R.id.btn_view_cars);
         btnViewDriverApproval = view.findViewById(R.id.btn_view_driver_approval);
         View btnViewOrders   = view.findViewById(R.id.btn_view_orders);
+        View btnViewTopup    = view.findViewById(R.id.btn_view_topup_history);
         barChart = view.findViewById(R.id.bar_chart_revenue);
 
         setupChart();
@@ -66,6 +67,8 @@ public class AdminOverviewFragment extends Fragment {
         btnViewCars.setOnClickListener(v -> navigate(R.id.nav_admin_cars));
         btnViewOrders.setOnClickListener(v -> navigate(R.id.nav_admin_orders));
         btnViewDriverApproval.setOnClickListener(v -> navigate(R.id.nav_admin_driver_approval));
+        btnViewTopup.setOnClickListener(v ->
+                startActivity(new Intent(getActivity(), AdminTopupHistoryActivity.class)));
 
         return view;
     }

@@ -45,6 +45,10 @@ public final class WalletRepository {
     public static final String TYPE_REFUND     = "refund";     // hoàn cọc về ví khách
     public static final String TYPE_WITHDRAW   = "withdraw";   // rút tiền khỏi ví về tài khoản
 
+    // Nguồn nạp tiền (ghi vào transactions.source cho loại topup)
+    public static final String SOURCE_VNPAY = "vnpay"; // người dùng nạp qua VNPay
+    public static final String SOURCE_ADMIN = "admin"; // admin nạp tay
+
     /** Callback đơn giản cho mọi thao tác ví. */
     public interface Callback {
         void onSuccess();
@@ -68,23 +72,25 @@ public final class WalletRepository {
 
     /** Admin cộng tiền thẳng vào ví user (dùng để test). */
     public static void topUp(@NonNull String userId, long amount, @Nullable Callback cb) {
-        topUpInternal(userId, amount, "Admin nạp tiền", cb);
+        topUpInternal(userId, amount, "Admin nạp tiền", SOURCE_ADMIN, cb);
     }
 
     /** Người dùng tự nạp tiền vào ví của chính mình (sau khi thanh toán VNPay thành công). */
     public static void userTopUp(@NonNull String userId, long amount, @Nullable Callback cb) {
-        topUpInternal(userId, amount, "Nạp tiền qua VNPay", cb);
+        topUpInternal(userId, amount, "Nạp tiền qua VNPay", SOURCE_VNPAY, cb);
     }
 
     private static void topUpInternal(@NonNull String userId, long amount,
-                                      @NonNull String note, @Nullable Callback cb) {
+                                      @NonNull String note, @NonNull String source,
+                                      @Nullable Callback cb) {
         if (amount <= 0) { fail(cb, "Số tiền nạp phải lớn hơn 0"); return; }
 
         DocumentReference userRef = db().collection(COL_USERS).document(userId);
         db().runTransaction(tr -> {
             tr.update(userRef, "balance", FieldValue.increment(amount));
-            tr.set(db().collection(COL_TRANSACTIONS).document(),
-                    log(TYPE_TOPUP, amount, null, userId, null, note));
+            Map<String, Object> tx = log(TYPE_TOPUP, amount, null, userId, null, note);
+            tx.put("source", source);   // phân biệt nguồn nạp (vnpay / admin)
+            tr.set(db().collection(COL_TRANSACTIONS).document(), tx);
             return null;
         }).addOnSuccessListener(v -> ok(cb))
           .addOnFailureListener(e -> fail(cb, e.getMessage()));

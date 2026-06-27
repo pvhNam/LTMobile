@@ -83,13 +83,19 @@ public class OrderAdminAdapter extends RecyclerView.Adapter<OrderAdminAdapter.Vi
 
         boolean isPending   = "pending".equals(status);
         boolean isConfirmed = "confirmed".equals(status);
-        if (listener != null && (isPending || isConfirmed)) {
+        String  type          = getStr(order, "type", "");
+        String  depositStatus = getStr(order, "depositStatus", "none");
+        boolean isRental = "Thuê xe".equals(type) || "Có tài xế".equals(type);
+        // Thuê xe đã nhả cọc -> admin hết việc, chờ chủ xe trả xe & khách thanh toán hóa đơn
+        boolean rentalSettled = isConfirmed && isRental && "settled".equals(depositStatus);
+
+        if (listener != null && (isPending || isConfirmed) && !rentalSettled) {
             holder.layoutActions.setVisibility(View.VISIBLE);
             if (isPending) {
                 holder.btnConfirm.setText("Xác nhận");
                 holder.btnConfirm.setOnClickListener(v -> listener.onConfirm(orderId));
             } else {
-                holder.btnConfirm.setText("Hoàn thành");
+                holder.btnConfirm.setText(isRental ? "Nhả cọc" : "Hoàn thành");
                 holder.btnConfirm.setOnClickListener(v -> listener.onComplete(orderId));
             }
             holder.btnCancel.setOnClickListener(v -> listener.onCancel(orderId));

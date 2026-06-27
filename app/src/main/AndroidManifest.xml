@@ -94,6 +94,8 @@
             android:theme="@style/Theme.DOANMB.Admin" />
         <activity android:name="com.example.doanmb.ui.admin.view.AdminUserDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
+        <activity android:name="com.example.doanmb.ui.admin.view.AdminTopupHistoryActivity"
+            android:theme="@style/Theme.DOANMB.Admin" />
         <activity android:name="com.example.doanmb.ui.activity.AdminOrderDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
         <activity

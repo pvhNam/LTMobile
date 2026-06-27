@@ -497,8 +497,10 @@ public class CarDetailActivity extends AppCompatActivity {
         }
 
         long total = pricePerDay * days;
-        tvDepositInfo.setText("Tổng tiền thuê (" + days + " ngày): " + money(total)
-                + " đ\nThuê xe không cần đặt cọc, thanh toán khi nhận xe.");
+        long deposit = WalletRepository.deposit(total);
+        tvDepositInfo.setText("Tổng tiền thuê (" + days + " ngày): " + money(total) + " đ"
+                + "\nĐặt cọc giữ chỗ (50%): " + money(deposit) + " đ (admin giữ)"
+                + "\nPhần còn lại thanh toán khi trả xe.");
     }
 
     private static long parseMoney(String s) {
@@ -1077,6 +1079,17 @@ public class CarDetailActivity extends AppCompatActivity {
 
         long pricePerDay   = parseMoney(car != null ? car.getPrice() : null);
         long total         = pricePerDay * days;
+        long deposit       = WalletRepository.deposit(total);   // cọc 50% tiền thuê, admin giữ
+
+        if (total <= 0) {
+            Toast.makeText(this, "Giá thuê không hợp lệ", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (walletBalance < deposit) {
+            Toast.makeText(this, "Số dư ví không đủ để đặt cọc " + money(deposit)
+                    + " đ. Vui lòng nhờ admin nạp tiền.", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         Map<String, Object> order = new HashMap<>();
         order.put("buyerId",      user.getUid());
@@ -1093,30 +1106,44 @@ public class CarDetailActivity extends AppCompatActivity {
         order.put("startDate",    etRentStartDate.getText().toString().trim());
         order.put("note",         etRenterNote.getText().toString().trim());
         order.put("totalAmount",  total);
-        order.put("depositAmount", 0L);
-        order.put("paymentMethod", "cash");
-        order.put("depositStatus", "none");
+        order.put("depositAmount", deposit);
+        order.put("paymentMethod", "wallet");
+        order.put("depositStatus", "held");
         order.put("status",       "pending");
         order.put("createdAt",    com.google.firebase.Timestamp.now());
 
         btnSendRentRequest.setEnabled(false);
+        final long fDeposit = deposit;
         db.collection("orders").add(order)
-                .addOnSuccessListener(ref -> {
-                    btnSendRentRequest.setEnabled(true);
-                    Toast.makeText(this, "✅ Gửi yêu cầu thuê xe thành công!", Toast.LENGTH_LONG).show();
-
-                    // ── Thông báo cho người cho thuê ─────────────────────
-                    notifySellerOrderSent(user, ref.getId());
-                    OrderReminderService.schedule(
-                            CarDetailActivity.this,
-                            ref.getId(),
-                            sellerId != null ? sellerId : "",
-                            user.getUid(),
-                            renterName,
-                            car != null ? car.getName() : "",
-                            carId != null ? carId : ""
-                    );
-                })
+                .addOnSuccessListener(ref ->
+                        // Giữ cọc: trừ ví người thuê, admin giữ cho tới khi admin nhả cọc
+                        WalletRepository.holdDeposit(user.getUid(), fDeposit, ref.getId(),
+                                new WalletRepository.Callback() {
+                                    @Override public void onSuccess() {
+                                        walletBalance -= fDeposit;
+                                        btnSendRentRequest.setEnabled(true);
+                                        Toast.makeText(CarDetailActivity.this,
+                                                "✅ Đã gửi yêu cầu thuê! Giữ cọc " + money(fDeposit) + " đ.",
+                                                Toast.LENGTH_LONG).show();
+                                        notifySellerOrderSent(user, ref.getId());
+                                        OrderReminderService.schedule(
+                                                CarDetailActivity.this,
+                                                ref.getId(),
+                                                sellerId != null ? sellerId : "",
+                                                user.getUid(),
+                                                renterName,
+                                                car != null ? car.getName() : "",
+                                                carId != null ? carId : ""
+                                        );
+                                    }
+                                    @Override public void onError(String msg) {
+                                        ref.delete();
+                                        btnSendRentRequest.setEnabled(true);
+                                        Toast.makeText(CarDetailActivity.this,
+                                                "❌ " + (msg != null ? msg : "Giữ cọc thất bại"),
+                                                Toast.LENGTH_LONG).show();
+                                    }
+                                }))
                 .addOnFailureListener(e -> {
                     btnSendRentRequest.setEnabled(true);
                     Toast.makeText(this, "Lỗi tạo đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
