@@ -1,5 +1,6 @@
 package com.example.doanmb.ui.admin.adapter;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,7 +12,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +29,9 @@ public class OrderAdminAdapter extends RecyclerView.Adapter<OrderAdminAdapter.Vi
     private List<Map<String, Object>> orders;
     private List<String> orderIds;
     private OnOrderActionListener listener;
+
+    /** Cache tên user theo id để khỏi tra Firestore lặp lại khi cuộn danh sách. */
+    private static final Map<String, String> NAME_CACHE = new HashMap<>();
 
     public OrderAdminAdapter(List<Map<String, Object>> orders, List<String> orderIds) {
         this.orders = orders;
@@ -55,17 +61,24 @@ public class OrderAdminAdapter extends RecyclerView.Adapter<OrderAdminAdapter.Vi
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Map<String, Object> order = orders.get(position);
         String orderId = orderIds.get(position);
+        Context ctx = holder.itemView.getContext();
+
+        holder.itemView.setOnClickListener(v -> {
+            android.content.Intent i = new android.content.Intent(ctx,
+                    com.example.doanmb.ui.activity.AdminOrderDetailActivity.class);
+            i.putExtra(com.example.doanmb.ui.activity.AdminOrderDetailActivity.EXTRA_ORDER_ID, orderId);
+            ctx.startActivity(i);
+        });
 
         String carName   = getStr(order, "carName",     "Xe không xác định");
-        String buyerName = getStr(order, "buyerName",   getStr(order, "renterName", getStr(order, "buyerId", "--")));
-        String sellerName= getStr(order, "sellerName",  getStr(order, "sellerId", "--"));
-        String type      = getStr(order, "type",        "Mua xe");
+        String buyerName = getStr(order, "renterName",  getStr(order, "buyerName", null));
+        String sellerName= getStr(order, "sellerName",  null);
         String status    = getStr(order, "status",      "pending");
 
         holder.tvCarName.setText(carName);
-        holder.tvBuyer.setText(buyerName);
-        holder.tvSeller.setText(sellerName.length() > 20 ? sellerName.substring(0, 20) + "…" : sellerName);
-        holder.tvType.setText(type);
+        // Đơn cũ/đơn "Mua xe" chỉ lưu id -> tra tên từ collection "users"
+        bindName(holder.tvBuyer,  buyerName,  getStr(order, "buyerId",  null), false);
+        bindName(holder.tvSeller, sellerName, getStr(order, "sellerId", null), true);
         applyStatusStyle(holder.tvStatus, status);
 
         boolean isPending   = "pending".equals(status);
@@ -117,14 +130,56 @@ public class OrderAdminAdapter extends RecyclerView.Adapter<OrderAdminAdapter.Vi
 
     private String getStr(Map<String, Object> map, String key, String def) {
         Object v = map.get(key);
-        return (v != null) ? v.toString() : def;
+        return (v != null && !v.toString().isEmpty()) ? v.toString() : def;
+    }
+
+    /**
+     * Hiển thị tên người giao dịch. Nếu đơn đã có sẵn tên thì dùng luôn, ngược lại
+     * tra tên trong collection "users" theo id (không hiển thị id thô).
+     * Dùng setTag để tránh sai tên do RecyclerView tái sử dụng view khi cuộn.
+     */
+    private void bindName(TextView tv, String name, String userId, boolean truncate) {
+        if (name != null && !name.isEmpty()) {
+            tv.setTag(null);
+            tv.setText(truncate ? truncate(name) : name);
+            return;
+        }
+        if (userId == null || userId.isEmpty()) {
+            tv.setTag(null);
+            tv.setText("--");
+            return;
+        }
+        String cached = NAME_CACHE.get(userId);
+        if (cached != null) {
+            tv.setTag(null);
+            tv.setText(truncate ? truncate(cached) : cached);
+            return;
+        }
+        tv.setTag(userId);
+        tv.setText("Đang tải…");
+        FirebaseFirestore.getInstance().collection("users").document(userId).get()
+                .addOnSuccessListener(u -> {
+                    String fetched = u.exists() ? u.getString("name") : null;
+                    if (fetched == null || fetched.isEmpty()) fetched = "Ẩn danh";
+                    NAME_CACHE.put(userId, fetched);
+                    if (userId.equals(tv.getTag())) {
+                        tv.setText(truncate ? truncate(fetched) : fetched);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (userId.equals(tv.getTag())) tv.setText("Ẩn danh");
+                });
+    }
+
+    private static String truncate(String s) {
+        return s.length() > 20 ? s.substring(0, 20) + "…" : s;
     }
 
     @Override
     public int getItemCount() { return orders.size(); }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvCarName, tvBuyer, tvSeller, tvType, tvStatus;
+        TextView tvCarName, tvBuyer, tvSeller, tvStatus;
         LinearLayout layoutActions;
         Button btnConfirm, btnCancel;
 
@@ -133,7 +188,6 @@ public class OrderAdminAdapter extends RecyclerView.Adapter<OrderAdminAdapter.Vi
             tvCarName      = itemView.findViewById(R.id.tv_order_car_name);
             tvBuyer        = itemView.findViewById(R.id.tv_order_buyer);
             tvSeller       = itemView.findViewById(R.id.tv_order_seller);
-            tvType         = itemView.findViewById(R.id.tv_order_type);
             tvStatus       = itemView.findViewById(R.id.tv_order_status);
             layoutActions  = itemView.findViewById(R.id.layout_order_actions);
             btnConfirm     = itemView.findViewById(R.id.btn_confirm_order);
