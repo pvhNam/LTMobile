@@ -134,6 +134,63 @@ public final class ChatNotificationHelper {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // THÔNG BÁO CHỈ FCM PUSH (không lưu Firestore) — dùng cho customer khi
+    // driver confirm/reject: customer nhận push điện thoại nhưng KHÔNG thấy
+    // notification trong tab app.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Gửi FCM push đến người nhận mà KHÔNG lưu document vào Firestore.
+     * Dùng khi muốn thông báo điện thoại nhưng không hiển thị trong tab Thông báo của app.
+     */
+    public static void sendFcmOnlyOrderNotification(Context context,
+                                                    String receiverId,
+                                                    String senderId,
+                                                    String senderName,
+                                                    String carName,
+                                                    String carId,
+                                                    String type,
+                                                    String orderId) {
+        if (receiverId == null || receiverId.isEmpty()) return;
+
+        String title, body;
+        switch (type != null ? type : "") {
+            case "order_confirmed":
+                title = "✅ Yêu cầu được chấp nhận";
+                body  = "Đơn của bạn cho xe \"" + safe(carName) + "\" đã được xác nhận!";
+                break;
+            case "order_rejected":
+                title = "❌ Yêu cầu bị từ chối";
+                body  = "Đơn của bạn cho xe \"" + safe(carName) + "\" đã bị từ chối.";
+                break;
+            default:
+                title = "📋 Yêu cầu mới từ " + safe(senderName);
+                body  = safe(senderName) + " muốn đặt xe \"" + safe(carName) + "\" của bạn.";
+                break;
+        }
+
+        final String finalTitle = title;
+        final String finalBody  = body;
+        final String finalType  = type != null ? type : "order_sent";
+
+        // Chỉ gửi FCM push, KHÔNG lưu vào collection notifications
+        FirebaseFirestore.getInstance()
+                .collection("users").document(receiverId).get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) return;
+                    String fcmToken = doc.getString("fcmToken");
+                    if (fcmToken == null || fcmToken.isEmpty()) {
+                        Log.d(TAG, "No FCM token for fcmOnly notif: " + receiverId);
+                        return;
+                    }
+                    executor.execute(() ->
+                            sendFcmV1(context, fcmToken, finalTitle, finalBody,
+                                    senderName, carName, finalType, safe(orderId), senderId));
+                })
+                .addOnFailureListener(e -> Log.w(TAG, "Failed to get FCM token (fcmOnly)", e));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // THÔNG BÁO ĐƠN HÀNG — MỚI
     // type: "order_sent" | "order_confirmed" | "order_rejected"
     // ─────────────────────────────────────────────────────────────────────────

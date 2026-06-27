@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+
+    <!-- HEADER dải màu -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp"
+        android:background="#FFF8E1">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⭐"
+            android:textSize="36sp"
+            android:layout_marginBottom="6dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Đánh giá tài xế"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#1A1A1A" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Chia sẻ trải nghiệm của bạn về chuyến đi"
+            android:textSize="13sp"
+            android:textColor="#777777"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+
+    <!-- NỘI DUNG -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- SỐ SAO -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Chất lượng dịch vụ"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#1A1A1A"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="10dp" />
+
+        <RatingBar
+            android:id="@+id/rating_bar_input"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:numStars="5"
+            android:stepSize="1"
+            android:rating="0"
+            android:progressTint="#FF9800"
+            android:secondaryProgressTint="#FFE0B2"
+            android:layout_marginBottom="20dp" />
+
+        <!-- GỢI Ý NHANH -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Gợi ý nhanh"
+            android:textSize="13sp"
+            android:textColor="#777777"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:chipSpacingHorizontal="6dp"
+            app:singleLine="false">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_ontime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⏰ Đúng giờ"
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                app:chipBackgroundColor="#F5F5F5"
+                app:chipStrokeWidth="1dp"
+                app:chipStrokeColor="#DDDDDD" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_safe"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🛡️ Lái xe an toàn"
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                app:chipBackgroundColor="#F5F5F5"
+                app:chipStrokeWidth="1dp"
+                app:chipStrokeColor="#DDDDDD" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_friendly"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="😊 Thân thiện"
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                app:chipBackgroundColor="#F5F5F5"
+                app:chipStrokeWidth="1dp"
+                app:chipStrokeColor="#DDDDDD" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_clean"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="✨ Xe sạch sẽ"
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                app:chipBackgroundColor="#F5F5F5"
+                app:chipStrokeWidth="1dp"
+                app:chipStrokeColor="#DDDDDD" />
+        </com.google.android.material.chip.ChipGroup>
+
+        <!-- NHẬN XÉT -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nhận xét (tuỳ chọn)"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#1A1A1A"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:boxBackgroundMode="outline"
+            app:boxStrokeColor="#DDDDDD">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_review_comment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Tài xế rất chuyên nghiệp, đúng giờ..."
+                android:minLines="3"
+                android:maxLines="5"
+                android:gravity="top"
+                android:textSize="14sp"
+                android:textColor="#1A1A1A"
+                android:inputType="textMultiLine"
+                android:padding="12dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- NÚT HÀNH ĐỘNG -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_cancel_review"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:text="Để sau"
+                android:textSize="14sp"
+                app:cornerRadius="12dp"
+                app:strokeColor="#DDDDDD" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_submit_review"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:text="Gửi đánh giá"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:backgroundTint="#FF9800"
+                app:cornerRadius="12dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</LinearLayout>

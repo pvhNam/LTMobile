@@ -674,9 +674,38 @@ public class MessagesFragment extends Fragment {
                 case "order_sent":
                     h.ivIcon.setImageResource(R.drawable.ic_admin_orders);   // icon đơn hàng
                     break;
+                case "review_driver":
+                    h.ivIcon.setImageResource(R.drawable.ic_star);           // icon sao đánh giá
+                    break;
                 default: // chat
                     h.ivIcon.setImageResource(R.drawable.ic_nav_message);
                     break;
+            }
+            // ────────────────────────────────────────────────────────────────
+
+            // ── Hiển thị nút Đánh giá cho type=review_driver ──────────────
+            if ("review_driver".equals(type)) {
+                Boolean actionCompleted = (Boolean) item.get("actionCompleted");
+                boolean alreadyReviewed = Boolean.TRUE.equals(actionCompleted);
+                if (h.btnReview   != null) h.btnReview.setVisibility(alreadyReviewed ? View.GONE    : View.VISIBLE);
+                if (h.tvReviewed  != null) h.tvReviewed.setVisibility(alreadyReviewed ? View.VISIBLE : View.GONE);
+
+                String notifOrderId  = str(item, "orderId");
+                String notifDriverId = str(item, "driverId");
+                String notifCarId    = str(item, "carId");
+
+                if (h.btnReview != null && !alreadyReviewed) {
+                    h.btnReview.setOnClickListener(v -> {
+                        androidx.fragment.app.FragmentActivity act = MessagesFragment.this.getActivity();
+                        if (act == null || act.isFinishing()) return;
+                        com.example.doanmb.ui.car.view.ReviewDialogFragment.newInstance(
+                                        notifOrderId, notifDriverId, notifCarId, docId)
+                                .show(act.getSupportFragmentManager(), "review_dialog");
+                    });
+                }
+            } else {
+                if (h.btnReview  != null) h.btnReview.setVisibility(View.GONE);
+                if (h.tvReviewed != null) h.tvReviewed.setVisibility(View.GONE);
             }
             // ────────────────────────────────────────────────────────────────
 
@@ -797,9 +826,10 @@ public class MessagesFragment extends Fragment {
         }
 
         class VH extends RecyclerView.ViewHolder {
-            TextView  tvTitle, tvBody, tvTime, tvAvatar;
+            TextView  tvTitle, tvBody, tvTime, tvAvatar, tvReviewed;
             ImageView ivAvatar, ivIcon; // Khai báo ivIcon thay vì tvTypeIcon
             View      viewUnreadDot;
+            android.widget.Button btnReview;
 
             VH(@NonNull View v) {
                 super(v);
@@ -809,6 +839,8 @@ public class MessagesFragment extends Fragment {
                 tvAvatar     = v.findViewById(R.id.tv_notif_avatar);
                 ivAvatar     = v.findViewById(R.id.iv_notif_avatar);
                 viewUnreadDot= v.findViewById(R.id.view_unread_dot);
+                btnReview    = v.findViewById(R.id.btn_notif_review);
+                tvReviewed   = v.findViewById(R.id.tv_notif_reviewed);
 
                 // Nhớ đổi ID này cho khớp với ImageView trong file layout XML của bạn
                 ivIcon       = v.findViewById(R.id.tv_notif_type_icon);

@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,118 +32,220 @@ import java.util.List;
 import de.hdodenhof.circleimageview.CircleImageView;
 
 /**
- * Tab "Chuyến" (thiết kế driver2): header chào mừng + tab trạng thái
- * (Chuyến mới / Đang chạy / Lịch sử / Đặt trước) + danh sách + lối tắt.
+ * Tab "Chuyến" của tài xế.
+ *
+ * Quy ước status (orders collection):
+ *   pending     → Driver Home xử lý (nhận / từ chối)
+ *   accepted    → Tab 0 "Chuyến mới"  → nút "Bắt đầu chuyến"
+ *   in_progress → Tab 1 "Đang chạy"  → nút "Hoàn thành chuyến"
+ *   completed / rejected / cancelled → Tab 2 "Lịch sử"
+ *   scheduled   → Tab 3 "Đặt trước"
+ *
+ * Lưu ý: file giữ nguyên implements TripAdapter.OnTripActionListener
+ * để không làm vỡ build nếu TripAdapter vẫn đang được dùng.
+ * Tuy nhiên adapter thực tế bây giờ là OrderDriverAdapter (inner class).
  */
 public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripActionListener {
 
-    private TextView tvName, tvSectionTitle, tvCountdown, tvEmpty;
-    private CircleImageView ivAvatar;
-    private TabLayout tabs;
-    private RecyclerView rv;
-    private TripAdapter adapter;
+    // ─── inner model ──────────────────────────────────────────────────────────
+    /** Ánh xạ đơn giản từ Firestore document sang POJO để tránh phụ thuộc vào Trip. */
+    private static class OrderItem {
+        String orderId, status, carName, carPrice,
+                renterName, renterPhone, note, type, carId, buyerId;
+        Timestamp createdAt;
 
-    private final List<Trip> shown = new ArrayList<>();
-    private final List<Trip> waiting = new ArrayList<>();
-    private final List<Trip> running = new ArrayList<>();
-    private final List<Trip> history = new ArrayList<>();
+        static OrderItem from(QueryDocumentSnapshot d) {
+            OrderItem o  = new OrderItem();
+            o.orderId    = d.getId();
+            o.status     = d.getString("status");
+            o.carName    = d.getString("carName");
+            o.carPrice   = d.getString("carPrice");
+            o.renterName = d.getString("renterName");
+            o.renterPhone= d.getString("renterPhone");
+            o.note       = d.getString("note");
+            o.type       = d.getString("type");
+            o.carId      = d.getString("carId");
+            o.buyerId    = d.getString("buyerId");
+            o.createdAt  = d.getTimestamp("createdAt");
+            return o;
+        }
+    }
+
+    // ─── inner adapter ────────────────────────────────────────────────────────
+    private class OrderDriverAdapter extends RecyclerView.Adapter<OrderDriverAdapter.VH> {
+        private final List<OrderItem> list;
+        OrderDriverAdapter(List<OrderItem> list) { this.list = list; }
+
+        @NonNull @Override
+        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_driver_order, parent, false);
+            return new VH(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull VH h, int pos) {
+            OrderItem o = list.get(pos);
+            java.text.SimpleDateFormat fmt =
+                    new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault());
+
+            setText(h.tvCarName,  o.carName);
+            setText(h.tvPrice,    o.carPrice);
+            setText(h.tvStatus,   labelFor(o.status));
+            setText(h.tvRenter,
+                    (o.renterName  != null ? o.renterName  : "")
+                            + (o.renterPhone != null && !o.renterPhone.isEmpty() ? "  |  " + o.renterPhone : ""));
+
+            if (h.tvNote != null) {
+                boolean hasNote = o.note != null && !o.note.isEmpty();
+                h.tvNote.setVisibility(hasNote ? View.VISIBLE : View.GONE);
+                if (hasNote) h.tvNote.setText(o.note);
+            }
+            if (h.tvDate != null && o.createdAt != null)
+                h.tvDate.setText("📅 " + fmt.format(o.createdAt.toDate()));
+
+            boolean isAccepted   = "accepted".equals(o.status);
+            boolean isInProgress = "in_progress".equals(o.status);
+
+            // Tab Chuyến mới → chỉ nút "Bắt đầu chuyến"
+            setVisible(h.btnStart,    isAccepted);
+            // Tab Đang chạy → chỉ nút "Hoàn thành chuyến"
+            setVisible(h.btnComplete, isInProgress);
+            // Các nút pending (ẩn trong tab này vì đã xử lý ở Driver Home)
+            setVisible(h.btnAccept, false);
+            setVisible(h.btnReject, false);
+
+            if (h.btnStart    != null) h.btnStart.setOnClickListener(v    -> startOrder(o));
+            if (h.btnComplete != null) h.btnComplete.setOnClickListener(v -> completeOrder(o));
+        }
+
+        @Override public int getItemCount() { return list.size(); }
+
+        class VH extends RecyclerView.ViewHolder {
+            TextView tvCarName, tvRenter, tvPrice, tvNote, tvDate, tvStatus;
+            Button   btnAccept, btnReject, btnStart, btnComplete;
+            VH(@NonNull View v) {
+                super(v);
+                tvCarName   = v.findViewById(R.id.tv_do_car_name);
+                tvRenter    = v.findViewById(R.id.tv_do_renter);
+                tvPrice     = v.findViewById(R.id.tv_do_price);
+                tvNote      = v.findViewById(R.id.tv_do_note);
+                tvDate      = v.findViewById(R.id.tv_do_date);
+                tvStatus    = v.findViewById(R.id.tv_do_status);
+                btnAccept   = v.findViewById(R.id.btn_do_accept);
+                btnReject   = v.findViewById(R.id.btn_do_reject);
+                btnStart    = v.findViewById(R.id.btn_do_start);
+                btnComplete = v.findViewById(R.id.btn_do_complete);
+            }
+        }
+    }
+
+    // ─── state ────────────────────────────────────────────────────────────────
+    private TextView     tvName, tvSectionTitle, tvCountdown, tvEmpty;
+    private CircleImageView ivAvatar;
+    private TabLayout    tabs;
+    private RecyclerView rv;
+    private OrderDriverAdapter orderAdapter;
+
+    /** Giữ lại để TripAdapter.OnTripActionListener không gây lỗi build. */
+    private TripAdapter legacyAdapter;
+
+    private final List<OrderItem> shown    = new ArrayList<>();
+    private final List<OrderItem> accepted = new ArrayList<>();  // Tab 0 Chuyến mới
+    private final List<OrderItem> running  = new ArrayList<>();  // Tab 1 Đang chạy
+    private final List<OrderItem> history  = new ArrayList<>();  // Tab 2 Lịch sử
 
     private FirebaseFirestore db;
-    private String uid, driverName, driverCarType;
+    private String uid, driverName;
     private int currentTab = 0;
 
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    // ─── lifecycle ────────────────────────────────────────────────────────────
+    @Nullable @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_driver_trips, container, false);
-        db = FirebaseFirestore.getInstance();
+        db  = FirebaseFirestore.getInstance();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         uid = user != null ? user.getUid() : "";
 
-        tvName = v.findViewById(R.id.tv_dh_name);
-        ivAvatar = v.findViewById(R.id.iv_dh_avatar);
+        tvName         = v.findViewById(R.id.tv_dh_name);
+        ivAvatar       = v.findViewById(R.id.iv_dh_avatar);
         tvSectionTitle = v.findViewById(R.id.tv_section_title);
-        tvCountdown = v.findViewById(R.id.tv_countdown);
-        tvEmpty = v.findViewById(R.id.tv_empty);
-        tabs = v.findViewById(R.id.tab_trips);
-        rv = v.findViewById(R.id.rv_trips);
+        tvCountdown    = v.findViewById(R.id.tv_countdown);
+        tvEmpty        = v.findViewById(R.id.tv_empty);
+        tabs           = v.findViewById(R.id.tab_trips);
+        rv             = v.findViewById(R.id.rv_trips);
 
-        adapter = new TripAdapter(shown, this);
+        orderAdapter = new OrderDriverAdapter(shown);
         rv.setLayoutManager(new LinearLayoutManager(getContext()));
-        rv.setAdapter(adapter);
+        rv.setAdapter(orderAdapter);
 
         tabs.addTab(tabs.newTab().setText("Chuyến mới"));
         tabs.addTab(tabs.newTab().setText("Đang chạy"));
         tabs.addTab(tabs.newTab().setText("Lịch sử"));
         tabs.addTab(tabs.newTab().setText("Đặt trước"));
         tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override public void onTabSelected(TabLayout.Tab tab) { currentTab = tab.getPosition(); renderTab(); }
+            @Override public void onTabSelected(TabLayout.Tab tab)   { currentTab = tab.getPosition(); renderTab(); }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
 
-        v.findViewById(R.id.row_running).setOnClickListener(x -> selectTab(1));
-        v.findViewById(R.id.row_history).setOnClickListener(x -> selectTab(2));
-        v.findViewById(R.id.row_scheduled).setOnClickListener(x -> selectTab(3));
+        safeClick(v, R.id.row_running,   () -> selectTab(1));
+        safeClick(v, R.id.row_history,   () -> selectTab(2));
+        safeClick(v, R.id.row_scheduled, () -> selectTab(3));
 
         return v;
     }
 
-    private void selectTab(int i) {
-        TabLayout.Tab tab = tabs.getTabAt(i);
-        if (tab != null) tab.select();
-    }
-
-    @Override
-    public void onResume() {
+    @Override public void onResume() {
         super.onResume();
         loadAll();
     }
 
+    // ─── data ─────────────────────────────────────────────────────────────────
     private void loadAll() {
         if (uid.isEmpty()) return;
         db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
             if (!isAdded()) return;
             driverName = doc.getString("name");
-            driverCarType = doc.getString("driverCarType");
-            tvName.setText(driverName != null ? driverName : "Tài xế");
+            if (tvName != null) tvName.setText(driverName != null ? driverName : "Tài xế");
             String avatar = doc.getString("avatarUrl");
-            if (avatar != null && !avatar.isEmpty()) Glide.with(this).load(avatar).into(ivAvatar);
-            loadTrips();
+            if (avatar != null && !avatar.isEmpty() && ivAvatar != null)
+                Glide.with(this).load(avatar).into(ivAvatar);
+            loadOrders();
         });
     }
 
-    private void loadTrips() {
-        // Đơn đang chờ (lọc theo loại xe)
-        db.collection("trips").whereEqualTo("status", Trip.STATUS_WAITING).get()
+    private void loadOrders() {
+        // Lấy tất cả orders có sellerId == uid (trừ pending, đã xử lý ở Driver Home)
+        db.collection("orders")
+                .whereEqualTo("sellerId", uid)
+                .get()
                 .addOnSuccessListener(snap -> {
                     if (!isAdded()) return;
-                    waiting.clear();
-                    for (QueryDocumentSnapshot d : snap) {
-                        Trip t = d.toObject(Trip.class);
-                        t.setId(d.getId());
-                        if (driverCarType == null || driverCarType.isEmpty()
-                                || driverCarType.equals(t.getCarType())) {
-                            waiting.add(t);
-                        }
-                    }
-                    if (currentTab == 0) renderTab();
-                });
-
-        // Chuyến của tôi (đang chạy + lịch sử)
-        db.collection("trips").whereEqualTo("driverId", uid).get()
-                .addOnSuccessListener(snap -> {
-                    if (!isAdded()) return;
+                    accepted.clear();
                     running.clear();
                     history.clear();
                     for (QueryDocumentSnapshot d : snap) {
-                        Trip t = d.toObject(Trip.class);
-                        t.setId(d.getId());
-                        if (Trip.STATUS_RUNNING.equals(t.getStatus())) running.add(t);
-                        else if (Trip.STATUS_COMPLETED.equals(t.getStatus())
-                                || Trip.STATUS_CANCELLED.equals(t.getStatus())) history.add(t);
+                        String st = d.getString("status");
+                        if (st == null || "pending".equals(st)) continue; // pending → Driver Home
+                        OrderItem o = OrderItem.from(d);
+                        switch (st) {
+                            case "accepted":
+                                accepted.add(o);
+                                break;
+                            case "in_progress":
+                                running.add(o);
+                                break;
+                            case "completed":
+                            case "rejected":
+                            case "cancelled":
+                                history.add(o);
+                                break;
+                        }
                     }
-                    if (currentTab != 0) renderTab();
+                    renderTab();
                 });
     }
 
@@ -150,82 +253,126 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
         shown.clear();
         switch (currentTab) {
             case 0:
-                shown.addAll(waiting);
-                tvSectionTitle.setText("Yêu cầu mới");
-                tvCountdown.setVisibility(View.VISIBLE);
-                tvEmpty.setText("Chưa có yêu cầu mới");
+                shown.addAll(accepted);
+                if (tvSectionTitle != null) tvSectionTitle.setText("Chuyến mới");
+                if (tvCountdown    != null) tvCountdown.setVisibility(View.GONE);
+                if (tvEmpty        != null) tvEmpty.setText("Chưa có chuyến đã nhận");
                 break;
             case 1:
                 shown.addAll(running);
-                tvSectionTitle.setText("Đang chạy");
-                tvCountdown.setVisibility(View.GONE);
-                tvEmpty.setText("Không có chuyến đang chạy");
+                if (tvSectionTitle != null) tvSectionTitle.setText("Đang chạy");
+                if (tvCountdown    != null) tvCountdown.setVisibility(View.GONE);
+                if (tvEmpty        != null) tvEmpty.setText("Không có chuyến đang chạy");
                 break;
             case 2:
                 shown.addAll(history);
-                tvSectionTitle.setText("Lịch sử chuyến");
-                tvCountdown.setVisibility(View.GONE);
-                tvEmpty.setText("Chưa có chuyến hoàn thành");
+                if (tvSectionTitle != null) tvSectionTitle.setText("Lịch sử chuyến");
+                if (tvCountdown    != null) tvCountdown.setVisibility(View.GONE);
+                if (tvEmpty        != null) tvEmpty.setText("Chưa có lịch sử chuyến");
                 break;
             default:
-                tvSectionTitle.setText("Chuyến đặt trước");
-                tvCountdown.setVisibility(View.GONE);
-                tvEmpty.setText("Chưa có chuyến đặt trước");
+                if (tvSectionTitle != null) tvSectionTitle.setText("Chuyến đặt trước");
+                if (tvCountdown    != null) tvCountdown.setVisibility(View.GONE);
+                if (tvEmpty        != null) tvEmpty.setText("Chưa có chuyến đặt trước");
         }
-        adapter.notifyDataSetChanged();
-        tvEmpty.setVisibility(shown.isEmpty() ? View.VISIBLE : View.GONE);
+        orderAdapter.notifyDataSetChanged();
+        if (tvEmpty != null)
+            tvEmpty.setVisibility(shown.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
-    /** Nút chính: nhận (waiting) hoặc hoàn thành (running). */
-    @Override
-    public void onPrimary(Trip trip) {
-        if (trip.getId() == null) return;
-        if (Trip.STATUS_WAITING.equals(trip.getStatus())) accept(trip);
-        else if (Trip.STATUS_RUNNING.equals(trip.getStatus())) complete(trip);
-    }
-
-    @Override
-    public void onSkip(Trip trip) {
-        waiting.remove(trip);
-        renderTab();
-    }
-
-    private void accept(Trip trip) {
-        db.runTransaction(tr -> {
-            DocumentSnapshot snap = tr.get(db.collection("trips").document(trip.getId()));
-            if (!Trip.STATUS_WAITING.equals(snap.getString("status"))) {
-                throw new com.google.firebase.firestore.FirebaseFirestoreException("Đơn đã được nhận",
-                        com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED);
-            }
-            tr.update(db.collection("trips").document(trip.getId()),
-                    "status", Trip.STATUS_RUNNING,
-                    "driverId", uid,
-                    "driverName", driverName != null ? driverName : "",
-                    "acceptedAt", Timestamp.now());
-            return null;
-        }).addOnSuccessListener(x -> {
-            if (!isAdded()) return;
-            Toast.makeText(getContext(), "✅ Đã nhận chuyến!", Toast.LENGTH_SHORT).show();
-            loadTrips();
-            selectTab(1);
-        }).addOnFailureListener(e -> {
-            if (!isAdded()) return;
-            Toast.makeText(getContext(), "Không nhận được: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            loadTrips();
-        });
-    }
-
-    private void complete(Trip trip) {
-        db.collection("trips").document(trip.getId())
-                .update("status", Trip.STATUS_COMPLETED, "completedAt", Timestamp.now())
+    // ─── actions ──────────────────────────────────────────────────────────────
+    /** accepted → in_progress */
+    private void startOrder(OrderItem o) {
+        db.collection("orders").document(o.orderId)
+                .update("status", "in_progress", "startedAt", Timestamp.now())
                 .addOnSuccessListener(x -> {
                     if (!isAdded()) return;
-                    Toast.makeText(getContext(), "✅ Đã hoàn thành chuyến!", Toast.LENGTH_SHORT).show();
-                    loadTrips();
+                    Toast.makeText(getContext(), "🚗 Đã bắt đầu chuyến!", Toast.LENGTH_SHORT).show();
+                    loadOrders();
+                    selectTab(1);
                 })
                 .addOnFailureListener(e -> {
                     if (!isAdded()) return;
                     Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+    }
+
+    /** in_progress → completed; mở khóa đánh giá cho Customer */
+    private void completeOrder(OrderItem o) {
+        db.collection("orders").document(o.orderId)
+                .update(
+                        "status",      "completed",
+                        "completedAt", Timestamp.now(),
+                        "canReview",   true,
+                        "reviewed",    false
+                )
+                .addOnSuccessListener(x -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(getContext(), "🏁 Đã hoàn thành chuyến!", Toast.LENGTH_SHORT).show();
+                    // Tạo Notification mời Customer đánh giá
+                    createReviewNotification(o);
+                    loadOrders();
+                    selectTab(2);
+                })
+                .addOnFailureListener(e -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    /** Tạo notification type=review_driver gửi cho Customer */
+    private void createReviewNotification(OrderItem o) {
+        if (o.buyerId == null || o.buyerId.isEmpty()) return;
+
+        java.util.Map<String, Object> notif = new java.util.HashMap<>();
+        notif.put("userId",          o.buyerId);          // receiverId = Customer
+        notif.put("senderId",        uid);                 // Driver
+        notif.put("orderId",         o.orderId);
+        notif.put("carId",           o.carId != null ? o.carId : "");
+        notif.put("driverId",        uid);
+        notif.put("type",            "review_driver");
+        notif.put("title",           "Tài xế đã hoàn thành chuyến xe!");
+        notif.put("body",            "Mời bạn đánh giá tài xế.");
+        notif.put("read",            false);
+        notif.put("actionCompleted", false);
+        notif.put("createdAt",       Timestamp.now());
+
+        db.collection("notifications").add(notif);
+    }
+
+    // ─── TripAdapter.OnTripActionListener (giữ cho build không vỡ) ────────────
+    @Override public void onPrimary(Trip trip) { /* xử lý ở Driver Home */ }
+    @Override public void onSkip(Trip trip)    { /* xử lý ở Driver Home */ }
+
+    // ─── helpers ──────────────────────────────────────────────────────────────
+    private void selectTab(int i) {
+        if (tabs == null) return;
+        TabLayout.Tab tab = tabs.getTabAt(i);
+        if (tab != null) tab.select();
+    }
+
+    private static String labelFor(String s) {
+        if (s == null) return "";
+        switch (s) {
+            case "accepted":    return "✅ Đã nhận – Chờ bắt đầu";
+            case "in_progress": return "🚗 Đang chạy";
+            case "completed":   return "🏁 Hoàn thành";
+            case "rejected":    return "❌ Đã từ chối";
+            case "cancelled":   return "↩️ Đã hủy";
+            default:            return s;
+        }
+    }
+
+    private static void setText(TextView tv, String text) {
+        if (tv != null) tv.setText(text != null ? text : "");
+    }
+
+    private static void setVisible(View v, boolean show) {
+        if (v != null) v.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private static void safeClick(View root, int id, Runnable action) {
+        View v = root.findViewById(id);
+        if (v != null) v.setOnClickListener(x -> action.run());
     }
 }

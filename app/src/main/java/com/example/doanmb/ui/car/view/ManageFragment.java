@@ -237,7 +237,8 @@ public class ManageFragment extends Fragment {
                         orderList.add(doc.getData());
                         orderIds.add(doc.getId());
                     }
-                    sortOrdersByCreatedAt(); // sort trong bộ nhớ thay vì orderBy Firestore
+                    sortOrdersByCreatedAt();
+                    filterDriverOrders();// sort trong bộ nhớ thay vì orderBy Firestore
                     updateRequestsUI();
                 });
     }
@@ -279,7 +280,8 @@ public class ManageFragment extends Fragment {
                                     orderList.add(doc.getData());
                                     orderIds.add(doc.getId());
                                 }
-                                sortOrdersByCreatedAt(); // sort trong bộ nhớ thay vì orderBy Firestore
+                                sortOrdersByCreatedAt();
+                                filterDriverOrders();// sort trong bộ nhớ thay vì orderBy Firestore
                                 updateRequestsUI();
                             });
                 })
@@ -309,6 +311,21 @@ public class ManageFragment extends Fragment {
             orderIds.add(entry.getKey());
             orderList.add(entry.getValue());
         }
+    }
+
+    private void filterDriverOrders() {
+        List<String> filteredIds   = new ArrayList<>();
+        List<Map<String, Object>> filteredList = new ArrayList<>();
+        for (int i = 0; i < orderList.size(); i++) {
+            String type = (String) orderList.get(i).get("type");
+            if ("Có tài xế".equals(type)) continue; // bỏ qua đơn xe có tài xế
+            filteredList.add(orderList.get(i));
+            filteredIds.add(orderIds.get(i));
+        }
+        orderList.clear();
+        orderList.addAll(filteredList);
+        orderIds.clear();
+        orderIds.addAll(filteredIds);
     }
 
     private void updateRequestsUI() {
@@ -399,7 +416,7 @@ public class ManageFragment extends Fragment {
                                 String sellerName = userSnap.getString("name");
                                 if (sellerName == null || sellerName.isEmpty()) sellerName = "Chủ xe";
 
-                                ChatNotificationHelper.sendOrderNotification(
+                                ChatNotificationHelper.sendFcmOnlyOrderNotification(
                                         requireContext(),
                                         buyerId,
                                         myUid,

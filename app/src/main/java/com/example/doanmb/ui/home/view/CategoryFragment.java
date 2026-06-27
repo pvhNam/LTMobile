@@ -367,7 +367,14 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                         );
                         car.setId(doc.getId());
                         car.setImageUrl(imageUrl != null ? imageUrl : "");
-                        car.setSellerId(sellerId != null ? sellerId : ""); // ← thêm dòng này
+                        car.setSellerId(sellerId != null ? sellerId : "");
+
+                        // Load driverRating + driverReviewCount (cache từ Firestore)
+                        Double driverRating = doc.getDouble("driverRating");
+                        Long driverReviewCount = doc.getLong("driverReviewCount");
+                        car.setDriverRating(driverRating != null ? driverRating.floatValue() : 0f);
+                        car.setDriverReviewCount(driverReviewCount != null ? driverReviewCount.intValue() : 0);
+
                         allCars.add(car);
                     }
                     updateBrandFilters();

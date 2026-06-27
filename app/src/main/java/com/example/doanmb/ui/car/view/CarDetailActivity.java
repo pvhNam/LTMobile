@@ -42,6 +42,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.example.doanmb.data.model.Review;
+import com.example.doanmb.ui.car.adapter.ReviewAdapter;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import java.util.ArrayList;
+
 public class CarDetailActivity extends AppCompatActivity {
 
     private ImageView ivCarDetail;
@@ -97,6 +103,15 @@ public class CarDetailActivity extends AppCompatActivity {
     private Car car;
     private String carId, sellerId, carType;
     private String carStatus = "";
+
+    // Review section
+    private View layoutReviewSection;
+    private TextView tvDetailAvgRating;
+    private RecyclerView rvDetailReviews;
+    private TextView tvDetailReviewsEmpty;
+    private ReviewAdapter reviewAdapter;
+    private final List<Review> reviewList = new ArrayList<>();
+
     private String statusBeforeHide = "";
 
     private NestedScrollView detailScroll;
@@ -212,6 +227,16 @@ public class CarDetailActivity extends AppCompatActivity {
         layoutDayFields = findViewById(R.id.layout_day_fields);
         layoutTripFields= findViewById(R.id.layout_trip_fields);
         btnPickOnMap    = findViewById(R.id.btnPickOnMap);
+        layoutReviewSection   = findViewById(R.id.layout_review_section);
+        tvDetailAvgRating     = findViewById(R.id.tv_detail_avg_rating);
+        rvDetailReviews       = findViewById(R.id.rv_detail_reviews);
+        tvDetailReviewsEmpty  = findViewById(R.id.tv_detail_reviews_empty);
+
+        reviewAdapter = new ReviewAdapter(reviewList);
+        if (rvDetailReviews != null) {
+            rvDetailReviews.setLayoutManager(new LinearLayoutManager(this));
+            rvDetailReviews.setAdapter(reviewAdapter);
+        }
         tvTripSummary   = findViewById(R.id.tvTripSummary);
     }
 
@@ -627,6 +652,10 @@ public class CarDetailActivity extends AppCompatActivity {
                     if (sPhone != null && !sPhone.isEmpty()) {
                         sellerPhone = sPhone;
                         tvSellerPhone.setText("📞  " + sellerPhone);
+                        String dId = doc.getString("sellerId");
+                        if (dId != null && !dId.isEmpty()) {
+                            loadDetailReviews(dId, id);
+                        }
                     }
 
                     setupByType(type != null ? type : carType);
@@ -905,6 +934,12 @@ public class CarDetailActivity extends AppCompatActivity {
             return;
         }
 
+        // Xe có tài xế → kiểm tra driver isAvailable trước khi tạo order
+        if (isDriverType(carType)) {
+            checkDriverAvailabilityThenSend(user);
+            return;
+        }
+
         if (tripMode) { sendTripRequest(user); return; }
 
         // Kiểm tra đã có order pending cho xe này chưa → chặn spam
@@ -918,6 +953,58 @@ public class CarDetailActivity extends AppCompatActivity {
                     if (!snap.isEmpty()) {
                         Toast.makeText(this,
                                 "⏳ Đã gửi yêu cầu. Vui lòng chờ người cho thuê phản hồi.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    doSendRentRequest(user);
+                });
+    }
+
+    /**
+     * Kiểm tra drivers/{sellerId}.isAvailable trước khi tạo order có tài xế.
+     * Nếu offline → hiện dialog, không tạo order.
+     * Nếu online  → kiểm tra spam rồi gọi doSendRentRequest / sendTripRequest.
+     */
+    private void checkDriverAvailabilityThenSend(FirebaseUser user) {
+        if (sellerId == null || sellerId.isEmpty()) {
+            // Không có sellerId → tiến hành bình thường
+            proceedSendAfterAvailabilityCheck(user);
+            return;
+        }
+        db.collection("drivers").document(sellerId).get()
+                .addOnSuccessListener(doc -> {
+                    // Nếu document không tồn tại hoặc isAvailable == null → coi là online
+                    boolean available = !doc.exists()
+                            || !doc.contains("isAvailable")
+                            || Boolean.TRUE.equals(doc.getBoolean("isAvailable"));
+                    if (!available) {
+                        new android.app.AlertDialog.Builder(this)
+                                .setTitle("Tài xế không sẵn sàng")
+                                .setMessage("Tài xế hiện đang offline hoặc tạm thời không nhận chuyến.\n\nVui lòng chọn tài xế khác.")
+                                .setPositiveButton("Đồng ý", null)
+                                .show();
+                        return;
+                    }
+                    proceedSendAfterAvailabilityCheck(user);
+                })
+                .addOnFailureListener(e -> {
+                    // Lỗi mạng → cho phép gửi để không block người dùng
+                    proceedSendAfterAvailabilityCheck(user);
+                });
+    }
+
+    private void proceedSendAfterAvailabilityCheck(FirebaseUser user) {
+        if (tripMode) { sendTripRequest(user); return; }
+        db.collection("orders")
+                .whereEqualTo("buyerId", user.getUid())
+                .whereEqualTo("carId",   carId != null ? carId : "")
+                .whereEqualTo("status",  "pending")
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (!snap.isEmpty()) {
+                        Toast.makeText(this,
+                                "⏳ Đã gửi yêu cầu. Vui lòng chờ tài xế phản hồi.",
                                 Toast.LENGTH_LONG).show();
                         return;
                     }
@@ -1108,16 +1195,29 @@ public class CarDetailActivity extends AppCompatActivity {
                     String buyerName = snap.getString("name");
                     if (buyerName == null || buyerName.isEmpty()) buyerName = "Khách hàng";
 
-                    ChatNotificationHelper.sendOrderNotification(
-                            CarDetailActivity.this,
-                            sellerId,
-                            buyer.getUid(),
-                            buyerName,
-                            car != null ? car.getName() : "",
-                            carId != null ? carId : "",   // ← thêm carId
-                            "order_sent",
-                            orderId
-                    );
+                    if (isDriverType(carType)) {
+                        ChatNotificationHelper.sendFcmOnlyOrderNotification(
+                                CarDetailActivity.this,
+                                sellerId,
+                                buyer.getUid(),
+                                buyerName,
+                                car != null ? car.getName() : "",
+                                carId != null ? carId : "",
+                                "order_sent",
+                                orderId
+                        );
+                    } else {
+                        ChatNotificationHelper.sendOrderNotification(
+                                CarDetailActivity.this,
+                                sellerId,
+                                buyer.getUid(),
+                                buyerName,
+                                car != null ? car.getName() : "",
+                                carId != null ? carId : "",
+                                "order_sent",
+                                orderId
+                        );
+                    }
                 });
     }
 
@@ -1150,4 +1250,42 @@ public class CarDetailActivity extends AppCompatActivity {
         finish();
         return true;
     }
+
+    private void loadDetailReviews(String driverId, String cId) {
+        db.collection("reviews")
+                .whereEqualTo("driverId", driverId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(5)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    reviewList.clear();
+                    for (QueryDocumentSnapshot d : snap) {
+                        Review r = d.toObject(Review.class);
+                        r.setReviewId(d.getId());
+                        reviewList.add(r);
+                    }
+                    reviewAdapter.notifyDataSetChanged();
+
+                    if (layoutReviewSection != null) {
+                        layoutReviewSection.setVisibility(View.VISIBLE);
+                    }
+                    if (tvDetailReviewsEmpty != null) {
+                        tvDetailReviewsEmpty.setVisibility(reviewList.isEmpty() ? View.VISIBLE : View.GONE);
+                    }
+
+                    // Tính avgRating từ drivers collection
+                    db.collection("drivers").document(driverId).get()
+                            .addOnSuccessListener(driverDoc -> {
+                                if (driverDoc.exists() && tvDetailAvgRating != null) {
+                                    Double avg = driverDoc.getDouble("avgRating");
+                                    Long count = driverDoc.getLong("reviewCount");
+                                    if (avg != null && count != null && count > 0) {
+                                        tvDetailAvgRating.setText(
+                                                String.format("⭐ %.1f  (%d đánh giá)", avg, count));
+                                    }
+                                }
+                            });
+                });
+    }
+
 }
