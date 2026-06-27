@@ -124,5 +124,8 @@
         <activity android:name=".ui.profile.view.PrivacyActivity" />
         <activity android:name=".ui.profile.view.SupportActivity" />
         <activity android:name=".ui.car.view.ReviewActivity" />
+        <activity
+            android:name=".ui.profile.view.ChangePasswordActivity"
+            android:exported="false" />
     </application>
 </manifest>
