@@ -197,6 +197,33 @@ public final class WalletRepository {
           .addOnFailureListener(e -> fail(cb, e.getMessage()));
     }
 
+    // ── Thanh toán hóa đơn bằng nguồn ngoài ví (VNPay) ───────────────────────
+
+    /**
+     * Khách đã trả {@code amount} qua VNPay (không trừ ví khách). App chia 85% về
+     * ví chủ xe và giữ 15% hoa hồng, ghi giao dịch để đối soát.
+     */
+    public static void payInvoiceExternal(@NonNull String ownerId, long amount,
+                                          @Nullable String orderId, @Nullable Callback cb) {
+        if (amount <= 0) { fail(cb, "Số tiền không hợp lệ"); return; }
+        long commission = commission(amount);   // 15%
+        long payout     = amount - commission;   // 85%
+
+        DocumentReference ownerRef = db().collection(COL_USERS).document(ownerId);
+        db().runTransaction(tr -> {
+            tr.set(ownerRef, single("balance", FieldValue.increment(payout)),
+                    com.google.firebase.firestore.SetOptions.merge());
+            tr.set(appWallet(), single("balance", FieldValue.increment(commission)),
+                    com.google.firebase.firestore.SetOptions.merge());
+            tr.set(db().collection(COL_TRANSACTIONS).document(),
+                    log(TYPE_PAYOUT, payout, null, ownerId, orderId, "Thanh toán hóa đơn thuê (VNPay)"));
+            tr.set(db().collection(COL_TRANSACTIONS).document(),
+                    log(TYPE_COMMISSION, commission, null, null, orderId, "Hoa hồng hóa đơn thuê (VNPay)"));
+            return null;
+        }).addOnSuccessListener(v -> ok(cb))
+          .addOnFailureListener(e -> fail(cb, e.getMessage()));
+    }
+
     // ── Hoàn cọc (huỷ đơn) ───────────────────────────────────────────────────
 
     /** Hoàn 100% tiền cọc về ví khách khi đơn bị huỷ trước lúc hoàn thành. */

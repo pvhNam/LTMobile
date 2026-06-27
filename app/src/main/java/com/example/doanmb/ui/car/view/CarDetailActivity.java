@@ -72,6 +72,18 @@ public class CarDetailActivity extends AppCompatActivity {
     private String sellerName = "";
     private long walletBalance = 0L;
 
+    // Phương thức thanh toán: "cash" | "vnpay" | "wallet"
+    private com.google.android.material.button.MaterialButtonToggleGroup togglePaymentMethod;
+    private TextView tvPaymentMethodHint;
+    private String paymentMethod = "cash";
+
+    // Bảng "Đặt thuê xe": bấm CTA mới trượt lên (panel + animation, không dùng BottomSheetBehavior)
+    private Button btnOpenRentSheet;
+    private View layoutRentContact;   // hàng Gọi điện / Nhắn tin (ngoài sheet)
+    private View sheetRent;
+    private View rentScrim;
+    private boolean rentSheetOpen = false;
+
     // Đặt theo ngày / theo chuyến (xe có tài xế)
     private com.google.android.material.button.MaterialButtonToggleGroup toggleBookMode;
     private View layoutDayFields, layoutTripFields;
@@ -218,6 +230,102 @@ public class CarDetailActivity extends AppCompatActivity {
         layoutTripFields= findViewById(R.id.layout_trip_fields);
         btnPickOnMap    = findViewById(R.id.btnPickOnMap);
         tvTripSummary   = findViewById(R.id.tvTripSummary);
+
+        togglePaymentMethod = findViewById(R.id.toggle_payment_method);
+        tvPaymentMethodHint = findViewById(R.id.tv_payment_method_hint);
+        setupPaymentMethod();
+
+        btnOpenRentSheet  = findViewById(R.id.btnOpenRentSheet);
+        layoutRentContact = findViewById(R.id.layoutRentContact);
+        sheetRent         = findViewById(R.id.sheet_rent);
+        rentScrim         = findViewById(R.id.rent_scrim);
+        View btnCloseRentSheet = findViewById(R.id.btn_close_rent_sheet);
+        if (btnOpenRentSheet != null) btnOpenRentSheet.setOnClickListener(v -> openRentSheet());
+        if (btnCloseRentSheet != null) btnCloseRentSheet.setOnClickListener(v -> closeRentSheet());
+        if (rentScrim != null) rentScrim.setOnClickListener(v -> closeRentSheet());
+    }
+
+    /** Trượt bảng thuê xe lên từ đáy + làm mờ nền. */
+    private void openRentSheet() {
+        if (sheetRent == null || rentSheetOpen) return;
+        rentSheetOpen = true;
+
+        int offscreen = getResources().getDisplayMetrics().heightPixels;
+        sheetRent.setTranslationY(offscreen);          // đặt ngoài màn trước khi hiện (tránh nháy)
+        sheetRent.setVisibility(View.VISIBLE);
+        sheetRent.post(() -> {
+            sheetRent.setTranslationY(sheetRent.getHeight());
+            sheetRent.animate().translationY(0f).setDuration(300)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        });
+
+        if (rentScrim != null) {
+            rentScrim.setAlpha(0f);
+            rentScrim.setVisibility(View.VISIBLE);
+            rentScrim.animate().alpha(1f).setDuration(300).start();
+        }
+    }
+
+    /** Trượt bảng thuê xe xuống + bỏ nền mờ. */
+    private void closeRentSheet() {
+        rentSheetOpen = false;
+        if (sheetRent == null || sheetRent.getVisibility() != View.VISIBLE) return;
+
+        float target = sheetRent.getHeight() > 0
+                ? sheetRent.getHeight()
+                : getResources().getDisplayMetrics().heightPixels;
+        sheetRent.animate().translationY(target).setDuration(220)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> sheetRent.setVisibility(View.GONE)).start();
+
+        if (rentScrim != null) {
+            rentScrim.animate().alpha(0f).setDuration(220)
+                    .withEndAction(() -> rentScrim.setVisibility(View.GONE)).start();
+        }
+    }
+
+    private boolean isRentSheetOpen() {
+        return rentSheetOpen;
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isRentSheetOpen()) { closeRentSheet(); return; }
+        super.onBackPressed();
+    }
+
+    /** Bộ chọn phương thức thanh toán cho đơn thuê: mặc định tiền mặt. */
+    private void setupPaymentMethod() {
+        if (togglePaymentMethod == null) return;
+        if (togglePaymentMethod.getCheckedButtonId() == View.NO_ID) {
+            togglePaymentMethod.check(R.id.btn_pay_cash);
+        }
+        applyPaymentMethod(togglePaymentMethod.getCheckedButtonId());
+        togglePaymentMethod.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) applyPaymentMethod(checkedId);
+        });
+    }
+
+    private void applyPaymentMethod(int checkedId) {
+        if (checkedId == R.id.btn_pay_vnpay) {
+            paymentMethod = "vnpay";
+        } else if (checkedId == R.id.btn_pay_wallet) {
+            paymentMethod = "wallet";
+        } else {
+            paymentMethod = "cash";
+        }
+        if (tvPaymentMethodHint == null) return;
+        switch (paymentMethod) {
+            case "vnpay":
+                tvPaymentMethodHint.setText("Chuyển khoản qua VNPay khi thanh toán hóa đơn lúc trả xe.");
+                break;
+            case "wallet":
+                tvPaymentMethodHint.setText("Trừ trực tiếp vào số dư ví trong app khi thanh toán hóa đơn ("
+                        + money(walletBalance) + " đ khả dụng).");
+                break;
+            default:
+                tvPaymentMethodHint.setText("Trả tiền mặt cho chủ xe khi kết thúc chuyến.");
+        }
     }
 
     private void setupDetailHeader() {
@@ -426,6 +534,8 @@ public class CarDetailActivity extends AppCompatActivity {
                         Double b = doc.getDouble("balance");
                         walletBalance = b != null ? Math.round(b) : 0L;
                         updateDepositInfo();
+                        if (togglePaymentMethod != null)
+                            applyPaymentMethod(togglePaymentMethod.getCheckedButtonId());
                     });
         }
         if (etRentDays != null) {
@@ -650,7 +760,9 @@ public class CarDetailActivity extends AppCompatActivity {
 
         if (isOwner) {
             layoutBuyForm.setVisibility(View.GONE);
-            layoutRentForm.setVisibility(View.GONE);
+            if (btnOpenRentSheet != null) btnOpenRentSheet.setVisibility(View.GONE);
+            if (layoutRentContact != null) layoutRentContact.setVisibility(View.GONE);
+            closeRentSheet();
             if (tvReportCar != null) tvReportCar.setVisibility(View.GONE);
             applyTypeBadge(driver, rental);
             if (tvOwnerNote != null) tvOwnerNote.setVisibility(View.VISIBLE);
@@ -677,11 +789,14 @@ public class CarDetailActivity extends AppCompatActivity {
 
         if (driver || rental) {
             layoutBuyForm.setVisibility(View.GONE);
-            layoutRentForm.setVisibility(View.VISIBLE);
+            if (btnOpenRentSheet != null) btnOpenRentSheet.setVisibility(View.VISIBLE);
+            if (layoutRentContact != null) layoutRentContact.setVisibility(View.VISIBLE);
             configureBookMode(driver);
         } else {
             layoutBuyForm.setVisibility(View.VISIBLE);
-            layoutRentForm.setVisibility(View.GONE);
+            if (btnOpenRentSheet != null) btnOpenRentSheet.setVisibility(View.GONE);
+            if (layoutRentContact != null) layoutRentContact.setVisibility(View.GONE);
+            closeRentSheet();
         }
     }
 
@@ -1094,7 +1209,7 @@ public class CarDetailActivity extends AppCompatActivity {
         order.put("note",         etRenterNote.getText().toString().trim());
         order.put("totalAmount",  total);
         order.put("depositAmount", 0L);
-        order.put("paymentMethod", "cash");
+        order.put("paymentMethod", paymentMethod);
         order.put("depositStatus", "none");
         order.put("status",       "pending");
         order.put("createdAt",    com.google.firebase.Timestamp.now());
@@ -1103,6 +1218,7 @@ public class CarDetailActivity extends AppCompatActivity {
         db.collection("orders").add(order)
                 .addOnSuccessListener(ref -> {
                     btnSendRentRequest.setEnabled(true);
+                    closeRentSheet();
                     Toast.makeText(this, "✅ Gửi yêu cầu thuê xe thành công!", Toast.LENGTH_LONG).show();
 
                     // ── Thông báo cho người cho thuê ─────────────────────
@@ -1164,7 +1280,7 @@ public class CarDetailActivity extends AppCompatActivity {
         order.put("note",         tripNote);
         order.put("totalAmount",  total);
         order.put("depositAmount", 0L);
-        order.put("paymentMethod", "cash");
+        order.put("paymentMethod", paymentMethod);
         order.put("depositStatus", "none");
         order.put("status",       "pending");
         order.put("createdAt",    com.google.firebase.Timestamp.now());
@@ -1173,6 +1289,7 @@ public class CarDetailActivity extends AppCompatActivity {
         db.collection("orders").add(order)
                 .addOnSuccessListener(ref -> {
                     btnSendRentRequest.setEnabled(true);
+                    closeRentSheet();
                     Toast.makeText(this, "✅ Đã gửi yêu cầu đặt chuyến! Chờ tài xế xác nhận.",
                             Toast.LENGTH_LONG).show();
 

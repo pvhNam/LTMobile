@@ -1,17 +1,21 @@
 package com.example.doanmb.ui.car.view;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.doanmb.R;
 import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.data.repository.WalletRepository;
+import com.example.doanmb.ui.profile.view.VnpayPaymentActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -30,9 +34,23 @@ public class InvoiceActivity extends AppCompatActivity {
     private String sellerId;
     private String carId;
     private long invoiceTotal;
+    private String paymentMethod = "cash"; // cash | vnpay | wallet
 
     private TextView tvCar, tvOwner, tvRental, tvPenalty, tvTotal, tvReason, tvLateLabel;
     private MaterialButton btnPay;
+
+    // Nhận kết quả thanh toán VNPay
+    private final ActivityResultLauncher<Intent> vnpayLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                Intent data = result.getData();
+                if (result.getResultCode() == RESULT_OK && data != null
+                        && data.getBooleanExtra(VnpayPaymentActivity.EXTRA_SUCCESS, false)) {
+                    onVnpayPaid();
+                } else {
+                    btnPay.setEnabled(true);
+                    Toast.makeText(this, "Thanh toán VNPay chưa hoàn tất hoặc đã huỷ", Toast.LENGTH_SHORT).show();
+                }
+            });
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -82,6 +100,8 @@ public class InvoiceActivity extends AppCompatActivity {
             invoiceTotal     = total != null ? total : rental + penalty;
             String reason    = doc.getString("invoiceReason");
             String status    = doc.getString("status");
+            String method    = doc.getString("paymentMethod");
+            if (method != null && !method.isEmpty()) paymentMethod = method;
 
             tvCar.setText(carName != null ? carName : "Xe");
             tvOwner.setText("Chủ xe: " + (ownerName != null && !ownerName.isEmpty() ? ownerName : "—"));
@@ -107,6 +127,7 @@ public class InvoiceActivity extends AppCompatActivity {
                 btnPay.setEnabled(false);
                 btnPay.setText("Đã thanh toán ✓");
             } else {
+                btnPay.setText(payButtonLabel());
                 btnPay.setOnClickListener(v -> pay());
             }
         }).addOnFailureListener(e -> {
@@ -120,49 +141,53 @@ public class InvoiceActivity extends AppCompatActivity {
         if (user == null) { Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show(); return; }
         btnPay.setEnabled(false);
 
-        // Đảm bảo có đúng uid chủ xe trước khi trả tiền (lấy từ xe nếu đơn thiếu sellerId)
-        if (sellerId != null && !sellerId.isEmpty()) {
-            doPay(user);
-        } else if (carId != null && !carId.isEmpty()) {
-            db.collection("cars").document(carId).get().addOnSuccessListener(carDoc -> {
-                String owner = carDoc != null && carDoc.exists() ? carDoc.getString("sellerId") : null;
-                if (owner == null || owner.isEmpty()) owner = carDoc != null ? carDoc.getString("userId") : null;
-                if (owner != null && !owner.isEmpty()) {
-                    sellerId = owner;
-                    doPay(user);
-                } else {
-                    btnPay.setEnabled(true);
-                    Toast.makeText(this, "Không xác định được chủ xe để chuyển tiền", Toast.LENGTH_SHORT).show();
-                }
-            }).addOnFailureListener(e -> {
-                btnPay.setEnabled(true);
-                Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            });
-        } else {
+        // Tiền mặt: trả trực tiếp cho chủ xe, app không chuyển tiền → chỉ ghi nhận hoàn tất.
+        if ("cash".equals(paymentMethod)) {
+            markCompleted(user.getUid(), "✅ Đã xác nhận thanh toán tiền mặt cho chủ xe.");
+            return;
+        }
+
+        // VNPay / Ví đều cần uid chủ xe để chuyển tiền (lấy từ xe nếu đơn thiếu sellerId).
+        resolveOwnerThen(() -> doPay(user));
+    }
+
+    /** Bảo đảm có uid chủ xe rồi mới chạy {@code next} (tránh chuyển tiền sai người). */
+    private void resolveOwnerThen(Runnable next) {
+        if (sellerId != null && !sellerId.isEmpty()) { next.run(); return; }
+        if (carId == null || carId.isEmpty()) {
             btnPay.setEnabled(true);
             Toast.makeText(this, "Thiếu thông tin chủ xe", Toast.LENGTH_SHORT).show();
+            return;
         }
+        db.collection("cars").document(carId).get().addOnSuccessListener(carDoc -> {
+            String owner = carDoc != null && carDoc.exists() ? carDoc.getString("sellerId") : null;
+            if (owner == null || owner.isEmpty()) owner = carDoc != null ? carDoc.getString("userId") : null;
+            if (owner != null && !owner.isEmpty()) {
+                sellerId = owner;
+                next.run();
+            } else {
+                btnPay.setEnabled(true);
+                Toast.makeText(this, "Không xác định được chủ xe để chuyển tiền", Toast.LENGTH_SHORT).show();
+            }
+        }).addOnFailureListener(e -> {
+            btnPay.setEnabled(true);
+            Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void doPay(FirebaseUser user) {
+        if ("vnpay".equals(paymentMethod)) {
+            Intent i = new Intent(this, VnpayPaymentActivity.class);
+            i.putExtra(VnpayPaymentActivity.EXTRA_AMOUNT, invoiceTotal);
+            vnpayLauncher.launch(i);
+            return;
+        }
+
+        // Mặc định: thanh toán bằng ví → trừ ví khách, chia 85% chủ xe / 15% app.
         WalletRepository.payInvoice(user.getUid(), sellerId, invoiceTotal, orderId,
                 new WalletRepository.Callback() {
                     @Override public void onSuccess() {
-                        Map<String, Object> up = new HashMap<>();
-                        up.put("status", "completed");
-                        up.put("invoiceStatus", "paid");
-                        up.put("paidAt", Timestamp.now());
-                        db.collection("orders").document(orderId).update(up);
-                        // Xe thuê xong → kích hoạt lại để hiện trong danh sách, cho thuê tiếp
-                        if (carId != null && !carId.isEmpty()) {
-                            db.collection("cars").document(carId).update("status", "active");
-                        }
-                        notifyOwnerPaid(user.getUid());
-                        Toast.makeText(InvoiceActivity.this,
-                                "✅ Thanh toán thành công! Tiền đã chuyển cho chủ xe.",
-                                Toast.LENGTH_LONG).show();
-                        btnPay.setText("Đã thanh toán ✓");
-                        finish();
+                        markCompleted(user.getUid(), "✅ Thanh toán thành công! Tiền đã chuyển cho chủ xe.");
                     }
                     @Override public void onError(String message) {
                         btnPay.setEnabled(true);
@@ -171,6 +196,50 @@ public class InvoiceActivity extends AppCompatActivity {
                                 Toast.LENGTH_LONG).show();
                     }
                 });
+    }
+
+    /** VNPay báo trả thành công → chia 85% chủ xe / 15% app (tiền vào từ VNPay, không trừ ví khách). */
+    private void onVnpayPaid() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        final String myUid = user != null ? user.getUid() : "";
+        WalletRepository.payInvoiceExternal(sellerId, invoiceTotal, orderId,
+                new WalletRepository.Callback() {
+                    @Override public void onSuccess() {
+                        markCompleted(myUid, "✅ Thanh toán VNPay thành công! Tiền đã chuyển cho chủ xe.");
+                    }
+                    @Override public void onError(String message) {
+                        btnPay.setEnabled(true);
+                        Toast.makeText(InvoiceActivity.this,
+                                "❌ " + (message != null ? message : "Cập nhật thất bại"),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    /** Đánh dấu đơn đã hoàn tất, mở lại xe để cho thuê tiếp và báo chủ xe. */
+    private void markCompleted(String myUid, String successMessage) {
+        Map<String, Object> up = new HashMap<>();
+        up.put("status", "completed");
+        up.put("invoiceStatus", "paid");
+        up.put("paidAt", Timestamp.now());
+        db.collection("orders").document(orderId).update(up);
+        // Xe thuê xong → kích hoạt lại để hiện trong danh sách, cho thuê tiếp
+        if (carId != null && !carId.isEmpty()) {
+            db.collection("cars").document(carId).update("status", "active");
+        }
+        notifyOwnerPaid(myUid);
+        Toast.makeText(this, successMessage, Toast.LENGTH_LONG).show();
+        btnPay.setText("Đã thanh toán ✓");
+        finish();
+    }
+
+    /** Nhãn nút thanh toán theo phương thức đã chọn lúc đặt thuê. */
+    private String payButtonLabel() {
+        switch (paymentMethod) {
+            case "vnpay":  return "Chuyển khoản VNPay " + money(invoiceTotal);
+            case "wallet": return "Thanh toán bằng ví " + money(invoiceTotal);
+            default:        return "Xác nhận đã trả tiền mặt " + money(invoiceTotal);
+        }
     }
 
     /** Báo cho chủ xe biết khách đã thanh toán hóa đơn. */
