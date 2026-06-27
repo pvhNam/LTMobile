@@ -1,11 +1,13 @@
 package com.example.doanmb.ui.car.view;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,6 +24,8 @@ import com.example.doanmb.ui.car.adapter.ProfileCarAdapter;
 import com.example.doanmb.ui.car.adapter.RequestAdapter;
 import com.example.doanmb.core.helper.ChatNotificationHelper;
 import com.example.doanmb.data.model.Car;
+import com.example.doanmb.data.repository.WalletRepository;
+import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -54,9 +58,14 @@ public class ManageFragment extends Fragment {
     private List<Map<String, Object>> orderList = new ArrayList<>();
     private List<String> orderIds = new ArrayList<>();
 
+    // Hai nguồn: đơn NHẬN ĐƯỢC (mình là chủ xe) và đơn MÌNH GỬI ĐI (mình đi thuê) — gộp chung 1 danh sách
+    private final Map<String, Map<String, Object>> incomingOrders = new java.util.LinkedHashMap<>();
+    private final Map<String, Map<String, Object>> outgoingOrders = new java.util.LinkedHashMap<>();
+
     private FirebaseFirestore db;
     private String currentUserId;
     private ListenerRegistration requestsListener; // lưu lại để hủy khi fragment destroy
+    private ListenerRegistration outgoingListener; // listener đơn mình gửi đi
     private boolean usingCarIdFallback = false;    // tránh gọi loadRequestsByCarId() nhiều lần
 
     @Nullable
@@ -133,17 +142,36 @@ public class ManageFragment extends Fragment {
         myPostsAdapter = new ProfileCarAdapter(myCarList, this::openCarDetail);
         rvMyPosts.setAdapter(myPostsAdapter);
 
-        // Tab 2: Yêu cầu
+        // Tab 2: Yêu cầu (gồm đơn nhận được + đơn mình gửi đi)
         rvRequests.setLayoutManager(new LinearLayoutManager(getContext()));
-        requestAdapter = new RequestAdapter(orderList, orderIds, new RequestAdapter.OnActionListener() {
+        requestAdapter = new RequestAdapter(orderList, orderIds, currentUserId,
+                new RequestAdapter.OnActionListener() {
             @Override
             public void onConfirm(String orderId, String carId, Map<String, Object> order) {
                 confirmRequest(orderId, carId);
             }
-
             @Override
             public void onReject(String orderId, String carId) {
                 rejectRequest(orderId, carId);
+            }
+            @Override
+            public void onMarkReturned(String orderId, Map<String, Object> order) {
+                markReturned(orderId, order);
+            }
+            @Override
+            public void onCancelOwn(String orderId, Map<String, Object> order) {
+                cancelOwnOrder(orderId, order);
+            }
+            @Override
+            public void onExtend(String orderId, Map<String, Object> order) {
+                extendOrder(orderId, order);
+            }
+            @Override
+            public void onViewInvoice(String orderId, Map<String, Object> order) {
+                if (getActivity() == null) return;
+                Intent i = new Intent(getActivity(), InvoiceActivity.class);
+                i.putExtra("ORDER_ID", orderId);
+                startActivity(i);
             }
         });
         rvRequests.setAdapter(requestAdapter);
@@ -198,72 +226,64 @@ public class ManageFragment extends Fragment {
                 });
     }
 
-    // Load yêu cầu mua/thuê xe của mình — real-time
+    // Load yêu cầu — gồm đơn NHẬN ĐƯỢC (sellerId==mình) và đơn MÌNH GỬI ĐI (buyerId==mình), real-time
     private void loadRequests() {
-        // Hủy listener cũ nếu có
-        if (requestsListener != null) {
-            requestsListener.remove();
-        }
+        if (requestsListener != null) requestsListener.remove();
+        if (outgoingListener != null) outgoingListener.remove();
         usingCarIdFallback = false;
+        incomingOrders.clear();
+        outgoingOrders.clear();
 
-        // Thử query theo sellerId trước (KHÔNG dùng orderBy để tránh cần composite index)
+        // (A) Đơn NHẬN ĐƯỢC — theo sellerId (fallback theo carId nếu trống)
         requestsListener = db.collection("orders")
                 .whereEqualTo("sellerId", currentUserId)
                 .addSnapshotListener((snapshots, error) -> {
                     if (error != null) {
                         android.util.Log.e("ManageFragment", "loadRequests sellerId error: " + error.getMessage());
-                        if (!usingCarIdFallback) {
-                            usingCarIdFallback = true;
-                            loadRequestsByCarId();
-                        }
+                        if (!usingCarIdFallback) { usingCarIdFallback = true; loadRequestsByCarId(); }
                         return;
                     }
                     if (snapshots == null || !isAdded() || getActivity() == null) return;
 
-                    if (snapshots.isEmpty()) {
-                        // Không có sellerId → fallback real-time theo carId (chỉ 1 lần)
-                        if (!usingCarIdFallback) {
-                            usingCarIdFallback = true;
-                            loadRequestsByCarId();
-                        }
+                    if (snapshots.isEmpty() && !usingCarIdFallback) {
+                        usingCarIdFallback = true;
+                        loadRequestsByCarId();
                         return;
                     }
-
-                    // Có data theo sellerId → dùng kết quả này
-                    usingCarIdFallback = false;
-                    orderList.clear();
-                    orderIds.clear();
-                    for (QueryDocumentSnapshot doc : snapshots) {
-                        orderList.add(doc.getData());
-                        orderIds.add(doc.getId());
+                    if (!usingCarIdFallback) {
+                        incomingOrders.clear();
+                        for (QueryDocumentSnapshot doc : snapshots) incomingOrders.put(doc.getId(), doc.getData());
+                        rebuildRequestList();
                     }
-                    sortOrdersByCreatedAt(); // sort trong bộ nhớ thay vì orderBy Firestore
-                    updateRequestsUI();
+                });
+
+        // (B) Đơn MÌNH GỬI ĐI — theo buyerId
+        outgoingListener = db.collection("orders")
+                .whereEqualTo("buyerId", currentUserId)
+                .addSnapshotListener((snapshots, error) -> {
+                    if (error != null) {
+                        android.util.Log.e("ManageFragment", "loadRequests buyerId error: " + error.getMessage());
+                        return;
+                    }
+                    if (snapshots == null || !isAdded() || getActivity() == null) return;
+                    outgoingOrders.clear();
+                    for (QueryDocumentSnapshot doc : snapshots) outgoingOrders.put(doc.getId(), doc.getData());
+                    rebuildRequestList();
                 });
     }
 
-    // Load yêu cầu dựa trên các carId của mình — real-time
+    // Fallback: đơn nhận được dựa trên các carId của mình — real-time
     private void loadRequestsByCarId() {
         db.collection("cars")
                 .whereEqualTo("userId", currentUserId)
                 .get()
                 .addOnSuccessListener(carSnapshots -> {
                     List<String> myCarIds = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : carSnapshots) {
-                        myCarIds.add(doc.getId());
-                    }
+                    for (QueryDocumentSnapshot doc : carSnapshots) myCarIds.add(doc.getId());
 
-                    if (myCarIds.isEmpty()) {
-                        updateRequestsUI();
-                        return;
-                    }
+                    if (myCarIds.isEmpty()) { rebuildRequestList(); return; }
 
-                    // Hủy listener sellerId và thay bằng listener real-time theo carId
-                    // KHÔNG dùng orderBy để tránh cần composite index
-                    if (requestsListener != null) {
-                        requestsListener.remove();
-                    }
-
+                    if (requestsListener != null) requestsListener.remove();
                     requestsListener = db.collection("orders")
                             .whereIn("carId", myCarIds)
                             .addSnapshotListener((orderSnapshots, error) -> {
@@ -272,15 +292,9 @@ public class ManageFragment extends Fragment {
                                     return;
                                 }
                                 if (orderSnapshots == null || !isAdded() || getActivity() == null) return;
-
-                                orderList.clear();
-                                orderIds.clear();
-                                for (QueryDocumentSnapshot doc : orderSnapshots) {
-                                    orderList.add(doc.getData());
-                                    orderIds.add(doc.getId());
-                                }
-                                sortOrdersByCreatedAt(); // sort trong bộ nhớ thay vì orderBy Firestore
-                                updateRequestsUI();
+                                incomingOrders.clear();
+                                for (QueryDocumentSnapshot doc : orderSnapshots) incomingOrders.put(doc.getId(), doc.getData());
+                                rebuildRequestList();
                             });
                 })
                 .addOnFailureListener(e ->
@@ -288,12 +302,15 @@ public class ManageFragment extends Fragment {
                 );
     }
 
-    // Sắp xếp orderList + orderIds theo createdAt giảm dần (mới nhất lên đầu)
-    // Dùng sort trong bộ nhớ thay vì orderBy Firestore để không cần composite index
-    private void sortOrdersByCreatedAt() {
+    // Gộp đơn nhận + đơn gửi (loại trùng theo orderId), sort theo createdAt giảm dần
+    private void rebuildRequestList() {
+        Map<String, Map<String, Object>> merged = new java.util.LinkedHashMap<>();
+        merged.putAll(incomingOrders);
+        merged.putAll(outgoingOrders);
+
         List<AbstractMap.SimpleEntry<String, Map<String, Object>>> paired = new ArrayList<>();
-        for (int i = 0; i < orderList.size(); i++) {
-            paired.add(new AbstractMap.SimpleEntry<>(orderIds.get(i), orderList.get(i)));
+        for (Map.Entry<String, Map<String, Object>> e : merged.entrySet()) {
+            paired.add(new AbstractMap.SimpleEntry<>(e.getKey(), e.getValue()));
         }
         paired.sort((a, b) -> {
             com.google.firebase.Timestamp ta = (com.google.firebase.Timestamp) a.getValue().get("createdAt");
@@ -309,6 +326,7 @@ public class ManageFragment extends Fragment {
             orderIds.add(entry.getKey());
             orderList.add(entry.getValue());
         }
+        updateRequestsUI();
     }
 
     private void updateRequestsUI() {
@@ -380,6 +398,185 @@ public class ManageFragment extends Fragment {
         // ───────────────────────────────────────────────────────────────────────
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  CHỦ XE: xác nhận khách đã trả xe → tính phạt trễ (nếu có) → gửi hóa đơn
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void markReturned(String orderId, Map<String, Object> order) {
+        long days        = parseIntSafe((String) order.get("days"));
+        long total       = toLong(order.get("totalAmount"));
+        long pricePerDay = days > 0 ? total / days : total;
+        long lateDays    = computeLateDays(order);
+        long penalty     = 0;
+        if (lateDays >= 1) {
+            penalty = Math.round(1.5 * pricePerDay) + (lateDays - 1) * Math.round(2.0 * pricePerDay);
+        }
+        long invoiceTotal = total + penalty;
+        final String reason = lateDays > 0
+                ? "Trả xe trễ " + lateDays + " ngày. Hóa đơn gồm tiền thuê và phí phạt (150% ngày đầu, 200% các ngày sau)."
+                : "Thanh toán tiền thuê xe khi kết thúc chuyến.";
+
+        final long fPenalty = penalty, fLate = lateDays, fInvoice = invoiceTotal, fTotal = total;
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Xác nhận đã trả xe")
+                .setMessage((lateDays > 0
+                        ? "⚠️ Khách trả TRỄ " + lateDays + " ngày.\nPhí phạt: " + money(fPenalty) + "\n"
+                        : "Khách trả đúng hạn.\n")
+                        + "Tiền thuê: " + money(fTotal) + "\nTổng hóa đơn: " + money(fInvoice))
+                .setPositiveButton("Gửi hóa đơn", (d, w) -> {
+                    Map<String, Object> up = new HashMap<>();
+                    up.put("status", "awaiting_payment");
+                    up.put("returnedAt", Timestamp.now());
+                    up.put("lateDays", fLate);
+                    up.put("penaltyAmount", fPenalty);
+                    up.put("invoiceTotal", fInvoice);
+                    up.put("invoiceStatus", "unpaid");
+                    up.put("invoiceReason", reason);
+                    db.collection("orders").document(orderId).update(up);
+
+                    String carId = (String) order.get("carId");
+                    if (carId != null && !carId.isEmpty()) {
+                        db.collection("cars").document(carId).update("status", "active");
+                    }
+                    String buyerId = (String) order.get("buyerId");
+                    writeNotification(buyerId, "invoice", "Hóa đơn thuê xe",
+                            "Vui lòng thanh toán " + money(fInvoice)
+                                    + (fLate > 0 ? (" (trễ " + fLate + " ngày)") : ""), orderId);
+                    if (getContext() != null)
+                        Toast.makeText(getContext(), "✅ Đã gửi hóa đơn cho khách.", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Đóng", null)
+                .show();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  KHÁCH: hủy yêu cầu thuê của chính mình
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void cancelOwnOrder(String orderId, Map<String, Object> order) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Hủy yêu cầu thuê")
+                .setMessage("Bạn chắc chắn muốn hủy yêu cầu thuê xe này?")
+                .setPositiveButton("Hủy yêu cầu", (d, w) -> {
+                    db.collection("orders").document(orderId).update("status", "rejected");
+
+                    // Hoàn cọc nếu đã giữ
+                    String depositStatus = (String) order.get("depositStatus");
+                    long deposit  = toLong(order.get("depositAmount"));
+                    String buyerId = (String) order.get("buyerId");
+                    if ("held".equals(depositStatus) && deposit > 0 && buyerId != null) {
+                        WalletRepository.refund(buyerId, deposit, orderId, null);
+                    }
+                    // Trả xe về active nếu đang giữ chỗ
+                    String carId = (String) order.get("carId");
+                    if (carId != null && !carId.isEmpty()) {
+                        db.collection("cars").document(carId).update("status", "active");
+                    }
+                    String sellerId = (String) order.get("sellerId");
+                    Object carName = order.get("carName");
+                    writeNotification(sellerId, "order_rejected", "Khách đã hủy",
+                            "Khách đã hủy yêu cầu thuê " + (carName != null ? carName : "xe"), orderId);
+                    if (getContext() != null)
+                        Toast.makeText(getContext(), "Đã hủy yêu cầu.", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Đóng", null)
+                .show();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  KHÁCH: xin gia hạn thuê thêm ngày → cộng ngày + báo chủ xe
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void extendOrder(String orderId, Map<String, Object> order) {
+        final EditText input = new EditText(requireContext());
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setHint("Số ngày muốn thuê thêm");
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Gia hạn thuê xe")
+                .setMessage("Nhập số ngày muốn thuê thêm. Yêu cầu sẽ được gửi đến chủ xe.")
+                .setView(input)
+                .setPositiveButton("Gửi", (d, w) -> {
+                    int extra = parseIntSafe(input.getText().toString());
+                    if (extra <= 0) {
+                        if (getContext() != null)
+                            Toast.makeText(getContext(), "Số ngày không hợp lệ", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    int oldDays = parseIntSafe((String) order.get("days"));
+                    int newDays = oldDays + extra;
+                    Map<String, Object> up = new HashMap<>();
+                    up.put("days", String.valueOf(newDays));
+                    up.put("extendRequested", true);
+                    db.collection("orders").document(orderId).update(up);
+
+                    String sellerId = (String) order.get("sellerId");
+                    Object carName = order.get("carName");
+                    writeNotification(sellerId, "order_sent", "Yêu cầu gia hạn",
+                            "Khách xin gia hạn thêm " + extra + " ngày (tổng " + newDays + " ngày) cho "
+                                    + (carName != null ? carName : "xe"), orderId);
+                    if (getContext() != null)
+                        Toast.makeText(getContext(), "✅ Đã gửi yêu cầu gia hạn cho chủ xe.", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    // Số ngày trễ = (hôm nay) - (ngày bắt đầu + số ngày thuê), làm tròn lên; 0 nếu chưa trễ
+    private long computeLateDays(Map<String, Object> order) {
+        int days = parseIntSafe((String) order.get("days"));
+        long dueMillis = parseStartMillis(order) + (long) days * 86_400_000L;
+        long now = System.currentTimeMillis();
+        if (now <= dueMillis) return 0;
+        return (now - dueMillis + 86_400_000L - 1) / 86_400_000L;
+    }
+
+    private long parseStartMillis(Map<String, Object> order) {
+        String s = (String) order.get("startDate");
+        if (s != null && !s.trim().isEmpty()) {
+            String[] fmts = {"dd/MM/yyyy", "yyyy-MM-dd", "dd-MM-yyyy"};
+            for (String f : fmts) {
+                try {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat(f, java.util.Locale.US);
+                    sdf.setLenient(false);
+                    java.util.Date dt = sdf.parse(s.trim());
+                    if (dt != null) return dt.getTime();
+                } catch (Exception ignore) { }
+            }
+        }
+        Object c = order.get("createdAt");
+        if (c instanceof Timestamp) return ((Timestamp) c).toDate().getTime();
+        return System.currentTimeMillis();
+    }
+
+    private void writeNotification(String userId, String type, String title, String body, String orderId) {
+        if (userId == null || userId.isEmpty()) return;
+        FirebaseUser me = FirebaseAuth.getInstance().getCurrentUser();
+        Map<String, Object> n = new HashMap<>();
+        n.put("userId", userId);
+        n.put("senderId", me != null ? me.getUid() : "");
+        n.put("type", type);
+        n.put("title", title);
+        n.put("body", body);
+        n.put("orderId", orderId);
+        n.put("read", false);
+        n.put("createdAt", Timestamp.now());
+        db.collection("notifications").add(n);
+    }
+
+    private int parseIntSafe(String s) {
+        if (s == null) return 0;
+        try { return Integer.parseInt(s.trim().replaceAll("[^0-9]", "")); } catch (Exception e) { return 0; }
+    }
+
+    private long toLong(Object o) {
+        if (o instanceof Number) return ((Number) o).longValue();
+        if (o instanceof String) {
+            try { return Long.parseLong(((String) o).replaceAll("[^0-9]", "")); } catch (Exception e) { return 0; }
+        }
+        return 0;
+    }
+
+    private String money(long v) {
+        return String.format(java.util.Locale.US, "%,d", v).replace(',', '.') + " đ";
+    }
+
     private void notifyBuyerOrderStatus(String orderId, String type) {
         db.collection("orders").document(orderId).get()
                 .addOnSuccessListener(snap -> {
@@ -429,6 +626,10 @@ public class ManageFragment extends Fragment {
         if (requestsListener != null) {
             requestsListener.remove();
             requestsListener = null;
+        }
+        if (outgoingListener != null) {
+            outgoingListener.remove();
+            outgoingListener = null;
         }
     }
 }

@@ -270,7 +270,10 @@
                         <EditText android:id="@+id/etRentStartDate"
                             android:layout_width="match_parent" android:layout_height="50dp"
                             android:layout_marginBottom="12dp" android:background="@drawable/bg_search"
-                            android:padding="10dp" android:hint="Ví dụ: 20/05/2026"/>
+                            android:padding="10dp" android:hint="Chọn ngày nhận xe"
+                            android:focusable="false" android:clickable="true"
+                            android:cursorVisible="false" android:inputType="none"
+                            android:drawableEnd="@android:drawable/ic_menu_my_calendar"/>
 
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                             android:text="Số ngày thuê *" android:textColor="@color/color_on_surface_secondary" android:textSize="13sp" android:layout_marginBottom="4dp"/>

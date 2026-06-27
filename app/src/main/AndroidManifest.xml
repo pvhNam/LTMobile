@@ -76,6 +76,7 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity android:name="com.example.doanmb.ui.car.view.CarDetailActivity" android:exported="false" />
+        <activity android:name="com.example.doanmb.ui.car.view.InvoiceActivity" android:exported="false" />
         <activity android:name="com.example.doanmb.ui.car.view.MapPickerActivity" android:exported="false" />
         <activity android:name="com.example.doanmb.ui.car.view.FavoriteCarsActivity" android:exported="false" />
         <activity android:name="com.example.doanmb.ui.auth.view.LoginActivity" />
