@@ -36,6 +36,7 @@ public final class WalletRepository {
 
     public static final double DEPOSIT_RATE    = 0.50; // % tổng đơn phải đặt cọc qua ví
     public static final double COMMISSION_RATE = 0.15; // % hoa hồng app lấy trên tiền cọc
+    public static final int    LONG_BOOKING_MIN_DAYS = 2; // thuê từ mấy ngày trở lên thì bắt buộc đặt cọc
 
     private static final String COL_USERS        = "users";
     private static final String COL_TRANSACTIONS = "transactions";
@@ -124,6 +125,9 @@ public final class WalletRepository {
 
     public static long deposit(long totalAmount)    { return Math.round(totalAmount * DEPOSIT_RATE); }
     public static long commission(long depositAmount){ return Math.round(depositAmount * COMMISSION_RATE); }
+
+    /** Đơn thuê từ {@link #LONG_BOOKING_MIN_DAYS} ngày trở lên thì bắt buộc đặt cọc giữ xe. */
+    public static boolean requiresDeposit(int days) { return days >= LONG_BOOKING_MIN_DAYS; }
 
     // ── Nạp tiền (admin -> user) ────────────────────────────────────────────
 

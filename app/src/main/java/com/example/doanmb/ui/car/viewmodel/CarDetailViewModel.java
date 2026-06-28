@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.doanmb.data.model.Car;
+import com.example.doanmb.data.model.Review;
 import com.example.doanmb.data.repository.CarRepository;
 import com.example.doanmb.data.repository.FavoriteRepository;
 import com.example.doanmb.data.repository.OrderRepository;
@@ -89,6 +90,9 @@ public class CarDetailViewModel extends ViewModel {
     private final MutableLiveData<OrderSent> orderSent = new MutableLiveData<>();
     private final MutableLiveData<PostEdited> postEdited = new MutableLiveData<>();
     private final MutableLiveData<Boolean> finishEvent = new MutableLiveData<>();
+    private final MutableLiveData<List<Review>> reviews = new MutableLiveData<>();
+    private final MutableLiveData<String> ratingText = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> showReviews = new MutableLiveData<>(false);
 
     public LiveData<CarDetail> getDetail() { return detail; }
     public LiveData<Contact> getContact() { return contact; }
@@ -101,6 +105,9 @@ public class CarDetailViewModel extends ViewModel {
     public LiveData<OrderSent> getOrderSent() { return orderSent; }
     public LiveData<PostEdited> getPostEdited() { return postEdited; }
     public LiveData<Boolean> getFinishEvent() { return finishEvent; }
+    public LiveData<List<Review>> getReviews() { return reviews; }
+    public LiveData<String> getRatingText() { return ratingText; }
+    public LiveData<Boolean> getShowReviews() { return showReviews; }
 
     // ── Trạng thái nội bộ ───────────────────────────────────────────────────────
 
@@ -140,10 +147,24 @@ public class CarDetailViewModel extends ViewModel {
         } else {
             contact.setValue(new Contact(null, null));
             emitTypeInfo(carType);
+            loadDriverReviewsAndRating();
         }
 
         loadWalletBalance();
         loadFavorite();
+    }
+
+    /** Tải đánh giá + điểm trung bình của tài xế (chỉ với xe có tài xế). */
+    private void loadDriverReviewsAndRating() {
+        if (!isDriverType(carType) || sellerId == null || sellerId.isEmpty()) {
+            showReviews.setValue(false);
+            return;
+        }
+        showReviews.setValue(true);
+        CarRepository.loadDriverReviews(sellerId, reviews::setValue);
+        CarRepository.loadDriverRating(sellerId, (avg, count) -> {
+            if (count > 0) ratingText.setValue(String.format(Locale.US, "⭐ %.1f  (%d đánh giá)", avg, count));
+        });
     }
 
     // ── Tải dữ liệu ──────────────────────────────────────────────────────────────
@@ -183,6 +204,7 @@ public class CarDetailViewModel extends ViewModel {
                         sPhone != null && !sPhone.isEmpty() ? sPhone : currentContactPhone()));
 
                 emitTypeInfo(carType);
+                loadDriverReviewsAndRating();
             }
             @Override public void onError(String msg) { /* giữ nguyên dữ liệu sơ bộ từ intent */ }
         });
@@ -317,6 +339,21 @@ public class CarDetailViewModel extends ViewModel {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) { message.setValue("Vui lòng đăng nhập!"); return; }
 
+        // Xe có tài xế → kiểm tra tài xế đang online trước khi tạo đơn
+        if (isDriverType(carType) && sellerId != null && !sellerId.isEmpty()) {
+            CarRepository.loadDriverAvailability(sellerId, available -> {
+                if (!available) {
+                    message.setValue("Tài xế hiện offline hoặc tạm thời không nhận chuyến. Vui lòng chọn tài xế khác.");
+                    return;
+                }
+                proceedRent(user, form);
+            });
+        } else {
+            proceedRent(user, form);
+        }
+    }
+
+    private void proceedRent(FirebaseUser user, RentForm form) {
         if (form.tripMode) { sendTripRequest(user, form); return; }
 
         OrderRepository.hasPendingOrder(user.getUid(), carId, hasPending -> {
@@ -340,6 +377,14 @@ public class CarDetailViewModel extends ViewModel {
 
         long pricePerDay = parseMoney(car != null ? car.getPrice() : null);
         long total = pricePerDay * form.days;
+        boolean needDeposit = WalletRepository.requiresDeposit(form.days);
+        long deposit = needDeposit ? WalletRepository.deposit(total) : 0L;
+
+        if (needDeposit && currentWalletBalance() < deposit) {
+            message.setValue("Số dư ví không đủ để đặt cọc " + money(deposit)
+                    + " đ. Vui lòng nhờ admin nạp tiền.");
+            return;
+        }
 
         Map<String, Object> order = new HashMap<>();
         order.put("buyerId",      user.getUid());
@@ -356,18 +401,36 @@ public class CarDetailViewModel extends ViewModel {
         order.put("startDate",    form.startDate != null ? form.startDate.trim() : "");
         order.put("note",         form.note != null ? form.note.trim() : "");
         order.put("totalAmount",  total);
-        order.put("depositAmount", 0L);
+        order.put("depositAmount", deposit);
         order.put("paymentMethod", form.paymentMethod);
-        order.put("depositStatus", "none");
+        order.put("depositStatus", needDeposit ? "held" : "none");
         order.put("status",       "pending");
         order.put("createdAt",    Timestamp.now());
 
         sendEnabled.setValue(false);
         OrderRepository.createOrder(order, new OrderRepository.OnCreated() {
             @Override public void onCreated(String orderId) {
-                sendEnabled.setValue(true);
-                emitOrderSent(Kind.RENT, orderId, form.renterName, true,
-                        "✅ Gửi yêu cầu thuê xe thành công!");
+                if (!needDeposit) {
+                    sendEnabled.setValue(true);
+                    emitOrderSent(Kind.RENT, orderId, form.renterName, true,
+                            "✅ Gửi yêu cầu thuê xe thành công!");
+                    return;
+                }
+                // Thuê dài ngày → giữ cọc 50% (trừ ví khách) giống đơn mua.
+                WalletRepository.holdDeposit(user.getUid(), deposit, orderId,
+                        new WalletRepository.Callback() {
+                            @Override public void onSuccess() {
+                                walletBalance.setValue(currentWalletBalance() - deposit);
+                                sendEnabled.setValue(true);
+                                emitOrderSent(Kind.RENT, orderId, form.renterName, true,
+                                        "✅ Đặt xe thành công! Đã giữ cọc " + money(deposit) + " đ.");
+                            }
+                            @Override public void onError(String msg) {
+                                OrderRepository.deleteOrder(orderId);
+                                sendEnabled.setValue(true);
+                                message.setValue("Không giữ được cọc: " + msg);
+                            }
+                        });
             }
             @Override public void onError(String msg) {
                 sendEnabled.setValue(true);

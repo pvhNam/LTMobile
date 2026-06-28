@@ -4,8 +4,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.doanmb.data.model.Car;
+import com.example.doanmb.data.model.Review;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
@@ -41,6 +43,12 @@ public final class CarRepository {
     public interface OnResult { void onSuccess(); void onError(String message); }
 
     public interface OnCreated { void onCreated(String carId); void onError(String message); }
+
+    public interface OnReviews { void onLoaded(List<Review> reviews); }
+
+    public interface OnRating { void onLoaded(double avgRating, long reviewCount); }
+
+    public interface OnAvailable { void onResult(boolean available); }
 
     // ── Đọc ───────────────────────────────────────────────────────────────────
 
@@ -156,5 +164,56 @@ public final class CarRepository {
         db().collection(COL_REPORTS).add(report)
                 .addOnSuccessListener(ref -> cb.onSuccess())
                 .addOnFailureListener(e -> cb.onError(e.getMessage()));
+    }
+
+    // ── Đánh giá tài xế ───────────────────────────────────────────────────────
+
+    /** 5 đánh giá mới nhất của một tài xế (collection "reviews", lọc theo driverId). */
+    public static void loadDriverReviews(@Nullable String driverId, @NonNull OnReviews cb) {
+        if (driverId == null || driverId.isEmpty()) { cb.onLoaded(new ArrayList<>()); return; }
+        db().collection("reviews")
+                .whereEqualTo("driverId", driverId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(5)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    List<Review> list = new ArrayList<>();
+                    for (QueryDocumentSnapshot d : snap) {
+                        Review r = d.toObject(Review.class);
+                        r.setReviewId(d.getId());
+                        list.add(r);
+                    }
+                    cb.onLoaded(list);
+                })
+                .addOnFailureListener(e -> cb.onLoaded(new ArrayList<>()));
+    }
+
+    /** Điểm trung bình + số lượng đánh giá của tài xế (drivers/{id}). */
+    public static void loadDriverRating(@Nullable String driverId, @NonNull OnRating cb) {
+        if (driverId == null || driverId.isEmpty()) { cb.onLoaded(0, 0); return; }
+        db().collection("drivers").document(driverId).get()
+                .addOnSuccessListener(doc -> {
+                    if (doc == null || !doc.exists()) { cb.onLoaded(0, 0); return; }
+                    Double avg = doc.getDouble("avgRating");
+                    Long count = doc.getLong("reviewCount");
+                    cb.onLoaded(avg != null ? avg : 0, count != null ? count : 0);
+                })
+                .addOnFailureListener(e -> cb.onLoaded(0, 0));
+    }
+
+    /**
+     * Tài xế có đang nhận chuyến không (drivers/{id}.isAvailable). Coi là sẵn sàng nếu
+     * không có document / không có field / lỗi mạng — để không chặn người dùng.
+     */
+    public static void loadDriverAvailability(@Nullable String driverId, @NonNull OnAvailable cb) {
+        if (driverId == null || driverId.isEmpty()) { cb.onResult(true); return; }
+        db().collection("drivers").document(driverId).get()
+                .addOnSuccessListener(doc -> {
+                    boolean available = doc == null || !doc.exists()
+                            || !doc.contains("isAvailable")
+                            || Boolean.TRUE.equals(doc.getBoolean("isAvailable"));
+                    cb.onResult(available);
+                })
+                .addOnFailureListener(e -> cb.onResult(true));
     }
 }

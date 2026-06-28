@@ -32,8 +32,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.doanmb.R;
 import com.example.doanmb.core.service.OrderReminderService;
 import com.example.doanmb.ui.car.adapter.CarImageAdapter;
+import com.example.doanmb.ui.car.adapter.ReviewAdapter;
 import com.example.doanmb.ui.car.viewmodel.CarDetailViewModel;
 import com.example.doanmb.data.model.Car;
+import com.example.doanmb.data.model.Review;
+import com.example.doanmb.data.repository.WalletRepository;
 import com.example.doanmb.core.helper.ChatNotificationHelper;
 import com.example.doanmb.ui.chat.view.ChatDetailActivity;
 import com.example.doanmb.ui.auth.view.LoginActivity;
@@ -47,12 +50,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.example.doanmb.data.model.Review;
-import com.example.doanmb.ui.car.adapter.ReviewAdapter;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import java.util.ArrayList;
 
 public class CarDetailActivity extends AppCompatActivity {
 
@@ -76,6 +73,7 @@ public class CarDetailActivity extends AppCompatActivity {
     private Button btnSendRentRequest, btnCallRentSeller, btnChatRentSeller;
     private TextView tvDepositInfo;
     private long walletBalance = 0L;
+    private boolean datePickerShowing = false; // chống mở 2 hộp thoại lịch cùng lúc
 
     // Phương thức thanh toán: "cash" | "vnpay" | "wallet"
     private com.google.android.material.button.MaterialButtonToggleGroup togglePaymentMethod;
@@ -100,6 +98,13 @@ public class CarDetailActivity extends AppCompatActivity {
     private String tripPickup = "", tripDest = "";
     private double tripDistanceKm = 0d;
 
+    // Đánh giá tài xế
+    private View layoutReviewSection;
+    private TextView tvDetailAvgRating, tvDetailReviewsEmpty;
+    private RecyclerView rvDetailReviews;
+    private ReviewAdapter reviewAdapter;
+    private final List<Review> reviewList = new ArrayList<>();
+
     private final androidx.activity.result.ActivityResultLauncher<Intent> mapLauncher =
             registerForActivityResult(
                     new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
@@ -119,17 +124,6 @@ public class CarDetailActivity extends AppCompatActivity {
     private String carId, sellerId, carType;
 
     private CarDetailViewModel viewModel;
-    private String carStatus = "";
-
-    // Review section
-    private View layoutReviewSection;
-    private TextView tvDetailAvgRating;
-    private RecyclerView rvDetailReviews;
-    private TextView tvDetailReviewsEmpty;
-    private ReviewAdapter reviewAdapter;
-    private final List<Review> reviewList = new ArrayList<>();
-
-    private String statusBeforeHide = "";
 
     private NestedScrollView detailScroll;
     private View imageHero, headerDetail, btnBackFloat, floatTopBar;
@@ -235,11 +229,28 @@ public class CarDetailActivity extends AppCompatActivity {
         viewModel.getWalletBalance().observe(this, b -> {
             walletBalance = b != null ? b : 0L;
             if (togglePaymentMethod != null) applyPaymentMethod(togglePaymentMethod.getCheckedButtonId());
+            updateDepositInfo();
         });
 
         viewModel.getIsFavorite().observe(this, fav -> {
             isFav = Boolean.TRUE.equals(fav);
             updateFavoriteIcons();
+        });
+
+        // ── Đánh giá tài xế ──
+        viewModel.getShowReviews().observe(this, show -> {
+            if (layoutReviewSection != null)
+                layoutReviewSection.setVisibility(Boolean.TRUE.equals(show) ? View.VISIBLE : View.GONE);
+        });
+        viewModel.getReviews().observe(this, list -> {
+            reviewList.clear();
+            if (list != null) reviewList.addAll(list);
+            reviewAdapter.notifyDataSetChanged();
+            if (tvDetailReviewsEmpty != null)
+                tvDetailReviewsEmpty.setVisibility(reviewList.isEmpty() ? View.VISIBLE : View.GONE);
+        });
+        viewModel.getRatingText().observe(this, txt -> {
+            if (tvDetailAvgRating != null && txt != null) tvDetailAvgRating.setText(txt);
         });
 
         viewModel.getMessage().observe(this, msg -> {
@@ -336,17 +347,18 @@ public class CarDetailActivity extends AppCompatActivity {
         layoutDayFields = findViewById(R.id.layout_day_fields);
         layoutTripFields= findViewById(R.id.layout_trip_fields);
         btnPickOnMap    = findViewById(R.id.btnPickOnMap);
-        layoutReviewSection   = findViewById(R.id.layout_review_section);
-        tvDetailAvgRating     = findViewById(R.id.tv_detail_avg_rating);
-        rvDetailReviews       = findViewById(R.id.rv_detail_reviews);
-        tvDetailReviewsEmpty  = findViewById(R.id.tv_detail_reviews_empty);
+        tvTripSummary   = findViewById(R.id.tvTripSummary);
 
+        // Đánh giá
+        layoutReviewSection  = findViewById(R.id.layout_review_section);
+        tvDetailAvgRating    = findViewById(R.id.tv_detail_avg_rating);
+        rvDetailReviews      = findViewById(R.id.rv_detail_reviews);
+        tvDetailReviewsEmpty = findViewById(R.id.tv_detail_reviews_empty);
         reviewAdapter = new ReviewAdapter(reviewList);
         if (rvDetailReviews != null) {
             rvDetailReviews.setLayoutManager(new LinearLayoutManager(this));
             rvDetailReviews.setAdapter(reviewAdapter);
         }
-        tvTripSummary   = findViewById(R.id.tvTripSummary);
 
         togglePaymentMethod = findViewById(R.id.toggle_payment_method);
         tvPaymentMethodHint = findViewById(R.id.tv_payment_method_hint);
@@ -672,17 +684,27 @@ public class CarDetailActivity extends AppCompatActivity {
 
     private void updateDepositInfo() {
         if (tvDepositInfo == null) return;
-        long pricePerDay = parseMoney(car != null ? car.getPrice() : null);
+        long pricePerDayLocal = parseMoney(car != null ? car.getPrice() : null);
         int days = parseDays(etRentDays != null ? etRentDays.getText().toString() : "");
 
-        if (pricePerDay <= 0 || days <= 0) {
-            tvDepositInfo.setText("Nhập số ngày thuê để xem tổng tiền.");
+        if (pricePerDayLocal <= 0 || days <= 0) {
+            tvDepositInfo.setText("Nhập số ngày thuê để xem tiền cọc.\nSố dư ví: " + money(walletBalance) + " đ");
             return;
         }
 
-        long total = pricePerDay * days;
-        tvDepositInfo.setText("Tổng tiền thuê (" + days + " ngày): " + money(total)
-                + " đ\nThuê xe không cần đặt cọc, thanh toán khi nhận xe.");
+        long total = pricePerDayLocal * days;
+        StringBuilder sb = new StringBuilder();
+        sb.append("Tổng tiền thuê (").append(days).append(" ngày): ").append(money(total)).append(" đ\n");
+        if (WalletRepository.requiresDeposit(days)) {
+            long deposit = WalletRepository.deposit(total);
+            sb.append("Đặt cọc giữ xe (50%, trừ vào ví): ").append(money(deposit)).append(" đ\n");
+            sb.append("Số dư ví hiện tại: ").append(money(walletBalance)).append(" đ");
+            if (walletBalance < deposit) sb.append("\n⚠️ Số dư không đủ — vui lòng nhờ admin nạp tiền.");
+        } else {
+            sb.append("Đơn ngắn ngày: không cần đặt cọc, thanh toán khi nhận xe.\n");
+            sb.append("Số dư ví: ").append(money(walletBalance)).append(" đ");
+        }
+        tvDepositInfo.setText(sb.toString());
     }
 
     private static long parseMoney(String s) {
@@ -754,87 +776,9 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    private void loadCarDetail(String id) {
-        db.collection("cars").document(id).get()
-                .addOnSuccessListener(doc -> {
-                    if (!doc.exists()) return;
-
-                    String fuel      = doc.getString("fuel");
-                    String condition = doc.getString("condition");
-                    String type      = doc.getString("type");
-                    String sPhone    = doc.getString("sellerPhone");
-                    String sName     = doc.getString("sellerName");
-                    String imageUrl  = doc.getString("imageUrl");
-
-                    Long ppd = doc.getLong("pricePerDay");
-                    Long ppk = doc.getLong("pricePerKm");
-                    pricePerDay = ppd != null ? ppd : parseMoney(doc.getString("price"));
-                    pricePerKm  = ppk != null ? ppk : 0L;
-
-                    if (type != null) carType = type;
-                    String status = doc.getString("status");
-                    carStatus = status != null ? status : "";
-                    String prevStatus = doc.getString("statusBeforeHide");
-                    statusBeforeHide = prevStatus != null ? prevStatus : "";
-
-                    List<String> imgs = extractImageUrls(doc.get("imageUrls"));
-                    if (imgs.isEmpty() && imageUrl != null && !imageUrl.isEmpty()) {
-                        imgs.add(imageUrl);
-                    }
-                    if (!imgs.isEmpty()) {
-                        showImages(imgs);
-                        for (String u : imgs) ImageLoader.preload(getApplicationContext(), u);
-                    }
-
-                    if (fuel != null && !fuel.isEmpty()) {
-                        tvCarFuelBadge.setText(fuel);
-                        tvCarFuelBadge.setVisibility(View.VISIBLE);
-                    }
-
-                    if (condition != null && !condition.isEmpty()) {
-                        if (condition.contains("mới 100") || condition.equalsIgnoreCase("Xe mới 100%"))
-                            tvCarConditionBadge.setText("Xe mới");
-                        else
-                            tvCarConditionBadge.setText("Xe cũ");
-                        tvCarConditionBadge.setVisibility(View.VISIBLE);
-                    }
-
-                    if (sName != null && !sName.isEmpty()) {
-                        sellerName = sName;
-                        tvSellerName.setText("👤  " + sName);
-                    }
-                    if (sPhone != null && !sPhone.isEmpty()) {
-                        sellerPhone = sPhone;
-                        tvSellerPhone.setText("📞  " + sellerPhone);
-                        String dId = doc.getString("sellerId");
-                        if (dId != null && !dId.isEmpty()) {
-                            loadDetailReviews(dId, id);
-                        }
-                    }
-
-                    setupByType(type != null ? type : carType);
-                });
-    }
-
-    private void loadSellerInfo(String uid) {
-        db.collection("users").document(uid).get()
-                .addOnSuccessListener(doc -> {
-                    if (!doc.exists()) return;
-                    String name  = doc.getString("name");
-                    String phone = doc.getString("phone");
-                    if (name != null && !name.isEmpty()) sellerName = name;
-                    if (phone != null && !phone.isEmpty()) sellerPhone = phone;
-                    tvSellerName.setText("👤  " + (name != null ? name : "Không rõ"));
-                    tvSellerPhone.setText("📞  " + (sellerPhone.isEmpty() ? "Không rõ" : sellerPhone));
-                });
-    }
-
-    private void setupByType(String type) {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        boolean isOwner = currentUser != null && currentUser.getUid().equals(sellerId);
-
-        boolean driver = isDriverType(type);
-        boolean rental = isRentalType(type);
+    private void setupByType(String type, boolean isOwner) {
+        boolean driver = CarDetailViewModel.isDriverType(type);
+        boolean rental = CarDetailViewModel.isRentalType(type);
 
         if (isOwner) {
             layoutBuyForm.setVisibility(View.GONE);
@@ -954,25 +898,38 @@ public class CarDetailActivity extends AppCompatActivity {
     /** Ô "Ngày bắt đầu thuê": bấm mở lịch chọn ngày, luôn lưu dạng dd/MM/yyyy (tránh nhập tay sai). */
     private void setupStartDatePicker() {
         if (etRentStartDate == null) return;
+        // Ô không focusable → mỗi lần chạm đều kích onClick (tránh bị NestedScrollView nuốt focus,
+        // không bật bàn phím), chỉ mở lịch qua một entry point duy nhất.
+        etRentStartDate.setFocusable(false);
+        etRentStartDate.setFocusableInTouchMode(false);
+        etRentStartDate.setOnClickListener(v -> showStartDatePicker());
+    }
+
+    /** Mở hộp thoại chọn ngày bắt đầu thuê (định dạng dd/MM/yyyy, không cho ngày quá khứ). */
+    private void showStartDatePicker() {
+        if (etRentStartDate == null) return;
+        if (datePickerShowing) return;
+        datePickerShowing = true;
+
         final java.text.SimpleDateFormat sdf =
                 new java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US);
-        etRentStartDate.setOnClickListener(v -> {
-            java.util.Calendar c = java.util.Calendar.getInstance();
-            String cur = etRentStartDate.getText().toString().trim();
-            try {
-                java.util.Date d = sdf.parse(cur);
-                if (d != null) c.setTime(d);
-            } catch (Exception ignore) { }
-            DatePickerDialog dlg = new DatePickerDialog(this, (picker, year, month, day) -> {
-                java.util.Calendar picked = java.util.Calendar.getInstance();
-                picked.set(java.util.Calendar.YEAR, year);
-                picked.set(java.util.Calendar.MONTH, month);
-                picked.set(java.util.Calendar.DAY_OF_MONTH, day);
-                etRentStartDate.setText(sdf.format(picked.getTime()));
-            }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH),
-                    c.get(java.util.Calendar.DAY_OF_MONTH));
-            dlg.show();
-        });
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        String cur = etRentStartDate.getText().toString().trim();
+        try {
+            java.util.Date d = sdf.parse(cur);
+            if (d != null) c.setTime(d);
+        } catch (Exception ignore) { }
+        DatePickerDialog dlg = new DatePickerDialog(this, (picker, year, month, day) -> {
+            java.util.Calendar picked = java.util.Calendar.getInstance();
+            picked.set(java.util.Calendar.YEAR, year);
+            picked.set(java.util.Calendar.MONTH, month);
+            picked.set(java.util.Calendar.DAY_OF_MONTH, day);
+            etRentStartDate.setText(sdf.format(picked.getTime()));
+        }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH),
+                c.get(java.util.Calendar.DAY_OF_MONTH));
+        dlg.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+        dlg.setOnDismissListener(d -> datePickerShowing = false);
+        dlg.show();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -984,85 +941,6 @@ public class CarDetailActivity extends AppCompatActivity {
             return;
         }
 
-        // Xe có tài xế → kiểm tra driver isAvailable trước khi tạo order
-        if (isDriverType(carType)) {
-            checkDriverAvailabilityThenSend(user);
-            return;
-        }
-
-        if (tripMode) { sendTripRequest(user); return; }
-
-        // Kiểm tra đã có order pending cho xe này chưa → chặn spam
-        db.collection("orders")
-                .whereEqualTo("buyerId", user.getUid())
-                .whereEqualTo("carId",   carId != null ? carId : "")
-                .whereEqualTo("status",  "pending")
-                .limit(1)
-                .get()
-                .addOnSuccessListener(snap -> {
-                    if (!snap.isEmpty()) {
-                        Toast.makeText(this,
-                                "⏳ Đã gửi yêu cầu. Vui lòng chờ người cho thuê phản hồi.",
-                                Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    doSendRentRequest(user);
-                });
-    }
-
-    /**
-     * Kiểm tra drivers/{sellerId}.isAvailable trước khi tạo order có tài xế.
-     * Nếu offline → hiện dialog, không tạo order.
-     * Nếu online  → kiểm tra spam rồi gọi doSendRentRequest / sendTripRequest.
-     */
-    private void checkDriverAvailabilityThenSend(FirebaseUser user) {
-        if (sellerId == null || sellerId.isEmpty()) {
-            // Không có sellerId → tiến hành bình thường
-            proceedSendAfterAvailabilityCheck(user);
-            return;
-        }
-        db.collection("drivers").document(sellerId).get()
-                .addOnSuccessListener(doc -> {
-                    // Nếu document không tồn tại hoặc isAvailable == null → coi là online
-                    boolean available = !doc.exists()
-                            || !doc.contains("isAvailable")
-                            || Boolean.TRUE.equals(doc.getBoolean("isAvailable"));
-                    if (!available) {
-                        new android.app.AlertDialog.Builder(this)
-                                .setTitle("Tài xế không sẵn sàng")
-                                .setMessage("Tài xế hiện đang offline hoặc tạm thời không nhận chuyến.\n\nVui lòng chọn tài xế khác.")
-                                .setPositiveButton("Đồng ý", null)
-                                .show();
-                        return;
-                    }
-                    proceedSendAfterAvailabilityCheck(user);
-                })
-                .addOnFailureListener(e -> {
-                    // Lỗi mạng → cho phép gửi để không block người dùng
-                    proceedSendAfterAvailabilityCheck(user);
-                });
-    }
-
-    private void proceedSendAfterAvailabilityCheck(FirebaseUser user) {
-        if (tripMode) { sendTripRequest(user); return; }
-        db.collection("orders")
-                .whereEqualTo("buyerId", user.getUid())
-                .whereEqualTo("carId",   carId != null ? carId : "")
-                .whereEqualTo("status",  "pending")
-                .limit(1)
-                .get()
-                .addOnSuccessListener(snap -> {
-                    if (!snap.isEmpty()) {
-                        Toast.makeText(this,
-                                "⏳ Đã gửi yêu cầu. Vui lòng chờ tài xế phản hồi.",
-                                Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    doSendRentRequest(user);
-                });
-    }
-
-    private void doSendRentRequest(FirebaseUser user) {
         View view = getLayoutInflater().inflate(R.layout.dialog_rental_terms, null);
         TextView tvCountdown = view.findViewById(R.id.tv_terms_countdown);
         CheckBox cbAgree     = view.findViewById(R.id.cb_terms_agree);
@@ -1083,7 +961,6 @@ public class CarDetailActivity extends AppCompatActivity {
                         WindowManager.LayoutParams.WRAP_CONTENT);
                 w.setDimAmount(0.3f);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    // Blur nội dung sau card (frosted) + blur cả vùng nền phía sau cửa sổ — nhẹ thôi
                     w.setBackgroundBlurRadius(24);
                     w.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
                     WindowManager.LayoutParams lp = w.getAttributes();
@@ -1159,7 +1036,7 @@ public class CarDetailActivity extends AppCompatActivity {
                     String buyerName = snap.getString("name");
                     if (buyerName == null || buyerName.isEmpty()) buyerName = "Khách hàng";
 
-                    if (isDriverType(carType)) {
+                    if (CarDetailViewModel.isDriverType(carType)) {
                         ChatNotificationHelper.sendFcmOnlyOrderNotification(
                                 CarDetailActivity.this,
                                 sellerId,
@@ -1201,42 +1078,4 @@ public class CarDetailActivity extends AppCompatActivity {
         finish();
         return true;
     }
-
-    private void loadDetailReviews(String driverId, String cId) {
-        db.collection("reviews")
-                .whereEqualTo("driverId", driverId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .limit(5)
-                .get()
-                .addOnSuccessListener(snap -> {
-                    reviewList.clear();
-                    for (QueryDocumentSnapshot d : snap) {
-                        Review r = d.toObject(Review.class);
-                        r.setReviewId(d.getId());
-                        reviewList.add(r);
-                    }
-                    reviewAdapter.notifyDataSetChanged();
-
-                    if (layoutReviewSection != null) {
-                        layoutReviewSection.setVisibility(View.VISIBLE);
-                    }
-                    if (tvDetailReviewsEmpty != null) {
-                        tvDetailReviewsEmpty.setVisibility(reviewList.isEmpty() ? View.VISIBLE : View.GONE);
-                    }
-
-                    // Tính avgRating từ drivers collection
-                    db.collection("drivers").document(driverId).get()
-                            .addOnSuccessListener(driverDoc -> {
-                                if (driverDoc.exists() && tvDetailAvgRating != null) {
-                                    Double avg = driverDoc.getDouble("avgRating");
-                                    Long count = driverDoc.getLong("reviewCount");
-                                    if (avg != null && count != null && count > 0) {
-                                        tvDetailAvgRating.setText(
-                                                String.format("⭐ %.1f  (%d đánh giá)", avg, count));
-                                    }
-                                }
-                            });
-                });
-    }
-
 }
