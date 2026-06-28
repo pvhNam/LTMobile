@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.RatingBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -50,7 +51,7 @@ public class ProfileCarAdapter extends RecyclerView.Adapter<ProfileCarAdapter.Vi
         holder.tvPrice.setText(car.getPrice() != null ? car.getPrice() : "");
         holder.tvInfo.setText(car.getInfo() != null ? car.getInfo() : "");
 
-        String imageUrl = car.getImageUrl(); // cần thêm field này vào Car.java
+        String imageUrl = car.getImageUrl();
         if (imageUrl != null && !imageUrl.isEmpty()) {
             ImageLoader.loadCard(holder.ivImage, imageUrl, android.R.drawable.ic_menu_gallery);
         } else {
@@ -70,6 +71,24 @@ public class ProfileCarAdapter extends RecyclerView.Adapter<ProfileCarAdapter.Vi
         } else {
             holder.tvType.setText("Khác");
             holder.tvType.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#757575")));
+        }
+
+        // Hiển thị rating của tài xế (cache từ Firestore)
+        float driverRating      = car.getDriverRating();
+        int driverReviewCount   = car.getDriverReviewCount();
+        boolean hasRating       = driverRating > 0f && driverReviewCount > 0;
+
+        if (holder.layoutRating != null) {
+            holder.layoutRating.setVisibility(hasRating ? View.VISIBLE : View.GONE);
+        }
+        if (holder.ratingBar != null) {
+            holder.ratingBar.setRating(driverRating);
+        }
+        if (holder.tvRatingValue != null) {
+            holder.tvRatingValue.setText(String.format(Locale.getDefault(), "%.1f", driverRating));
+        }
+        if (holder.tvReviewCount != null) {
+            holder.tvReviewCount.setText("(" + driverReviewCount + " đánh giá)");
         }
 
         holder.itemView.setOnClickListener(listener != null ? v -> listener.onItemClick(car) : null);
@@ -105,15 +124,22 @@ public class ProfileCarAdapter extends RecyclerView.Adapter<ProfileCarAdapter.Vi
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvName, tvPrice, tvInfo, tvType;
-        ImageView ivImage;;
+        ImageView ivImage;
+        View layoutRating;
+        RatingBar ratingBar;
+        TextView tvRatingValue, tvReviewCount;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
-            ivImage = itemView.findViewById(R.id.iv_car_profile);
-            tvName = itemView.findViewById(R.id.tv_car_profile_name);
-            tvPrice = itemView.findViewById(R.id.tv_car_profile_price);
-            tvInfo = itemView.findViewById(R.id.tv_car_profile_info);
-            tvType = itemView.findViewById(R.id.tv_car_profile_type);
+            ivImage        = itemView.findViewById(R.id.iv_car_profile);
+            tvName         = itemView.findViewById(R.id.tv_car_profile_name);
+            tvPrice        = itemView.findViewById(R.id.tv_car_profile_price);
+            tvInfo         = itemView.findViewById(R.id.tv_car_profile_info);
+            tvType         = itemView.findViewById(R.id.tv_car_profile_type);
+            layoutRating   = itemView.findViewById(R.id.layout_driver_rating);
+            ratingBar      = itemView.findViewById(R.id.rating_bar_car_profile);
+            tvRatingValue  = itemView.findViewById(R.id.tv_car_profile_rating);
+            tvReviewCount  = itemView.findViewById(R.id.tv_car_profile_review_count);
         }
     }
 }

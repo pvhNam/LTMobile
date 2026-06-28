@@ -11,6 +11,13 @@ public class Car implements Serializable {
     private String imageUrl;
     private int imageResId;
 
+    // Driver cache fields
+    private String driverId;
+    private float driverRating;
+    private int driverReviewCount;
+
+    public Car() {}
+
     public Car(String name, String price, String info, int imageResId) {
         this.name = name;
         this.price = price;
@@ -44,8 +51,15 @@ public class Car implements Serializable {
     public String getImageUrl() { return imageUrl; }
     public int getImageResId() { return imageResId; }
 
+    public String getDriverId() { return driverId; }
+    public float getDriverRating() { return driverRating; }
+    public int getDriverReviewCount() { return driverReviewCount; }
+
     public void setId(String id) { this.id = id; }
     public void setType(String type) { this.type = type; }
     public void setSellerId(String sellerId) { this.sellerId = sellerId; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public void setDriverId(String driverId) { this.driverId = driverId; }
+    public void setDriverRating(float driverRating) { this.driverRating = driverRating; }
+    public void setDriverReviewCount(int driverReviewCount) { this.driverReviewCount = driverReviewCount; }
 }

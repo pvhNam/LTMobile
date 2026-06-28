@@ -16,6 +16,7 @@ import com.bumptech.glide.Glide;
 import com.example.doanmb.ui.home.view.MainActivity;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.car.view.FavoriteCarsActivity;
+import com.example.doanmb.ui.car.view.ReviewActivity;
 import com.example.doanmb.ui.auth.view.LoginActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -46,10 +47,12 @@ public class DriverProfileFragment extends Fragment {
         v.findViewById(R.id.row_favorites).setOnClickListener(x ->
                 startActivity(new Intent(getActivity(), FavoriteCarsActivity.class)));
 
+        // Mở màn hình Bài đánh giá của tài xế
+        v.findViewById(R.id.row_reviews).setOnClickListener(x -> openReviews());
+
         View.OnClickListener soon = x ->
                 Toast.makeText(getContext(), "Tính năng đang được phát triển", Toast.LENGTH_SHORT).show();
         v.findViewById(R.id.row_location).setOnClickListener(soon);
-        v.findViewById(R.id.row_reviews).setOnClickListener(soon);
         v.findViewById(R.id.row_gifts).setOnClickListener(soon);
         v.findViewById(R.id.row_refer).setOnClickListener(soon);
         v.findViewById(R.id.row_privacy).setOnClickListener(soon);
@@ -60,6 +63,14 @@ public class DriverProfileFragment extends Fragment {
 
         loadInfo();
         return v;
+    }
+
+    private void openReviews() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+        Intent intent = new Intent(getActivity(), ReviewActivity.class);
+        intent.putExtra(ReviewActivity.EXTRA_DRIVER_ID, user.getUid());
+        startActivity(intent);
     }
 
     private void loadInfo() {

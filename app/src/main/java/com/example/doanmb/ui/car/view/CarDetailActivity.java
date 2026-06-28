@@ -48,6 +48,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.example.doanmb.data.model.Review;
+import com.example.doanmb.ui.car.adapter.ReviewAdapter;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import java.util.ArrayList;
+
 public class CarDetailActivity extends AppCompatActivity {
 
     private ImageView ivCarDetail;
@@ -113,6 +119,17 @@ public class CarDetailActivity extends AppCompatActivity {
     private String carId, sellerId, carType;
 
     private CarDetailViewModel viewModel;
+    private String carStatus = "";
+
+    // Review section
+    private View layoutReviewSection;
+    private TextView tvDetailAvgRating;
+    private RecyclerView rvDetailReviews;
+    private TextView tvDetailReviewsEmpty;
+    private ReviewAdapter reviewAdapter;
+    private final List<Review> reviewList = new ArrayList<>();
+
+    private String statusBeforeHide = "";
 
     private NestedScrollView detailScroll;
     private View imageHero, headerDetail, btnBackFloat, floatTopBar;
@@ -319,6 +336,16 @@ public class CarDetailActivity extends AppCompatActivity {
         layoutDayFields = findViewById(R.id.layout_day_fields);
         layoutTripFields= findViewById(R.id.layout_trip_fields);
         btnPickOnMap    = findViewById(R.id.btnPickOnMap);
+        layoutReviewSection   = findViewById(R.id.layout_review_section);
+        tvDetailAvgRating     = findViewById(R.id.tv_detail_avg_rating);
+        rvDetailReviews       = findViewById(R.id.rv_detail_reviews);
+        tvDetailReviewsEmpty  = findViewById(R.id.tv_detail_reviews_empty);
+
+        reviewAdapter = new ReviewAdapter(reviewList);
+        if (rvDetailReviews != null) {
+            rvDetailReviews.setLayoutManager(new LinearLayoutManager(this));
+            rvDetailReviews.setAdapter(reviewAdapter);
+        }
         tvTripSummary   = findViewById(R.id.tvTripSummary);
 
         togglePaymentMethod = findViewById(R.id.toggle_payment_method);
@@ -727,9 +754,87 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    private void setupByType(String type, boolean isOwner) {
-        boolean driver = CarDetailViewModel.isDriverType(type);
-        boolean rental = CarDetailViewModel.isRentalType(type);
+    private void loadCarDetail(String id) {
+        db.collection("cars").document(id).get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) return;
+
+                    String fuel      = doc.getString("fuel");
+                    String condition = doc.getString("condition");
+                    String type      = doc.getString("type");
+                    String sPhone    = doc.getString("sellerPhone");
+                    String sName     = doc.getString("sellerName");
+                    String imageUrl  = doc.getString("imageUrl");
+
+                    Long ppd = doc.getLong("pricePerDay");
+                    Long ppk = doc.getLong("pricePerKm");
+                    pricePerDay = ppd != null ? ppd : parseMoney(doc.getString("price"));
+                    pricePerKm  = ppk != null ? ppk : 0L;
+
+                    if (type != null) carType = type;
+                    String status = doc.getString("status");
+                    carStatus = status != null ? status : "";
+                    String prevStatus = doc.getString("statusBeforeHide");
+                    statusBeforeHide = prevStatus != null ? prevStatus : "";
+
+                    List<String> imgs = extractImageUrls(doc.get("imageUrls"));
+                    if (imgs.isEmpty() && imageUrl != null && !imageUrl.isEmpty()) {
+                        imgs.add(imageUrl);
+                    }
+                    if (!imgs.isEmpty()) {
+                        showImages(imgs);
+                        for (String u : imgs) ImageLoader.preload(getApplicationContext(), u);
+                    }
+
+                    if (fuel != null && !fuel.isEmpty()) {
+                        tvCarFuelBadge.setText(fuel);
+                        tvCarFuelBadge.setVisibility(View.VISIBLE);
+                    }
+
+                    if (condition != null && !condition.isEmpty()) {
+                        if (condition.contains("mới 100") || condition.equalsIgnoreCase("Xe mới 100%"))
+                            tvCarConditionBadge.setText("Xe mới");
+                        else
+                            tvCarConditionBadge.setText("Xe cũ");
+                        tvCarConditionBadge.setVisibility(View.VISIBLE);
+                    }
+
+                    if (sName != null && !sName.isEmpty()) {
+                        sellerName = sName;
+                        tvSellerName.setText("👤  " + sName);
+                    }
+                    if (sPhone != null && !sPhone.isEmpty()) {
+                        sellerPhone = sPhone;
+                        tvSellerPhone.setText("📞  " + sellerPhone);
+                        String dId = doc.getString("sellerId");
+                        if (dId != null && !dId.isEmpty()) {
+                            loadDetailReviews(dId, id);
+                        }
+                    }
+
+                    setupByType(type != null ? type : carType);
+                });
+    }
+
+    private void loadSellerInfo(String uid) {
+        db.collection("users").document(uid).get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) return;
+                    String name  = doc.getString("name");
+                    String phone = doc.getString("phone");
+                    if (name != null && !name.isEmpty()) sellerName = name;
+                    if (phone != null && !phone.isEmpty()) sellerPhone = phone;
+                    tvSellerName.setText("👤  " + (name != null ? name : "Không rõ"));
+                    tvSellerPhone.setText("📞  " + (sellerPhone.isEmpty() ? "Không rõ" : sellerPhone));
+                });
+    }
+
+    private void setupByType(String type) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        boolean isOwner = currentUser != null && currentUser.getUid().equals(sellerId);
+
+        boolean driver = isDriverType(type);
+        boolean rental = isRentalType(type);
 
         if (isOwner) {
             layoutBuyForm.setVisibility(View.GONE);
@@ -879,6 +984,85 @@ public class CarDetailActivity extends AppCompatActivity {
             return;
         }
 
+        // Xe có tài xế → kiểm tra driver isAvailable trước khi tạo order
+        if (isDriverType(carType)) {
+            checkDriverAvailabilityThenSend(user);
+            return;
+        }
+
+        if (tripMode) { sendTripRequest(user); return; }
+
+        // Kiểm tra đã có order pending cho xe này chưa → chặn spam
+        db.collection("orders")
+                .whereEqualTo("buyerId", user.getUid())
+                .whereEqualTo("carId",   carId != null ? carId : "")
+                .whereEqualTo("status",  "pending")
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (!snap.isEmpty()) {
+                        Toast.makeText(this,
+                                "⏳ Đã gửi yêu cầu. Vui lòng chờ người cho thuê phản hồi.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    doSendRentRequest(user);
+                });
+    }
+
+    /**
+     * Kiểm tra drivers/{sellerId}.isAvailable trước khi tạo order có tài xế.
+     * Nếu offline → hiện dialog, không tạo order.
+     * Nếu online  → kiểm tra spam rồi gọi doSendRentRequest / sendTripRequest.
+     */
+    private void checkDriverAvailabilityThenSend(FirebaseUser user) {
+        if (sellerId == null || sellerId.isEmpty()) {
+            // Không có sellerId → tiến hành bình thường
+            proceedSendAfterAvailabilityCheck(user);
+            return;
+        }
+        db.collection("drivers").document(sellerId).get()
+                .addOnSuccessListener(doc -> {
+                    // Nếu document không tồn tại hoặc isAvailable == null → coi là online
+                    boolean available = !doc.exists()
+                            || !doc.contains("isAvailable")
+                            || Boolean.TRUE.equals(doc.getBoolean("isAvailable"));
+                    if (!available) {
+                        new android.app.AlertDialog.Builder(this)
+                                .setTitle("Tài xế không sẵn sàng")
+                                .setMessage("Tài xế hiện đang offline hoặc tạm thời không nhận chuyến.\n\nVui lòng chọn tài xế khác.")
+                                .setPositiveButton("Đồng ý", null)
+                                .show();
+                        return;
+                    }
+                    proceedSendAfterAvailabilityCheck(user);
+                })
+                .addOnFailureListener(e -> {
+                    // Lỗi mạng → cho phép gửi để không block người dùng
+                    proceedSendAfterAvailabilityCheck(user);
+                });
+    }
+
+    private void proceedSendAfterAvailabilityCheck(FirebaseUser user) {
+        if (tripMode) { sendTripRequest(user); return; }
+        db.collection("orders")
+                .whereEqualTo("buyerId", user.getUid())
+                .whereEqualTo("carId",   carId != null ? carId : "")
+                .whereEqualTo("status",  "pending")
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (!snap.isEmpty()) {
+                        Toast.makeText(this,
+                                "⏳ Đã gửi yêu cầu. Vui lòng chờ tài xế phản hồi.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    doSendRentRequest(user);
+                });
+    }
+
+    private void doSendRentRequest(FirebaseUser user) {
         View view = getLayoutInflater().inflate(R.layout.dialog_rental_terms, null);
         TextView tvCountdown = view.findViewById(R.id.tv_terms_countdown);
         CheckBox cbAgree     = view.findViewById(R.id.cb_terms_agree);
@@ -975,16 +1159,29 @@ public class CarDetailActivity extends AppCompatActivity {
                     String buyerName = snap.getString("name");
                     if (buyerName == null || buyerName.isEmpty()) buyerName = "Khách hàng";
 
-                    ChatNotificationHelper.sendOrderNotification(
-                            CarDetailActivity.this,
-                            sellerId,
-                            buyer.getUid(),
-                            buyerName,
-                            car != null ? car.getName() : "",
-                            carId != null ? carId : "",   // ← thêm carId
-                            "order_sent",
-                            orderId
-                    );
+                    if (isDriverType(carType)) {
+                        ChatNotificationHelper.sendFcmOnlyOrderNotification(
+                                CarDetailActivity.this,
+                                sellerId,
+                                buyer.getUid(),
+                                buyerName,
+                                car != null ? car.getName() : "",
+                                carId != null ? carId : "",
+                                "order_sent",
+                                orderId
+                        );
+                    } else {
+                        ChatNotificationHelper.sendOrderNotification(
+                                CarDetailActivity.this,
+                                sellerId,
+                                buyer.getUid(),
+                                buyerName,
+                                car != null ? car.getName() : "",
+                                carId != null ? carId : "",
+                                "order_sent",
+                                orderId
+                        );
+                    }
                 });
     }
 
@@ -1004,4 +1201,42 @@ public class CarDetailActivity extends AppCompatActivity {
         finish();
         return true;
     }
+
+    private void loadDetailReviews(String driverId, String cId) {
+        db.collection("reviews")
+                .whereEqualTo("driverId", driverId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(5)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    reviewList.clear();
+                    for (QueryDocumentSnapshot d : snap) {
+                        Review r = d.toObject(Review.class);
+                        r.setReviewId(d.getId());
+                        reviewList.add(r);
+                    }
+                    reviewAdapter.notifyDataSetChanged();
+
+                    if (layoutReviewSection != null) {
+                        layoutReviewSection.setVisibility(View.VISIBLE);
+                    }
+                    if (tvDetailReviewsEmpty != null) {
+                        tvDetailReviewsEmpty.setVisibility(reviewList.isEmpty() ? View.VISIBLE : View.GONE);
+                    }
+
+                    // Tính avgRating từ drivers collection
+                    db.collection("drivers").document(driverId).get()
+                            .addOnSuccessListener(driverDoc -> {
+                                if (driverDoc.exists() && tvDetailAvgRating != null) {
+                                    Double avg = driverDoc.getDouble("avgRating");
+                                    Long count = driverDoc.getLong("reviewCount");
+                                    if (avg != null && count != null && count > 0) {
+                                        tvDetailAvgRating.setText(
+                                                String.format("⭐ %.1f  (%d đánh giá)", avg, count));
+                                    }
+                                }
+                            });
+                });
+    }
+
 }

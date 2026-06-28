@@ -1,117 +1,140 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    app:cardCornerRadius="18dp"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="@color/lg_glass_fill_strong"
-    app:strokeColor="@color/lg_glass_stroke"
-    app:strokeWidth="1dp">
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="#FFFFFF">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:padding="16dp">
 
-        <!-- LOẠI ĐƠN + TRẠNG THÁI -->
+        <!-- HÀNG 1: Badge loại đơn + trạng thái -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp">
 
             <TextView
                 android:id="@+id/tvOrderType"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Mua xe"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:background="@drawable/bg_pill_round"
+                android:text="Thuê xe"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:background="#4CAF50"
-                android:paddingStart="8dp" android:paddingEnd="8dp"
-                android:paddingTop="3dp" android:paddingBottom="3dp"
-                android:layout_marginEnd="10dp"/>
+                android:textSize="11sp"
+                android:textStyle="bold" />
 
-            <!-- TRẠNG THÁI LỚN NỔI BẬT -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
             <TextView
                 android:id="@+id/tvOrderStatus"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:text="⏳ Chờ xác nhận"
                 android:textColor="#FF9800"
-                android:textSize="14sp"
-                android:textStyle="bold"/>
+                android:textSize="13sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- TÊN XE -->
+        <!-- HÀNG 2: Tên xe -->
         <TextView
             android:id="@+id/tvOrderCarName"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Toyota Vios 2020"
-            android:textColor="@color/color_on_background"
+            android:text="Toyota Camry 2022"
+            android:textColor="#1A1A1A"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:layout_marginBottom="4dp"/>
+            android:layout_marginBottom="4dp" />
 
-        <!-- GIÁ XE -->
+        <!-- HÀNG 3: Giá -->
         <TextView
             android:id="@+id/tvOrderCarPrice"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="450.000.000 VNĐ"
-            android:textColor="#E53935"
+            android:text="850.000đ / ngày"
+            android:textColor="#1976D2"
             android:textSize="14sp"
-            android:layout_marginBottom="8dp"/>
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
 
-        <!-- ĐƯỜNG KẺ -->
-        <View android:layout_width="match_parent" android:layout_height="1dp"
-            android:background="@color/color_image_placeholder" android:layout_marginBottom="8dp"/>
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#F0F0F0"
+            android:layout_marginBottom="10dp" />
 
-        <!-- NGÀY GỬI -->
+        <!-- HÀNG 4: Ngày gửi -->
         <TextView
             android:id="@+id/tvOrderDate"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="📅  Ngày gửi: 13/05/2026"
-            android:textColor="@color/color_on_surface_secondary"
-            android:textSize="13sp"
-            android:layout_marginBottom="4dp"/>
+            android:text="📅  Ngày gửi: --"
+            android:textColor="#888888"
+            android:textSize="12sp"
+            android:layout_marginBottom="6dp" />
 
-        <!-- GHI CHÚ -->
+        <!-- HÀNG 5: Ghi chú (ẩn nếu không có) -->
         <TextView
             android:id="@+id/tvOrderNote"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="💬  Ghi chú: ..."
-            android:textColor="@color/color_on_surface_secondary"
-            android:textSize="13sp"
+            android:text=""
+            android:textColor="#888888"
+            android:textSize="12sp"
+            android:maxLines="2"
+            android:ellipsize="end"
             android:layout_marginBottom="8dp"
-            android:visibility="gone"/>
+            android:visibility="gone" />
 
-        <!-- THÔNG BÁO KẾT QUẢ -->
+        <!-- HÀNG 6: Hộp thông báo trạng thái -->
         <LinearLayout
             android:id="@+id/layoutStatusMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/color_surface_variant"
-            android:padding="10dp"
+            android:background="@drawable/bg_round_16"
+            android:backgroundTint="#F4F6FB"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp"
+            android:layout_marginBottom="10dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/tvStatusMessage"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Người bán đã xác nhận yêu cầu của bạn!"
-                android:textColor="@color/color_on_surface"
-                android:textSize="13sp"/>
+                android:text=""
+                android:textSize="13sp"
+                android:lineSpacingExtra="2dp" />
         </LinearLayout>
 
+        <!-- HÀNG 7: Nút đánh giá tài xế (chỉ hiện khi completed + canReview) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_review_driver"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:text="⭐  Đánh giá tài xế"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:backgroundTint="#FF9800"
+            app:cornerRadius="12dp"
+            android:visibility="gone" />
+
     </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+</androidx.cardview.widget.CardView>

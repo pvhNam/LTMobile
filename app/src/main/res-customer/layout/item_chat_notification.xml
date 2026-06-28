@@ -106,6 +106,38 @@
                 android:layout_marginTop="2dp"
                 android:textColor="#65676B"
                 android:textSize="12sp" />
+
+            <!-- Nút Đánh giá -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_notif_review"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text="⭐ Đánh giá"
+                android:textSize="13sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:minHeight="40dp"
+                app:backgroundTint="#1976D2"
+                app:cornerRadius="8dp"
+                android:visibility="gone"
+                style="@style/Widget.MaterialComponents.Button" />
+
+            <!-- Nhãn Đã đánh giá -->
+            <TextView
+                android:id="@+id/tv_notif_reviewed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="✔ Đã đánh giá"
+                android:textColor="#4CAF50"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
         </LinearLayout>
 
         <!-- ── Chấm xanh chưa đọc (giống Messenger) ── -->

@@ -72,6 +72,7 @@
                 android:textColor="@color/color_on_surface_secondary"
                 android:textSize="12sp" />
 
+            <!-- Badge loại xe -->
             <TextView
                 android:id="@+id/tv_car_profile_type"
                 android:layout_width="wrap_content"
@@ -83,6 +84,45 @@
                 android:textColor="@android:color/white"
                 android:textSize="11sp"
                 android:textStyle="bold" />
+
+            <!-- Rating tài xế (cache từ Firestore cars.driverRating) -->
+            <LinearLayout
+                android:id="@+id/layout_driver_rating"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <RatingBar
+                    android:id="@+id/rating_bar_car_profile"
+                    style="?android:attr/ratingBarStyleSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:isIndicator="true"
+                    android:numStars="5"
+                    android:rating="0"
+                    android:stepSize="0.5" />
+
+                <TextView
+                    android:id="@+id/tv_car_profile_rating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:textColor="#FF9800"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_car_profile_review_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="2dp"
+                    android:textColor="@color/color_on_surface_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
