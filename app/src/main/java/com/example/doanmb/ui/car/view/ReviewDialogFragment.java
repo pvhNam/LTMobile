@@ -23,6 +23,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 /**
  * Dialog đánh giá tài xế.
@@ -66,6 +67,7 @@ public class ReviewDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setStyle(STYLE_NO_TITLE, 0);
         if (getArguments() != null) {
             orderId        = getArguments().getString(ARG_ORDER_ID);
             driverId       = getArguments().getString(ARG_DRIVER_ID);
@@ -73,6 +75,26 @@ public class ReviewDialogFragment extends DialogFragment {
             notificationId = getArguments().getString(ARG_NOTIFICATION_ID, "");
         }
         db = FirebaseFirestore.getInstance();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        android.app.Dialog dialog = getDialog();
+        if (dialog != null && dialog.getWindow() != null) {
+            // Chiếm toàn bộ chiều ngang, tự co theo chiều dọc
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+            );
+            // Cho phép scroll khi bàn phím mở
+            dialog.getWindow().setSoftInputMode(
+                    android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            );
+        }
     }
 
     @Nullable
@@ -150,34 +172,34 @@ public class ReviewDialogFragment extends DialogFragment {
                     DocumentReference driverRef = db.collection("drivers").document(driverId);
 
                     // Dùng Transaction để atomic: thêm review + đánh dấu reviewed + cập nhật avgRating
+                    // Dùng array để capture giá trị từ trong transaction ra ngoài lambda
+                    double[] computedAvg   = {0};
+                    long[]   computedCount = {0};
+
                     db.runTransaction(tr -> {
-                        // Lấy thông tin driver để tính avgRating mới
                         com.google.firebase.firestore.DocumentSnapshot driverSnap = tr.get(driverRef);
-                        double currentAvg = driverSnap.contains("avgRating")
-                                ? (driverSnap.getDouble("avgRating") != null ? driverSnap.getDouble("avgRating") : 0.0)
-                                : 0.0;
-                        long currentCount = driverSnap.contains("reviewCount")
-                                ? (driverSnap.getLong("reviewCount") != null ? driverSnap.getLong("reviewCount") : 0L)
-                                : 0L;
+                        double currentAvg   = driverSnap.contains("avgRating")
+                                ? (driverSnap.getDouble("avgRating") != null ? driverSnap.getDouble("avgRating") : 0.0) : 0.0;
+                        long   currentCount = driverSnap.contains("reviewCount")
+                                ? (driverSnap.getLong("reviewCount") != null ? driverSnap.getLong("reviewCount") : 0L) : 0L;
 
-                        long newCount  = currentCount + 1;
-                        double newAvg  = ((currentAvg * currentCount) + rating) / newCount;
+                        long   newCount = currentCount + 1;
+                        double newAvg   = ((currentAvg * currentCount) + rating) / newCount;
 
-                        // 1. Thêm review
+                        // Capture ra ngoài
+                        computedAvg[0]   = newAvg;
+                        computedCount[0] = newCount;
+
                         tr.set(reviewRef, reviewData);
-                        // 2. Đánh dấu đơn đã reviewed
                         tr.update(orderRef, "reviewed", true);
-                        // 3. Cập nhật driver avgRating + reviewCount
                         tr.update(driverRef, "avgRating", newAvg, "reviewCount", newCount);
 
-                        // 4. Đồng bộ cache vào cars (nếu carId có)
                         if (carId != null && !carId.isEmpty()) {
                             tr.update(db.collection("cars").document(carId),
                                     "driverRating",      newAvg,
                                     "driverReviewCount", newCount);
                         }
 
-                        // 5. Cập nhật Notification actionCompleted (nếu mở từ Notification)
                         if (notificationId != null && !notificationId.isEmpty()) {
                             tr.update(db.collection("notifications").document(notificationId),
                                     "actionCompleted", true,
@@ -185,14 +207,28 @@ public class ReviewDialogFragment extends DialogFragment {
                         }
 
                         return null;
+
                     }).addOnSuccessListener(x -> {
                         if (!isAdded()) return;
                         Toast.makeText(getContext(), "✅ Cảm ơn bạn đã đánh giá!", Toast.LENGTH_SHORT).show();
                         dismiss();
-                        // Thông báo activity reload
-                        if (getActivity() != null) {
-                            getActivity().setResult(android.app.Activity.RESULT_OK);
-                        }
+                        if (getActivity() != null) getActivity().setResult(android.app.Activity.RESULT_OK);
+
+                        // Dùng giá trị đã capture để sync TẤT CẢ xe của tài xế
+                        double finalAvg   = computedAvg[0];
+                        long   finalCount = computedCount[0];
+
+                        db.collection("cars")
+                                .whereEqualTo("sellerId", driverId)
+                                .get()
+                                .addOnSuccessListener(carSnaps -> {
+                                    for (com.google.firebase.firestore.QueryDocumentSnapshot carDoc : carSnaps) {
+                                        db.collection("cars").document(carDoc.getId())
+                                                .update("driverRating",      finalAvg,
+                                                        "driverReviewCount", finalCount);
+                                    }
+                                });
+
                     }).addOnFailureListener(e -> {
                         if (!isAdded()) return;
                         btnSubmit.setEnabled(true);

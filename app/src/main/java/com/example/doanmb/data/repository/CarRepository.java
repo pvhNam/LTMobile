@@ -168,12 +168,14 @@ public final class CarRepository {
 
     // ── Đánh giá tài xế ───────────────────────────────────────────────────────
 
-    /** 5 đánh giá mới nhất của một tài xế (collection "reviews", lọc theo driverId). */
+    /** 5 đánh giá mới nhất của một tài xế (collection "reviews", lọc theo driverId).
+     *  Không dùng orderBy để tránh yêu cầu composite index trên Firestore.
+     *  Khi đã tạo index (driverId ASC + createdAt DESC), có thể thêm lại orderBy. */
     public static void loadDriverReviews(@Nullable String driverId, @NonNull OnReviews cb) {
         if (driverId == null || driverId.isEmpty()) { cb.onLoaded(new ArrayList<>()); return; }
         db().collection("reviews")
                 .whereEqualTo("driverId", driverId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
+                // orderBy("createdAt") cần composite index — bỏ tạm để query chạy được
                 .limit(5)
                 .get()
                 .addOnSuccessListener(snap -> {
@@ -185,7 +187,10 @@ public final class CarRepository {
                     }
                     cb.onLoaded(list);
                 })
-                .addOnFailureListener(e -> cb.onLoaded(new ArrayList<>()));
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("CarRepository", "loadDriverReviews loi: " + e.getMessage());
+                    cb.onLoaded(new ArrayList<>());
+                });
     }
 
     /** Điểm trung bình + số lượng đánh giá của tài xế (drivers/{id}). */

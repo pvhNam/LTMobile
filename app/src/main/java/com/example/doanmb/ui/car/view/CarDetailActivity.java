@@ -104,6 +104,9 @@ public class CarDetailActivity extends AppCompatActivity {
     private RecyclerView rvDetailReviews;
     private ReviewAdapter reviewAdapter;
     private final List<Review> reviewList = new ArrayList<>();
+    private TextView tvReviewLoadingMore;
+    private TextView tvReviewNoMore;
+    private String driverIdForReviews; // lưu driverId để dùng khi load more
 
     private final androidx.activity.result.ActivityResultLauncher<Intent> mapLauncher =
             registerForActivityResult(
@@ -249,6 +252,18 @@ public class CarDetailActivity extends AppCompatActivity {
             if (tvDetailReviewsEmpty != null)
                 tvDetailReviewsEmpty.setVisibility(reviewList.isEmpty() ? View.VISIBLE : View.GONE);
         });
+
+        viewModel.getReviewLoadingMore().observe(this, loading -> {
+            if (tvReviewLoadingMore != null)
+                tvReviewLoadingMore.setVisibility(
+                        Boolean.TRUE.equals(loading) ? View.VISIBLE : View.GONE);
+        });
+
+        viewModel.getReviewNoMore().observe(this, noMore -> {
+            if (tvReviewNoMore != null)
+                tvReviewNoMore.setVisibility(
+                        Boolean.TRUE.equals(noMore) ? View.VISIBLE : View.GONE);
+        });
         viewModel.getRatingText().observe(this, txt -> {
             if (tvDetailAvgRating != null && txt != null) tvDetailAvgRating.setText(txt);
         });
@@ -358,6 +373,24 @@ public class CarDetailActivity extends AppCompatActivity {
         if (rvDetailReviews != null) {
             rvDetailReviews.setLayoutManager(new LinearLayoutManager(this));
             rvDetailReviews.setAdapter(reviewAdapter);
+            // Chặn NestedScrollView ăn touch khi đang cuộn bên trong khung review
+            rvDetailReviews.setOnTouchListener((v, event) -> {
+                v.getParent().requestDisallowInterceptTouchEvent(true);
+                return false;
+            });
+            // Load more khi cuộn gần cuối khung
+            rvDetailReviews.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(@NonNull androidx.recyclerview.widget.RecyclerView rv, int dx, int dy) {
+                    if (dy <= 0 || driverIdForReviews == null) return;
+                    androidx.recyclerview.widget.LinearLayoutManager lm =
+                            (androidx.recyclerview.widget.LinearLayoutManager) rv.getLayoutManager();
+                    if (lm == null) return;
+                    int last = lm.findLastVisibleItemPosition();
+                    int total = lm.getItemCount();
+                    if (last >= total - 2) viewModel.loadMoreReviews(driverIdForReviews);
+                }
+            });
         }
 
         togglePaymentMethod = findViewById(R.id.toggle_payment_method);
@@ -369,6 +402,8 @@ public class CarDetailActivity extends AppCompatActivity {
         sheetRent         = findViewById(R.id.sheet_rent);
         rentScrim         = findViewById(R.id.rent_scrim);
         View btnCloseRentSheet = findViewById(R.id.btn_close_rent_sheet);
+        tvReviewLoadingMore = findViewById(R.id.tv_review_loading_more);
+        tvReviewNoMore      = findViewById(R.id.tv_review_no_more);
         if (btnOpenRentSheet != null) btnOpenRentSheet.setOnClickListener(v -> openRentSheet());
         if (btnCloseRentSheet != null) btnCloseRentSheet.setOnClickListener(v -> closeRentSheet());
         if (rentScrim != null) rentScrim.setOnClickListener(v -> closeRentSheet());
@@ -509,6 +544,15 @@ public class CarDetailActivity extends AppCompatActivity {
         if (detailScroll != null) {
             detailScroll.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener)
                     (v, x, y, ox, oy) -> updateDetailHeader(y));
+        }
+
+        if (detailScroll != null) {
+            detailScroll.setOnScrollChangeListener(
+                    (NestedScrollView.OnScrollChangeListener) (v, scrollX, scrollY, oldX, oldY) -> {
+                        updateDetailHeader(scrollY);
+
+                        // load more review được xử lý bởi RV scroll listener bên trong khung
+                    });
         }
     }
 
@@ -819,6 +863,10 @@ public class CarDetailActivity extends AppCompatActivity {
             if (btnOpenRentSheet != null) btnOpenRentSheet.setVisibility(View.GONE);
             if (layoutRentContact != null) layoutRentContact.setVisibility(View.GONE);
             closeRentSheet();
+        }
+        if (driver && sellerId != null && !sellerId.isEmpty()) {
+            driverIdForReviews = sellerId;
+            viewModel.loadFirstReviews(sellerId);
         }
     }
 
