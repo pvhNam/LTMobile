@@ -600,7 +600,14 @@
                     </RelativeLayout>
                     <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#E0E0E0" android:layout_marginHorizontal="16dp"/>
 
-                    <RelativeLayout android:layout_width="match_parent" android:layout_height="56dp" android:paddingHorizontal="16dp">
+                    <RelativeLayout
+                        android:id="@+id/menu_security"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:paddingHorizontal="16dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?android:attr/selectableItemBackground">
                         <TextView android:id="@+id/s_ic3" android:layout_width="24dp" android:layout_height="24dp" android:text="⚙️" android:textSize="16sp" android:gravity="center" android:layout_centerVertical="true"/>
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bảo mật &amp; liên kết" android:textColor="#1A1A1A" android:textSize="15sp" android:layout_toEndOf="@id/s_ic3" android:layout_marginStart="14dp" android:layout_centerVertical="true" android:textStyle="bold"/>
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@color/lg_accent" android:textSize="24sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" />
