@@ -30,6 +30,25 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
+    // Gom layout theo vai trò vào các thư mục res riêng. Tất cả vẫn dùng chung 1
+    // R namespace nên KHÔNG phải sửa R.layout/findViewById; chỉ là tổ chức file.
+    //  - res/layout          : màn auth (login/register/...) + layout dùng chung
+    //  - res-admin/layout    : màn của admin
+    //  - res-driver/layout   : màn của tài xế
+    //  - res-customer/layout : màn của khách (home, thuê/mua xe, ví, chat, profile)
+    sourceSets {
+        getByName("main") {
+            res.setSrcDirs(
+                listOf(
+                    "src/main/res",
+                    "src/main/res-admin",
+                    "src/main/res-driver",
+                    "src/main/res-customer"
+                )
+            )
+        }
+    }
+
     packaging {
         jniLibs {
             useLegacyPackaging = true
