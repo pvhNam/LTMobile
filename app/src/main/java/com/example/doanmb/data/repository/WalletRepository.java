@@ -3,13 +3,18 @@ package com.example.doanmb.data.repository;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.doanmb.data.model.Transaction;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -51,12 +56,68 @@ public final class WalletRepository {
         void onError(String message);
     }
 
+    /** Callback trả về số dư ví hiện tại. */
+    public interface BalanceCallback {
+        void onLoaded(long balance);
+        void onError(String message);
+    }
+
+    /** Callback trả về danh sách giao dịch liên quan tới user. */
+    public interface TransactionsCallback {
+        void onLoaded(List<Transaction> transactions);
+        void onError(String message);
+    }
+
     private WalletRepository() {}
 
     private static FirebaseFirestore db() { return FirebaseFirestore.getInstance(); }
 
     private static DocumentReference appWallet() {
         return db().collection(COL_APP_WALLET).document(APP_WALLET_DOC);
+    }
+
+    // ── Đọc số dư / lịch sử giao dịch ───────────────────────────────────────
+
+    /** Lấy số dư ví hiện tại của user (field "balance" trong users/{uid}). */
+    public static void loadBalance(@Nullable String userId, @NonNull BalanceCallback cb) {
+        if (userId == null || userId.isEmpty()) { cb.onError("Thiếu thông tin người dùng"); return; }
+        db().collection(COL_USERS).document(userId).get()
+                .addOnSuccessListener(doc -> cb.onLoaded(readBalance(doc)))
+                .addOnFailureListener(e -> cb.onError(e.getMessage()));
+    }
+
+    /**
+     * Lấy các giao dịch liên quan tới user: tiền vào (toUserId == uid) và tiền ra
+     * (fromUserId == uid), gộp lại rồi sắp xếp mới nhất lên đầu. Dùng 2 query đơn
+     * trường nên không cần composite index.
+     */
+    public static void loadTransactions(@Nullable String userId, @NonNull TransactionsCallback cb) {
+        if (userId == null || userId.isEmpty()) { cb.onError("Thiếu thông tin người dùng"); return; }
+        final List<Transaction> result = new ArrayList<>();
+        db().collection(COL_TRANSACTIONS).whereEqualTo("toUserId", userId).get()
+                .addOnSuccessListener(in -> {
+                    addTransactions(result, in);
+                    db().collection(COL_TRANSACTIONS).whereEqualTo("fromUserId", userId).get()
+                            .addOnSuccessListener(out -> {
+                                addTransactions(result, out);
+                                sortNewestFirst(result);
+                                cb.onLoaded(result);
+                            })
+                            .addOnFailureListener(e -> { sortNewestFirst(result); cb.onLoaded(result); });
+                })
+                .addOnFailureListener(e -> cb.onError(e.getMessage()));
+    }
+
+    private static void addTransactions(List<Transaction> dest, Iterable<QueryDocumentSnapshot> snaps) {
+        for (QueryDocumentSnapshot d : snaps) dest.add(d.toObject(Transaction.class));
+    }
+
+    private static void sortNewestFirst(List<Transaction> list) {
+        Collections.sort(list, (a, b) -> {
+            long ta = a.getCreatedAt() != null ? a.getCreatedAt().toDate().getTime() : 0L;
+            long tb = b.getCreatedAt() != null ? b.getCreatedAt().toDate().getTime() : 0L;
+            return Long.compare(tb, ta);
+        });
     }
 
     // ── Tính nhanh (dùng cho UI hiển thị trước) ─────────────────────────────

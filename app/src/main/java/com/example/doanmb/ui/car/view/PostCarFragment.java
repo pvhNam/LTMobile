@@ -34,20 +34,19 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
 import com.example.doanmb.R;
 import com.example.doanmb.data.model.Place;
 import com.example.doanmb.core.helper.CloudinaryHelper;
 import com.example.doanmb.data.remote.VietnamLocationApi;
+import com.example.doanmb.ui.car.viewmodel.PostCarViewModel;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class PostCarFragment extends Fragment {
 
@@ -65,6 +64,8 @@ public class PostCarFragment extends Fragment {
     private TextView tvImageCount;
     private final List<Uri> selectedImageUris = new ArrayList<>();
     private int scrollBasePaddingBottom;
+
+    private PostCarViewModel viewModel;
 
     private final ActivityResultLauncher<Intent> pickImageLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -93,12 +94,30 @@ public class PostCarFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_post_car, container, false);
 
+        viewModel = new ViewModelProvider(this).get(PostCarViewModel.class);
+
         initViews(view);
         setupKeyboardInsets(view);
         setupSpinners();
         setupActions();
+        observeViewModel();
 
         return view;
+    }
+
+    private void observeViewModel() {
+        viewModel.getMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null && isViewReady()) Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+        });
+        viewModel.getSaveResult().observe(getViewLifecycleOwner(), success -> {
+            if (success == null || !isViewReady()) return;
+            if (success) {
+                clearForm();
+                notifyPostSubmitted();
+            } else {
+                resetButton();
+            }
+        });
     }
 
     private void initViews(View view) {
@@ -364,7 +383,7 @@ public class PostCarFragment extends Fragment {
                     new CloudinaryHelper.OnMultiUploadCallback() {
                         @Override
                         public void onSuccess(List<String> imageUrls) {
-                            saveCar(user, name, price, fullInfo, type, brand,
+                            viewModel.saveCar(name, price, fullInfo, type, brand,
                                     year, km, location, imageUrls);
                         }
 
@@ -377,60 +396,9 @@ public class PostCarFragment extends Fragment {
                     }
             );
         } else {
-            saveCar(user, name, price, fullInfo, type, brand,
+            viewModel.saveCar(name, price, fullInfo, type, brand,
                     year, km, location, new ArrayList<>());
         }
-    }
-
-    private void saveCar(FirebaseUser user, String name, String price, String fullInfo,
-                         String type, String brand, String year, String km,
-                         String location, List<String> imageUrls) {
-        FirebaseFirestore.getInstance().collection("users").document(user.getUid()).get()
-                .addOnSuccessListener(doc -> {
-                    if (!isViewReady()) return;
-
-                    String sellerName = doc.getString("name");
-                    String sellerPhone = doc.getString("phone");
-
-                    Map<String, Object> car = new HashMap<>();
-                    car.put("name", name);
-                    car.put("price", price + (type.equals("rental") ? " đ/ngày" : " VNĐ"));
-                    car.put("info", fullInfo);
-                    car.put("type", type);
-                    car.put("brand", brand);
-                    car.put("fuel", "");
-                    car.put("condition", "");
-                    car.put("transmission", "");
-                    car.put("year", year);
-                    car.put("km", km);
-                    car.put("location", location);
-                    car.put("status", "pending");
-                    car.put("imageUrl", imageUrls.isEmpty() ? "" : imageUrls.get(0));
-                    car.put("imageUrls", imageUrls);
-                    car.put("userId", user.getUid());
-                    car.put("sellerId", user.getUid());
-                    car.put("sellerName", sellerName != null ? sellerName : "");
-                    car.put("sellerPhone", sellerPhone != null ? sellerPhone : "");
-                    car.put("createdAt", com.google.firebase.Timestamp.now());
-
-                    FirebaseFirestore.getInstance().collection("cars").add(car)
-                            .addOnSuccessListener(ref -> {
-                                if (!isViewReady()) return;
-                                Toast.makeText(requireContext(), "Đăng tin thành công! Tin đang chờ admin duyệt.", Toast.LENGTH_LONG).show();
-                                clearForm();
-                                notifyPostSubmitted();
-                            })
-                            .addOnFailureListener(e -> {
-                                if (!isViewReady()) return;
-                                Toast.makeText(requireContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                resetButton();
-                            });
-                })
-                .addOnFailureListener(e -> {
-                    if (!isViewReady()) return;
-                    Toast.makeText(requireContext(), "Lỗi lấy thông tin người dùng!", Toast.LENGTH_SHORT).show();
-                    resetButton();
-                });
     }
 
     private void clearForm() {
