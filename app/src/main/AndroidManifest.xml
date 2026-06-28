@@ -76,6 +76,7 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity android:name="com.example.doanmb.ui.car.view.CarDetailActivity" android:exported="false" />
+        <activity android:name="com.example.doanmb.ui.car.view.InvoiceActivity" android:exported="false" />
         <activity android:name="com.example.doanmb.ui.car.view.MapPickerActivity" android:exported="false" />
         <activity android:name="com.example.doanmb.ui.car.view.FavoriteCarsActivity" android:exported="false" />
         <activity android:name="com.example.doanmb.ui.auth.view.LoginActivity" />
@@ -92,6 +93,8 @@
         <activity android:name="com.example.doanmb.ui.admin.view.AdminCarDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
         <activity android:name="com.example.doanmb.ui.admin.view.AdminUserDetailActivity"
+            android:theme="@style/Theme.DOANMB.Admin" />
+        <activity android:name="com.example.doanmb.ui.activity.AdminOrderDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
         <activity
             android:name="com.example.doanmb.ui.chat.view.ChatDetailActivity"
@@ -121,5 +124,8 @@
         <activity android:name=".ui.profile.view.PrivacyActivity" />
         <activity android:name=".ui.profile.view.SupportActivity" />
         <activity android:name=".ui.car.view.ReviewActivity" />
+        <activity
+            android:name=".ui.profile.view.ChangePasswordActivity"
+            android:exported="false" />
     </application>
 </manifest>

@@ -19,6 +19,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 
 public class ReviewActivity extends AppCompatActivity {
 
@@ -36,7 +37,9 @@ public class ReviewActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_review);
+        EdgeToEdgeUtil.padContentForSystemBars(this, 0xFFFFFFFF);
 
         db = FirebaseFirestore.getInstance();
 

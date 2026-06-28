@@ -17,6 +17,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- Ảnh xe: tràn lên sau thanh trạng thái cho vừa khung -->
             <FrameLayout
                 android:id="@+id/image_hero"
                 android:layout_width="match_parent"
@@ -128,6 +129,7 @@
                     android:text="📞  Đang tải..." android:textColor="@color/color_on_surface_secondary" android:textSize="14sp"
                     android:layout_marginTop="4dp"/>
 
+                <!-- Nút báo cáo -->
                 <TextView
                     android:id="@+id/tv_report_car"
                     android:layout_width="wrap_content"
@@ -141,6 +143,7 @@
                 <View android:layout_width="match_parent" android:layout_height="1dp"
                     android:background="@color/color_divider" android:layout_marginTop="12dp" android:layout_marginBottom="12dp"/>
 
+                <!-- THÔNG BÁO CHỦ XE -->
                 <TextView
                     android:id="@+id/tvOwnerNote"
                     android:layout_width="match_parent"
@@ -154,6 +157,7 @@
                     android:gravity="center"
                     android:visibility="gone"/>
 
+                <!-- FORM MUA XE -->
                 <LinearLayout android:id="@+id/layoutBuyForm"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="vertical" android:visibility="gone">
@@ -198,10 +202,128 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- CTA: bấm để mở bảng thuê xe (bottom sheet) -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOpenRentSheet"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="4dp"
+                    android:text="🚗  Thuê xe ngay"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="@color/lg_accent"
+                    app:cornerRadius="16dp"
+                    android:visibility="gone" />
+
+                <!-- Gọi điện / Nhắn tin cho người cho thuê (luôn hiển thị ngoài bottom sheet) -->
+                <LinearLayout
+                    android:id="@+id/layoutRentContact"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <Button android:id="@+id/btnCallRentSeller"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:text="📞 Gọi điện"
+                        android:textSize="14sp" android:textColor="@color/lg_accent_text" android:backgroundTint="@color/lg_accent_pale"/>
+
+                    <Button android:id="@+id/btnChatRentSeller"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="💬 Nhắn tin"
+                        android:textSize="14sp" android:textColor="#FFFFFF" android:backgroundTint="#FF9800"/>
+                </LinearLayout>
+
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Lớp mờ nền khi mở bảng thuê (chạm để đóng) -->
+    <View
+        android:id="@+id/rent_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:elevation="14dp"
+        android:visibility="gone" />
+
+    <!-- ════════════ BẢNG THUÊ XE: trượt lên khi bấm "Thuê xe ngay" ════════════ -->
+    <LinearLayout
+        android:id="@+id/sheet_rent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="bottom"
+        android:layout_marginTop="72dp"
+        android:background="@drawable/bg_sheet_rent"
+        android:elevation="16dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Tay cầm kéo -->
+        <View
+            android:layout_width="44dp"
+            android:layout_height="5dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_category_drag_handle" />
+
+        <!-- Tiêu đề + nút đóng -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Đặt thuê xe"
+                android:textColor="@color/color_on_background"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/btn_close_rent_sheet"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Đóng"
+                android:padding="9dp"
+                android:src="@drawable/ic_back"
+                android:rotation="-90"
+                android:tint="@color/color_on_surface_secondary" />
+        </LinearLayout>
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:overScrollMode="never"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="28dp">
+
+                <!-- FORM THUÊ XE -->
                 <LinearLayout android:id="@+id/layoutRentForm"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:visibility="gone">
+                    android:orientation="vertical"
+                    android:visibility="visible">
 
+                    <!-- Chọn hình thức đặt (chỉ hiện với xe có tài xế) -->
                     <com.google.android.material.button.MaterialButtonToggleGroup
                         android:id="@+id/toggle_book_mode"
                         android:layout_width="match_parent"
@@ -254,6 +376,7 @@
                         android:padding="10dp" android:hint="Nhập số CCCD 12 số"
                         android:inputType="number" android:maxLength="12"/>
 
+                    <!-- ===== Nhóm field THEO NGÀY ===== -->
                     <LinearLayout android:id="@+id/layout_day_fields"
                         android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="vertical">
@@ -263,7 +386,10 @@
                         <EditText android:id="@+id/etRentStartDate"
                             android:layout_width="match_parent" android:layout_height="50dp"
                             android:layout_marginBottom="12dp" android:background="@drawable/bg_search"
-                            android:padding="10dp" android:hint="Ví dụ: 20/05/2026"/>
+                            android:padding="10dp" android:hint="Chọn ngày nhận xe"
+                            android:focusable="false" android:clickable="true"
+                            android:cursorVisible="false" android:inputType="none"
+                            android:drawableEnd="@android:drawable/ic_menu_my_calendar"/>
 
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                             android:text="Số ngày thuê *" android:textColor="@color/color_on_surface_secondary" android:textSize="13sp" android:layout_marginBottom="4dp"/>
@@ -273,6 +399,7 @@
                             android:padding="10dp" android:hint="Nhập số ngày muốn thuê" android:inputType="number"/>
                     </LinearLayout>
 
+                    <!-- ===== Nhóm field THEO CHUYẾN ===== -->
                     <LinearLayout android:id="@+id/layout_trip_fields"
                         android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="vertical" android:visibility="gone">
@@ -303,28 +430,59 @@
                         android:padding="10dp" android:hint="Yêu cầu thêm (nếu có)..."
                         android:gravity="top" android:inputType="textMultiLine"/>
 
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Thanh toán phần còn lại bằng" android:textColor="@color/color_on_surface_secondary"
-                        android:textSize="13sp" android:layout_marginBottom="4dp"/>
-                    <RadioGroup android:id="@+id/rg_payment_method"
-                        android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:orientation="horizontal" android:layout_marginBottom="12dp">
-                        <RadioButton android:id="@+id/rb_pay_cash"
-                            android:layout_width="0dp" android:layout_height="wrap_content"
-                            android:layout_weight="1" android:checked="true"
-                            android:text="💵 Tiền mặt" android:textSize="14sp"/>
-                        <RadioButton android:id="@+id/rb_pay_transfer"
-                            android:layout_width="0dp" android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="🏦 Chuyển khoản" android:textSize="14sp"/>
-                    </RadioGroup>
-
                     <TextView android:id="@+id/tv_deposit_info"
                         android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:background="@drawable/bg_info_card" android:padding="12dp"
                         android:layout_marginBottom="16dp" android:textSize="13sp"
                         android:textColor="@color/color_on_surface" android:lineSpacingExtra="4dp"
-                        android:text="Nhập số ngày thuê để xem tiền cọc."/>
+                        android:text="Nhập số ngày thuê để xem tổng tiền."/>
+
+                    <!-- ===== Phương thức thanh toán ===== -->
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Phương thức thanh toán *" android:textColor="@color/color_on_surface"
+                        android:textSize="15sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/toggle_payment_method"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pay_cash"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="46dp"
+                            android:layout_weight="1"
+                            android:textSize="12sp"
+                            android:text="Tiền mặt" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pay_vnpay"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="46dp"
+                            android:layout_weight="1"
+                            android:textSize="12sp"
+                            android:text="Chuyển khoản" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pay_wallet"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="46dp"
+                            android:layout_weight="1"
+                            android:textSize="12sp"
+                            android:text="Ví" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <TextView android:id="@+id/tv_payment_method_hint"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp" android:textSize="12sp"
+                        android:textColor="@color/color_on_surface_secondary" android:lineSpacingExtra="2dp"
+                        android:text="Trả tiền mặt cho chủ xe khi kết thúc chuyến."/>
 
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:background="@color/stat_card_orange" android:padding="10dp" android:layout_marginBottom="16dp"
@@ -341,91 +499,12 @@
                         android:text="GỬI YÊU CẦU THUÊ XE"
                         android:textSize="15sp" android:textStyle="bold"
                         android:textColor="#FFFFFF" android:backgroundTint="@color/lg_accent"/>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal">
-
-                        <Button android:id="@+id/btnCallRentSeller"
-                            android:layout_width="0dp"
-                            android:layout_height="52dp"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="4dp"
-                            android:text="📞 Gọi điện"
-                            android:textSize="14sp" android:textColor="@color/lg_accent_text" android:backgroundTint="@color/lg_accent_pale"/>
-
-                        <Button android:id="@+id/btnChatRentSeller"
-                            android:layout_width="0dp"
-                            android:layout_height="52dp"
-                            android:layout_weight="1"
-                            android:layout_marginStart="4dp"
-                            android:text="💬 Nhắn tin"
-                            android:textSize="14sp" android:textColor="#FFFFFF" android:backgroundTint="#FF9800"/>
-                    </LinearLayout>
                 </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
+    <!-- ════════════ /BOTTOM SHEET ════════════ -->
 
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/layout_review_section"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="16dp"
-                android:visibility="gone">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Đánh giá"
-                        android:textColor="@color/color_on_background"
-                        android:textSize="17sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tv_detail_avg_rating"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="#FF9800"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rv_detail_reviews"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:nestedScrollingEnabled="false"
-                    android:clipToPadding="false"
-                    android:paddingHorizontal="8dp" />
-
-                <TextView
-                    android:id="@+id/tv_detail_reviews_empty"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:padding="16dp"
-                    android:text="Chưa có đánh giá"
-                    android:textColor="#AAAAAA"
-                    android:textSize="13sp"
-                    android:visibility="gone" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-
+    <!-- Thanh tiêu đề trắng: ẩn lúc đầu, hiện dần khi cuộn lên -->
     <LinearLayout
         android:id="@+id/header_detail"
         android:layout_width="match_parent"
@@ -485,6 +564,7 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- Thanh nổi đè lên ảnh: back bên trái; tim + 3 gạch bên phải (nền tròn trong suốt) -->
     <LinearLayout
         android:id="@+id/float_top_bar"
         android:layout_width="match_parent"

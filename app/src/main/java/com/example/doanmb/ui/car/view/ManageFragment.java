@@ -1,11 +1,13 @@
 package com.example.doanmb.ui.car.view;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -13,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -20,17 +23,15 @@ import com.example.doanmb.R;
 import com.example.doanmb.core.service.OrderReminderService;
 import com.example.doanmb.ui.car.adapter.ProfileCarAdapter;
 import com.example.doanmb.ui.car.adapter.RequestAdapter;
+import com.example.doanmb.ui.car.viewmodel.ManageViewModel;
 import com.example.doanmb.core.helper.ChatNotificationHelper;
 import com.example.doanmb.data.model.Car;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class ManageFragment extends Fragment {
@@ -45,19 +46,18 @@ public class ManageFragment extends Fragment {
     private RecyclerView rvMyPosts;
     private TextView tvMyPostCount, tvEmptyPosts;
     private ProfileCarAdapter myPostsAdapter;
-    private List<Car> myCarList = new ArrayList<>();
+    private final List<Car> myCarList = new ArrayList<>();
 
     // Tab 2: Yêu cầu nhận được
     private RecyclerView rvRequests;
     private TextView tvRequestCount, tvEmptyRequests;
     private RequestAdapter requestAdapter;
-    private List<Map<String, Object>> orderList = new ArrayList<>();
-    private List<String> orderIds = new ArrayList<>();
+    private final List<Map<String, Object>> orderList = new ArrayList<>();
+    private final List<String> orderIds = new ArrayList<>();
 
     private FirebaseFirestore db;
     private String currentUserId;
-    private ListenerRegistration requestsListener; // lưu lại để hủy khi fragment destroy
-    private boolean usingCarIdFallback = false;    // tránh gọi loadRequestsByCarId() nhiều lần
+    private ManageViewModel viewModel;
 
     @Nullable
     @Override
@@ -68,14 +68,14 @@ public class ManageFragment extends Fragment {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) currentUserId = user.getUid();
 
+        viewModel = new ViewModelProvider(this).get(ManageViewModel.class);
+
         initViews(view);
         setupTabs();
         setupRecyclerViews();
+        observeViewModel();
 
-        if (currentUserId != null) {
-            loadMyPosts();
-            loadRequests();
-        }
+        viewModel.start();
 
         // Nếu được điều hướng đến với yêu cầu mở tab Yêu cầu (từ notification)
         Bundle args = getArguments();
@@ -84,6 +84,42 @@ public class ManageFragment extends Fragment {
         }
 
         return view;
+    }
+
+    private void observeViewModel() {
+        viewModel.getMyPosts().observe(getViewLifecycleOwner(), cars -> {
+            myCarList.clear();
+            myCarList.addAll(cars);
+            myPostsAdapter.updateList(myCarList);
+            tvMyPostCount.setText("Tin đã đăng: " + myCarList.size());
+            tvEmptyPosts.setVisibility(myCarList.isEmpty() ? View.VISIBLE : View.GONE);
+            rvMyPosts.setVisibility(myCarList.isEmpty() ? View.GONE : View.VISIBLE);
+        });
+
+        viewModel.getRequests().observe(getViewLifecycleOwner(), items -> {
+            orderList.clear();
+            orderIds.clear();
+            for (ManageViewModel.OrderItem it : items) {
+                orderIds.add(it.id);
+                orderList.add(it.data);
+            }
+            requestAdapter.updateList(orderList, orderIds);
+            tvRequestCount.setText("Yêu cầu: " + orderList.size());
+            tvEmptyRequests.setVisibility(orderList.isEmpty() ? View.VISIBLE : View.GONE);
+            rvRequests.setVisibility(orderList.isEmpty() ? View.GONE : View.VISIBLE);
+        });
+
+        viewModel.getMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null && getContext() != null) Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+        });
+
+        viewModel.getCancelReminderEvent().observe(getViewLifecycleOwner(), orderId -> {
+            if (orderId != null && getContext() != null) OrderReminderService.cancel(requireContext(), orderId);
+        });
+
+        viewModel.getNotifyBuyerEvent().observe(getViewLifecycleOwner(), e -> {
+            if (e != null) notifyBuyerOrderStatus(e.orderId, e.type);
+        });
     }
 
     private void initViews(View view) {
@@ -133,17 +169,36 @@ public class ManageFragment extends Fragment {
         myPostsAdapter = new ProfileCarAdapter(myCarList, this::openCarDetail);
         rvMyPosts.setAdapter(myPostsAdapter);
 
-        // Tab 2: Yêu cầu
+        // Tab 2: Yêu cầu (gồm đơn nhận được + đơn mình gửi đi)
         rvRequests.setLayoutManager(new LinearLayoutManager(getContext()));
-        requestAdapter = new RequestAdapter(orderList, orderIds, new RequestAdapter.OnActionListener() {
+        requestAdapter = new RequestAdapter(orderList, orderIds, currentUserId,
+                new RequestAdapter.OnActionListener() {
             @Override
             public void onConfirm(String orderId, String carId, Map<String, Object> order) {
-                confirmRequest(orderId, carId);
+                viewModel.confirmRequest(orderId, carId);
             }
-
             @Override
             public void onReject(String orderId, String carId) {
-                rejectRequest(orderId, carId);
+                viewModel.rejectRequest(orderId, carId);
+            }
+            @Override
+            public void onMarkReturned(String orderId, Map<String, Object> order) {
+                showMarkReturnedDialog(orderId, order);
+            }
+            @Override
+            public void onCancelOwn(String orderId, Map<String, Object> order) {
+                showCancelDialog(orderId, order);
+            }
+            @Override
+            public void onExtend(String orderId, Map<String, Object> order) {
+                showExtendDialog(orderId, order);
+            }
+            @Override
+            public void onViewInvoice(String orderId, Map<String, Object> order) {
+                if (getActivity() == null) return;
+                Intent i = new Intent(getActivity(), InvoiceActivity.class);
+                i.putExtra("ORDER_ID", orderId);
+                startActivity(i);
             }
         });
         rvRequests.setAdapter(requestAdapter);
@@ -243,7 +298,48 @@ public class ManageFragment extends Fragment {
                 });
     }
 
-    // Load yêu cầu dựa trên các carId của mình — real-time
+    /** Chủ xe xác nhận khách đã trả xe → xem hoá đơn (phạt trễ nếu có) rồi gửi. */
+    private void showMarkReturnedDialog(String orderId, Map<String, Object> order) {
+        ManageViewModel.ReturnInvoice inv = viewModel.computeReturnInvoice(order);
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Xác nhận đã trả xe")
+                .setMessage((inv.lateDays > 0
+                        ? "⚠️ Khách trả TRỄ " + inv.lateDays + " ngày.\nPhí phạt: " + money(inv.penalty) + "\n"
+                        : "Khách trả đúng hạn.\n")
+                        + "Tiền thuê: " + money(inv.total) + "\nTổng hóa đơn: " + money(inv.invoiceTotal))
+                .setPositiveButton("Gửi hóa đơn", (d, w) -> viewModel.sendInvoice(orderId, order, inv))
+                .setNegativeButton("Đóng", null)
+                .show();
+    }
+
+    private void showCancelDialog(String orderId, Map<String, Object> order) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Hủy yêu cầu thuê")
+                .setMessage("Bạn chắc chắn muốn hủy yêu cầu thuê xe này?")
+                .setPositiveButton("Hủy yêu cầu", (d, w) -> viewModel.cancelOwnOrder(orderId, order))
+                .setNegativeButton("Đóng", null)
+                .show();
+    }
+
+    private void showExtendDialog(String orderId, Map<String, Object> order) {
+        final EditText input = new EditText(requireContext());
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setHint("Số ngày muốn thuê thêm");
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Gia hạn thuê xe")
+                .setMessage("Nhập số ngày muốn thuê thêm. Yêu cầu sẽ được gửi đến chủ xe.")
+                .setView(input)
+                .setPositiveButton("Gửi", (d, w) ->
+                        viewModel.extendOrder(orderId, order,
+                                ManageViewModel.parseIntSafe(input.getText().toString())))
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    private String money(long v) {
+        return String.format(Locale.US, "%,d", v).replace(',', '.') + " đ";
+    }
+
     private void loadRequestsByCarId() {
         db.collection("cars")
                 .whereEqualTo("userId", currentUserId)
@@ -413,6 +509,7 @@ public class ManageFragment extends Fragment {
 
                     db.collection("users").document(myUid).get()
                             .addOnSuccessListener(userSnap -> {
+                                if (getContext() == null) return;
                                 String sellerName = userSnap.getString("name");
                                 if (sellerName == null || sellerName.isEmpty()) sellerName = "Chủ xe";
 
@@ -433,19 +530,6 @@ public class ManageFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        if (currentUserId != null) {
-            loadMyPosts();
-            loadRequests();
-        }
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        // Quan trọng: hủy listener khi fragment bị destroy, tránh memory leak
-        if (requestsListener != null) {
-            requestsListener.remove();
-            requestsListener = null;
-        }
+        if (viewModel != null && viewModel.isLoggedIn()) viewModel.loadMyPosts();
     }
 }

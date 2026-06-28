@@ -3,13 +3,18 @@ package com.example.doanmb.data.repository;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.doanmb.data.model.Transaction;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,7 +36,6 @@ public final class WalletRepository {
 
     public static final double DEPOSIT_RATE    = 0.50; // % tổng đơn phải đặt cọc qua ví
     public static final double COMMISSION_RATE = 0.15; // % hoa hồng app lấy trên tiền cọc
-    public static final int    LONG_BOOKING_MIN_DAYS = 2; // Từ mấy ngày trở lên thì bắt buộc đặt cọc
 
     private static final String COL_USERS        = "users";
     private static final String COL_TRANSACTIONS = "transactions";
@@ -52,6 +56,18 @@ public final class WalletRepository {
         void onError(String message);
     }
 
+    /** Callback trả về số dư ví hiện tại. */
+    public interface BalanceCallback {
+        void onLoaded(long balance);
+        void onError(String message);
+    }
+
+    /** Callback trả về danh sách giao dịch liên quan tới user. */
+    public interface TransactionsCallback {
+        void onLoaded(List<Transaction> transactions);
+        void onError(String message);
+    }
+
     private WalletRepository() {}
 
     private static FirebaseFirestore db() { return FirebaseFirestore.getInstance(); }
@@ -60,14 +76,54 @@ public final class WalletRepository {
         return db().collection(COL_APP_WALLET).document(APP_WALLET_DOC);
     }
 
-    // ── Tính nhanh (dùng cho UI hiển thị trước) ─────────────────────────────
+    // ── Đọc số dư / lịch sử giao dịch ───────────────────────────────────────
 
-    /** Đơn thuê từ {@link #LONG_BOOKING_MIN_DAYS} ngày trở lên mới phải đặt cọc qua ví. */
-    public static boolean requiresDeposit(int days) { return days >= LONG_BOOKING_MIN_DAYS; }
+    /** Lấy số dư ví hiện tại của user (field "balance" trong users/{uid}). */
+    public static void loadBalance(@Nullable String userId, @NonNull BalanceCallback cb) {
+        if (userId == null || userId.isEmpty()) { cb.onError("Thiếu thông tin người dùng"); return; }
+        db().collection(COL_USERS).document(userId).get()
+                .addOnSuccessListener(doc -> cb.onLoaded(readBalance(doc)))
+                .addOnFailureListener(e -> cb.onError(e.getMessage()));
+    }
+
+    /**
+     * Lấy các giao dịch liên quan tới user: tiền vào (toUserId == uid) và tiền ra
+     * (fromUserId == uid), gộp lại rồi sắp xếp mới nhất lên đầu. Dùng 2 query đơn
+     * trường nên không cần composite index.
+     */
+    public static void loadTransactions(@Nullable String userId, @NonNull TransactionsCallback cb) {
+        if (userId == null || userId.isEmpty()) { cb.onError("Thiếu thông tin người dùng"); return; }
+        final List<Transaction> result = new ArrayList<>();
+        db().collection(COL_TRANSACTIONS).whereEqualTo("toUserId", userId).get()
+                .addOnSuccessListener(in -> {
+                    addTransactions(result, in);
+                    db().collection(COL_TRANSACTIONS).whereEqualTo("fromUserId", userId).get()
+                            .addOnSuccessListener(out -> {
+                                addTransactions(result, out);
+                                sortNewestFirst(result);
+                                cb.onLoaded(result);
+                            })
+                            .addOnFailureListener(e -> { sortNewestFirst(result); cb.onLoaded(result); });
+                })
+                .addOnFailureListener(e -> cb.onError(e.getMessage()));
+    }
+
+    private static void addTransactions(List<Transaction> dest, Iterable<QueryDocumentSnapshot> snaps) {
+        for (QueryDocumentSnapshot d : snaps) dest.add(d.toObject(Transaction.class));
+    }
+
+    private static void sortNewestFirst(List<Transaction> list) {
+        Collections.sort(list, (a, b) -> {
+            long ta = a.getCreatedAt() != null ? a.getCreatedAt().toDate().getTime() : 0L;
+            long tb = b.getCreatedAt() != null ? b.getCreatedAt().toDate().getTime() : 0L;
+            return Long.compare(tb, ta);
+        });
+    }
+
+    // ── Tính nhanh (dùng cho UI hiển thị trước) ─────────────────────────────
 
     public static long deposit(long totalAmount)    { return Math.round(totalAmount * DEPOSIT_RATE); }
     public static long commission(long depositAmount){ return Math.round(depositAmount * COMMISSION_RATE); }
-    public static long payout(long depositAmount)    { return depositAmount - commission(depositAmount); }
 
     // ── Nạp tiền (admin -> user) ────────────────────────────────────────────
 
@@ -162,6 +218,68 @@ public final class WalletRepository {
                     log(TYPE_PAYOUT, payout, null, driverId, orderId, "Trả tiền hoàn thành đơn"));
             tr.set(db().collection(COL_TRANSACTIONS).document(),
                     log(TYPE_COMMISSION, commission, null, null, orderId, "Hoa hồng app"));
+            return null;
+        }).addOnSuccessListener(v -> ok(cb))
+          .addOnFailureListener(e -> fail(cb, e.getMessage()));
+    }
+
+    // ── Thanh toán hóa đơn thuê (tiền thuê + phạt) ───────────────────────────
+
+    /**
+     * Khách thanh toán hóa đơn từ ví: trừ {@code amount} khỏi ví khách,
+     * trả 85% về ví chủ xe và giữ 15% hoa hồng cho app. Báo lỗi nếu số dư không đủ.
+     * {@code amount} = tiền thuê + tiền phạt trễ (nếu có).
+     */
+    public static void payInvoice(@NonNull String payerId, @NonNull String ownerId,
+                                  long amount, @Nullable String orderId, @Nullable Callback cb) {
+        if (amount <= 0) { fail(cb, "Số tiền không hợp lệ"); return; }
+        long commission = commission(amount);   // 15%
+        long payout     = amount - commission;   // 85%
+
+        DocumentReference payerRef = db().collection(COL_USERS).document(payerId);
+        DocumentReference ownerRef = db().collection(COL_USERS).document(ownerId);
+        db().runTransaction(tr -> {
+            long balance = readBalance(tr.get(payerRef));   // đọc trước mọi ghi
+            if (balance < amount) {
+                throw new IllegalStateException("Số dư ví không đủ để thanh toán");
+            }
+            tr.update(payerRef, "balance", FieldValue.increment(-amount));
+            // set(merge) thay vì update → vẫn cộng đúng kể cả khi ví chủ xe chưa có field balance
+            tr.set(ownerRef, single("balance", FieldValue.increment(payout)),
+                    com.google.firebase.firestore.SetOptions.merge());
+            tr.set(appWallet(), single("balance", FieldValue.increment(commission)),
+                    com.google.firebase.firestore.SetOptions.merge());
+            tr.set(db().collection(COL_TRANSACTIONS).document(),
+                    log(TYPE_PAYOUT, payout, payerId, ownerId, orderId, "Thanh toán hóa đơn thuê xe"));
+            tr.set(db().collection(COL_TRANSACTIONS).document(),
+                    log(TYPE_COMMISSION, commission, null, null, orderId, "Hoa hồng hóa đơn thuê"));
+            return null;
+        }).addOnSuccessListener(v -> ok(cb))
+          .addOnFailureListener(e -> fail(cb, e.getMessage()));
+    }
+
+    // ── Thanh toán hóa đơn bằng nguồn ngoài ví (VNPay) ───────────────────────
+
+    /**
+     * Khách đã trả {@code amount} qua VNPay (không trừ ví khách). App chia 85% về
+     * ví chủ xe và giữ 15% hoa hồng, ghi giao dịch để đối soát.
+     */
+    public static void payInvoiceExternal(@NonNull String ownerId, long amount,
+                                          @Nullable String orderId, @Nullable Callback cb) {
+        if (amount <= 0) { fail(cb, "Số tiền không hợp lệ"); return; }
+        long commission = commission(amount);   // 15%
+        long payout     = amount - commission;   // 85%
+
+        DocumentReference ownerRef = db().collection(COL_USERS).document(ownerId);
+        db().runTransaction(tr -> {
+            tr.set(ownerRef, single("balance", FieldValue.increment(payout)),
+                    com.google.firebase.firestore.SetOptions.merge());
+            tr.set(appWallet(), single("balance", FieldValue.increment(commission)),
+                    com.google.firebase.firestore.SetOptions.merge());
+            tr.set(db().collection(COL_TRANSACTIONS).document(),
+                    log(TYPE_PAYOUT, payout, null, ownerId, orderId, "Thanh toán hóa đơn thuê (VNPay)"));
+            tr.set(db().collection(COL_TRANSACTIONS).document(),
+                    log(TYPE_COMMISSION, commission, null, null, orderId, "Hoa hồng hóa đơn thuê (VNPay)"));
             return null;
         }).addOnSuccessListener(v -> ok(cb))
           .addOnFailureListener(e -> fail(cb, e.getMessage()));

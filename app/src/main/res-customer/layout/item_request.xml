@@ -186,6 +186,89 @@
                 app:cornerRadius="24dp" />
         </LinearLayout>
 
+        <!-- Hành động cho ĐƠN MÌNH GỬI ĐI (đi thuê): Gia hạn + Hủy -->
+        <LinearLayout
+            android:id="@+id/layoutMyActions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExtend"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/lg_accent"
+                app:strokeColor="@color/lg_glass_stroke"
+                app:strokeWidth="1dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="📅 Gia hạn"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="24dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelOwn"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:backgroundTint="#E5484D"
+                app:strokeColor="@color/lg_glass_stroke"
+                app:strokeWidth="1dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="❌ Hủy"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="24dp" />
+        </LinearLayout>
+
+        <!-- Nút CHỦ XE xác nhận khách đã trả xe -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMarkReturned"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="14dp"
+            android:backgroundTint="#2E7D32"
+            app:strokeColor="@color/lg_glass_stroke"
+            app:strokeWidth="1dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="🚗 Xác nhận đã trả xe"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:cornerRadius="24dp" />
+
+        <!-- Nút KHÁCH xem & thanh toán hóa đơn -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnViewInvoice"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="14dp"
+            android:backgroundTint="#F9A825"
+            app:strokeColor="@color/lg_glass_stroke"
+            app:strokeWidth="1dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="🧾 Xem &amp; thanh toán hóa đơn"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:cornerRadius="24dp" />
+
         <!-- Hiện khi đã xử lý -->
         <TextView
             android:id="@+id/tvDoneLabel"

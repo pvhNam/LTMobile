@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Khung ngoài trong suốt + padding để card kính "nổi" giữa màn, bo góc lộ ra -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="18dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_glass_dialog"
+        android:orientation="vertical"
+        android:padding="22dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Chính sách &amp; Điều khoản thuê xe"
+            android:textColor="@color/lg_text"
+            android:textSize="19sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="14dp"
+            android:background="@color/lg_glass_stroke_dim" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginTop="14dp"
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="1. CHÍNH SÁCH HỦY XE"
+                    android:textColor="@color/lg_accent_text"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Hủy trước ngày nhận xe từ 3 ngày trở lên: được hoàn 100% tiền.&#10;• Hủy trước 2 ngày: chịu phí hủy 50% (hoàn lại 50%).&#10;• Hủy trước 1 ngày: chịu phí hủy 70% (hoàn lại 30%)."
+                    android:textColor="@color/lg_text"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="2. GIA HẠN THUÊ THÊM"
+                    android:textColor="@color/lg_accent_text"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Nếu muốn thuê thêm ngày, khách phải báo cho chủ xe trước 17:00 của ngày trả xe."
+                    android:textColor="@color/lg_text"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="3. TRẢ XE TRỄ"
+                    android:textColor="@color/lg_accent_text"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Trả xe trễ mà không báo trước sẽ bị tính phí phạt:&#10;   - Ngày trễ đầu tiên: 150% giá thuê 1 ngày.&#10;   - Các ngày trễ tiếp theo: 200% giá thuê 1 ngày."
+                    android:textColor="@color/lg_text"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+        </ScrollView>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="14dp"
+            android:background="@color/lg_glass_stroke_dim" />
+
+        <TextView
+            android:id="@+id/tv_terms_countdown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center"
+            android:text="⏳ Vui lòng đọc kỹ điều khoản trong 10 giây…"
+            android:textColor="#E5484D"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <CheckBox
+            android:id="@+id/cb_terms_agree"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:buttonTint="@color/lg_accent"
+            android:enabled="false"
+            android:text="Tôi đã đọc và đồng ý với điều khoản thuê xe"
+            android:textColor="@color/lg_text"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_terms_cancel"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_glass_button_soft"
+                android:enabled="false"
+                android:text="Hủy"
+                android:textColor="@color/lg_text"
+                android:textAllCaps="false" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_terms_confirm"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_glass_button"
+                android:enabled="false"
+                android:text="Xác nhận thuê xe"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textAllCaps="false" />
+
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

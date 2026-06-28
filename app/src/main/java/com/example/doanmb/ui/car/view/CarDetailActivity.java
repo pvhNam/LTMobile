@@ -1,11 +1,17 @@
 package com.example.doanmb.ui.car.view;
 
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -18,6 +24,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.widget.NestedScrollView;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
@@ -25,10 +32,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.doanmb.R;
 import com.example.doanmb.core.service.OrderReminderService;
 import com.example.doanmb.ui.car.adapter.CarImageAdapter;
-import com.example.doanmb.data.repository.WalletRepository;
+import com.example.doanmb.ui.car.viewmodel.CarDetailViewModel;
 import com.example.doanmb.data.model.Car;
 import com.example.doanmb.core.helper.ChatNotificationHelper;
-import com.example.doanmb.data.repository.FavoriteRepository;
 import com.example.doanmb.ui.chat.view.ChatDetailActivity;
 import com.example.doanmb.ui.auth.view.LoginActivity;
 import com.example.doanmb.core.util.ImageLoader;
@@ -68,10 +74,20 @@ public class CarDetailActivity extends AppCompatActivity {
     private EditText etRenterName, etRenterPhone, etRenterCCCD;
     private EditText etRentStartDate, etRentDays, etRenterNote;
     private Button btnSendRentRequest, btnCallRentSeller, btnChatRentSeller;
-    private android.widget.RadioGroup rgPaymentMethod;
     private TextView tvDepositInfo;
-    private String sellerName = "";
     private long walletBalance = 0L;
+
+    // Phương thức thanh toán: "cash" | "vnpay" | "wallet"
+    private com.google.android.material.button.MaterialButtonToggleGroup togglePaymentMethod;
+    private TextView tvPaymentMethodHint;
+    private String paymentMethod = "cash";
+
+    // Bảng "Đặt thuê xe": bấm CTA mới trượt lên (panel + animation, không dùng BottomSheetBehavior)
+    private Button btnOpenRentSheet;
+    private View layoutRentContact;   // hàng Gọi điện / Nhắn tin (ngoài sheet)
+    private View sheetRent;
+    private View rentScrim;
+    private boolean rentSheetOpen = false;
 
     // Đặt theo ngày / theo chuyến (xe có tài xế)
     private com.google.android.material.button.MaterialButtonToggleGroup toggleBookMode;
@@ -98,10 +114,11 @@ public class CarDetailActivity extends AppCompatActivity {
 
     private TextView tvReportCar;
     private ImageView btnMenuDetail;
-    private FirebaseFirestore db;
     private String sellerPhone = "";
     private Car car;
     private String carId, sellerId, carType;
+
+    private CarDetailViewModel viewModel;
     private String carStatus = "";
 
     // Review section
@@ -128,7 +145,8 @@ public class CarDetailActivity extends AppCompatActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
 
-        db = FirebaseFirestore.getInstance();
+        viewModel = new ViewModelProvider(this).get(CarDetailViewModel.class);
+
         initViews();
         setupDetailHeader();
 
@@ -164,26 +182,117 @@ public class CarDetailActivity extends AppCompatActivity {
             sellerId = car.getSellerId();
         }
 
-        if (carId != null && !carId.isEmpty()) {
-            loadCarDetail(carId);
-        }
-
-        if (sellerId != null && !sellerId.isEmpty()) {
-            loadSellerInfo(sellerId);
-        } else {
-            tvSellerName.setText("👤  Chưa có thông tin");
-            tvSellerPhone.setText("📞  Chưa có thông tin");
-            setupByType(carType);
-        }
-
         setupButtons();
         setupRentDepositUi();
         setupBookModeListeners();
-        loadFavoriteState();
+
+        observeViewModel();
+        viewModel.init(car, carId, sellerId, carType);
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("Chi tiết xe");
+        }
+    }
+
+    private void observeViewModel() {
+        viewModel.getDetail().observe(this, d -> {
+            if (d == null) return;
+            pricePerDay = d.pricePerDay;
+            pricePerKm  = d.pricePerKm;
+            if (!d.images.isEmpty()) {
+                showImages(d.images);
+                for (String u : d.images) ImageLoader.preload(getApplicationContext(), u);
+            }
+            if (d.fuel != null && !d.fuel.isEmpty()) {
+                tvCarFuelBadge.setText(d.fuel);
+                tvCarFuelBadge.setVisibility(View.VISIBLE);
+            }
+            if (d.condition != null && !d.condition.isEmpty()) {
+                if (d.condition.contains("mới 100") || d.condition.equalsIgnoreCase("Xe mới 100%"))
+                    tvCarConditionBadge.setText("Xe mới");
+                else
+                    tvCarConditionBadge.setText("Xe cũ");
+                tvCarConditionBadge.setVisibility(View.VISIBLE);
+            }
+        });
+
+        viewModel.getContact().observe(this, c -> {
+            if (c == null) return;
+            tvSellerName.setText("👤  " + (c.name != null && !c.name.isEmpty() ? c.name : "Chưa có thông tin"));
+            if (c.phone != null && !c.phone.isEmpty()) {
+                sellerPhone = c.phone;
+                tvSellerPhone.setText("📞  " + c.phone);
+            } else {
+                tvSellerPhone.setText("📞  Chưa có thông tin");
+            }
+        });
+
+        viewModel.getTypeInfo().observe(this, t -> {
+            if (t != null) setupByType(t.type, t.isOwner);
+        });
+
+        viewModel.getWalletBalance().observe(this, b -> {
+            walletBalance = b != null ? b : 0L;
+            if (togglePaymentMethod != null) applyPaymentMethod(togglePaymentMethod.getCheckedButtonId());
+        });
+
+        viewModel.getIsFavorite().observe(this, fav -> {
+            isFav = Boolean.TRUE.equals(fav);
+            updateFavoriteIcons();
+        });
+
+        viewModel.getMessage().observe(this, msg -> {
+            if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+        });
+
+        viewModel.getNeedLogin().observe(this, need -> {
+            if (Boolean.TRUE.equals(need)) {
+                Toast.makeText(this, "Vui lòng đăng nhập để gửi yêu cầu!", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(this, LoginActivity.class));
+            }
+        });
+
+        viewModel.getSendEnabled().observe(this, enabled -> {
+            boolean e = !Boolean.FALSE.equals(enabled);
+            if (btnSendRequest != null) btnSendRequest.setEnabled(e);
+            if (btnSendRentRequest != null) btnSendRentRequest.setEnabled(e);
+        });
+
+        viewModel.getOrderSent().observe(this, this::onOrderSent);
+
+        viewModel.getPostEdited().observe(this, p -> {
+            if (p == null) return;
+            tvCarName.setText(p.name);
+            if (tvDetailTitle != null) tvDetailTitle.setText(p.name);
+            tvCarPrice.setText(p.price);
+            tvCarInfo.setText(p.info);
+        });
+
+        viewModel.getFinishEvent().observe(this, f -> {
+            if (Boolean.TRUE.equals(f)) finish();
+        });
+    }
+
+    private void onOrderSent(CarDetailViewModel.OrderSent e) {
+        if (e == null) return;
+        if (e.kind == CarDetailViewModel.Kind.BUY) {
+            etBuyerNote.setText("");
+        } else {
+            closeRentSheet();
+        }
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) notifySellerOrderSent(user, e.orderId);
+        if (e.scheduleReminder && user != null) {
+            OrderReminderService.schedule(
+                    this,
+                    e.orderId,
+                    sellerId != null ? sellerId : "",
+                    user.getUid(),
+                    e.customerName,
+                    car != null ? car.getName() : "",
+                    carId != null ? carId : ""
+            );
         }
     }
 
@@ -215,12 +324,12 @@ public class CarDetailActivity extends AppCompatActivity {
         etRenterPhone = findViewById(R.id.etRenterPhone);
         etRenterCCCD = findViewById(R.id.etRenterCCCD);
         etRentStartDate = findViewById(R.id.etRentStartDate);
+        setupStartDatePicker();
         etRentDays = findViewById(R.id.etRentDays);
         etRenterNote = findViewById(R.id.etRenterNote);
         btnSendRentRequest = findViewById(R.id.btnSendRentRequest);
         btnCallRentSeller  = findViewById(R.id.btnCallRentSeller);
         btnChatRentSeller = findViewById(R.id.btnChatRentSeller);
-        rgPaymentMethod = findViewById(R.id.rg_payment_method);
         tvDepositInfo   = findViewById(R.id.tv_deposit_info);
 
         toggleBookMode  = findViewById(R.id.toggle_book_mode);
@@ -238,6 +347,102 @@ public class CarDetailActivity extends AppCompatActivity {
             rvDetailReviews.setAdapter(reviewAdapter);
         }
         tvTripSummary   = findViewById(R.id.tvTripSummary);
+
+        togglePaymentMethod = findViewById(R.id.toggle_payment_method);
+        tvPaymentMethodHint = findViewById(R.id.tv_payment_method_hint);
+        setupPaymentMethod();
+
+        btnOpenRentSheet  = findViewById(R.id.btnOpenRentSheet);
+        layoutRentContact = findViewById(R.id.layoutRentContact);
+        sheetRent         = findViewById(R.id.sheet_rent);
+        rentScrim         = findViewById(R.id.rent_scrim);
+        View btnCloseRentSheet = findViewById(R.id.btn_close_rent_sheet);
+        if (btnOpenRentSheet != null) btnOpenRentSheet.setOnClickListener(v -> openRentSheet());
+        if (btnCloseRentSheet != null) btnCloseRentSheet.setOnClickListener(v -> closeRentSheet());
+        if (rentScrim != null) rentScrim.setOnClickListener(v -> closeRentSheet());
+    }
+
+    /** Trượt bảng thuê xe lên từ đáy + làm mờ nền. */
+    private void openRentSheet() {
+        if (sheetRent == null || rentSheetOpen) return;
+        rentSheetOpen = true;
+
+        int offscreen = getResources().getDisplayMetrics().heightPixels;
+        sheetRent.setTranslationY(offscreen);          // đặt ngoài màn trước khi hiện (tránh nháy)
+        sheetRent.setVisibility(View.VISIBLE);
+        sheetRent.post(() -> {
+            sheetRent.setTranslationY(sheetRent.getHeight());
+            sheetRent.animate().translationY(0f).setDuration(300)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        });
+
+        if (rentScrim != null) {
+            rentScrim.setAlpha(0f);
+            rentScrim.setVisibility(View.VISIBLE);
+            rentScrim.animate().alpha(1f).setDuration(300).start();
+        }
+    }
+
+    /** Trượt bảng thuê xe xuống + bỏ nền mờ. */
+    private void closeRentSheet() {
+        rentSheetOpen = false;
+        if (sheetRent == null || sheetRent.getVisibility() != View.VISIBLE) return;
+
+        float target = sheetRent.getHeight() > 0
+                ? sheetRent.getHeight()
+                : getResources().getDisplayMetrics().heightPixels;
+        sheetRent.animate().translationY(target).setDuration(220)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> sheetRent.setVisibility(View.GONE)).start();
+
+        if (rentScrim != null) {
+            rentScrim.animate().alpha(0f).setDuration(220)
+                    .withEndAction(() -> rentScrim.setVisibility(View.GONE)).start();
+        }
+    }
+
+    private boolean isRentSheetOpen() {
+        return rentSheetOpen;
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isRentSheetOpen()) { closeRentSheet(); return; }
+        super.onBackPressed();
+    }
+
+    /** Bộ chọn phương thức thanh toán cho đơn thuê: mặc định tiền mặt. */
+    private void setupPaymentMethod() {
+        if (togglePaymentMethod == null) return;
+        if (togglePaymentMethod.getCheckedButtonId() == View.NO_ID) {
+            togglePaymentMethod.check(R.id.btn_pay_cash);
+        }
+        applyPaymentMethod(togglePaymentMethod.getCheckedButtonId());
+        togglePaymentMethod.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) applyPaymentMethod(checkedId);
+        });
+    }
+
+    private void applyPaymentMethod(int checkedId) {
+        if (checkedId == R.id.btn_pay_vnpay) {
+            paymentMethod = "vnpay";
+        } else if (checkedId == R.id.btn_pay_wallet) {
+            paymentMethod = "wallet";
+        } else {
+            paymentMethod = "cash";
+        }
+        if (tvPaymentMethodHint == null) return;
+        switch (paymentMethod) {
+            case "vnpay":
+                tvPaymentMethodHint.setText("Chuyển khoản qua VNPay khi thanh toán hóa đơn lúc trả xe.");
+                break;
+            case "wallet":
+                tvPaymentMethodHint.setText("Trừ trực tiếp vào số dư ví trong app khi thanh toán hóa đơn ("
+                        + money(walletBalance) + " đ khả dụng).");
+                break;
+            default:
+                tvPaymentMethodHint.setText("Trả tiền mặt cho chủ xe khi kết thúc chuyến.");
+        }
     }
 
     private void setupDetailHeader() {
@@ -255,8 +460,8 @@ public class CarDetailActivity extends AppCompatActivity {
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());
         if (btnBackFloat != null) btnBackFloat.setOnClickListener(v -> finish());
 
-        if (btnFavoriteFloat != null) btnFavoriteFloat.setOnClickListener(v -> toggleFavorite());
-        if (ivFavoriteDetail != null) ivFavoriteDetail.setOnClickListener(v -> toggleFavorite());
+        if (btnFavoriteFloat != null) btnFavoriteFloat.setOnClickListener(v -> viewModel.toggleFavorite());
+        if (ivFavoriteDetail != null) ivFavoriteDetail.setOnClickListener(v -> viewModel.toggleFavorite());
         updateFavoriteIcons();
 
         if (headerDetail != null) {
@@ -323,28 +528,6 @@ public class CarDetailActivity extends AppCompatActivity {
             if (isFav) ivFavoriteDetail.clearColorFilter();
             else ivFavoriteDetail.setColorFilter(0xFF1A1A2E);
         }
-    }
-
-    private void loadFavoriteState() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null || carId == null || carId.isEmpty()) return;
-        FavoriteRepository.contains(user.getUid(), carId, fav -> {
-            isFav = fav;
-            updateFavoriteIcons();
-        });
-    }
-
-    private void toggleFavorite() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            Toast.makeText(this, "Đăng nhập để lưu xe yêu thích", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (carId == null || carId.isEmpty()) return;
-        isFav = !isFav;
-        if (isFav) FavoriteRepository.add(user.getUid(), carId);
-        else FavoriteRepository.remove(user.getUid(), carId);
-        updateFavoriteIcons();
     }
 
     private void setStatusBarDarkIcons(boolean dark) {
@@ -418,36 +601,17 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    private static List<String> extractImageUrls(Object raw) {
-        List<String> urls = new ArrayList<>();
-        if (raw instanceof List) {
-            for (Object item : (List<?>) raw) {
-                if (item != null && !item.toString().isEmpty()) urls.add(item.toString());
-            }
-        }
-        return urls;
-    }
-
     private void setupButtons() {
-        btnSendRequest.setOnClickListener(v -> sendBuyRequest());
+        btnSendRequest.setOnClickListener(v -> viewModel.sendBuyRequest(etBuyerNote.getText().toString()));
         btnCallSeller.setOnClickListener(v -> callSeller());
         btnChatSeller.setOnClickListener(v -> openChat());
 
-        btnSendRentRequest.setOnClickListener(v -> sendRentRequest());
+        btnSendRentRequest.setOnClickListener(v -> showRentalTermsThenSend());
         btnCallRentSeller.setOnClickListener(v -> callSeller());
         btnChatRentSeller.setOnClickListener(v -> openChat());
     }
 
     private void setupRentDepositUi() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user != null) {
-            db.collection("users").document(user.getUid()).get()
-                    .addOnSuccessListener(doc -> {
-                        Double b = doc.getDouble("balance");
-                        walletBalance = b != null ? Math.round(b) : 0L;
-                        updateDepositInfo();
-                    });
-        }
         if (etRentDays != null) {
             etRentDays.addTextChangedListener(new android.text.TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
@@ -512,23 +676,13 @@ public class CarDetailActivity extends AppCompatActivity {
         int days = parseDays(etRentDays != null ? etRentDays.getText().toString() : "");
 
         if (pricePerDay <= 0 || days <= 0) {
-            tvDepositInfo.setText("Nhập số ngày thuê để xem tiền cọc.\nSố dư ví: " + money(walletBalance) + " đ");
+            tvDepositInfo.setText("Nhập số ngày thuê để xem tổng tiền.");
             return;
         }
 
         long total = pricePerDay * days;
-        StringBuilder sb = new StringBuilder();
-        sb.append("Tổng tiền thuê (").append(days).append(" ngày): ").append(money(total)).append(" đ\n");
-        if (WalletRepository.requiresDeposit(days)) {
-            long deposit = WalletRepository.deposit(total);
-            sb.append("Đặt cọc giữ xe (50%, trừ vào ví): ").append(money(deposit)).append(" đ\n");
-            sb.append("Số dư ví hiện tại: ").append(money(walletBalance)).append(" đ");
-            if (walletBalance < deposit) sb.append("\n⚠️ Số dư không đủ — vui lòng nhờ admin nạp tiền.");
-        } else {
-            sb.append("Đơn ngắn ngày: không cần đặt cọc, thanh toán khi nhận xe.\n");
-            sb.append("Số dư ví: ").append(money(walletBalance)).append(" đ");
-        }
-        tvDepositInfo.setText(sb.toString());
+        tvDepositInfo.setText("Tổng tiền thuê (" + days + " ngày): " + money(total)
+                + " đ\nThuê xe không cần đặt cọc, thanh toán khi nhận xe.");
     }
 
     private static long parseMoney(String s) {
@@ -578,7 +732,7 @@ public class CarDetailActivity extends AppCompatActivity {
         roomData.put("buyerId", user.getUid());
         roomData.put("sellerId", sellerId);
 
-        db.collection("chat_rooms").document(roomId)
+        FirebaseFirestore.getInstance().collection("chat_rooms").document(roomId)
                 .set(roomData, SetOptions.merge())
                 .addOnSuccessListener(aVoid -> {
                     Intent intent = new Intent(this, ChatDetailActivity.class);
@@ -684,7 +838,9 @@ public class CarDetailActivity extends AppCompatActivity {
 
         if (isOwner) {
             layoutBuyForm.setVisibility(View.GONE);
-            layoutRentForm.setVisibility(View.GONE);
+            if (btnOpenRentSheet != null) btnOpenRentSheet.setVisibility(View.GONE);
+            if (layoutRentContact != null) layoutRentContact.setVisibility(View.GONE);
+            closeRentSheet();
             if (tvReportCar != null) tvReportCar.setVisibility(View.GONE);
             applyTypeBadge(driver, rental);
             if (tvOwnerNote != null) tvOwnerNote.setVisibility(View.VISIBLE);
@@ -711,11 +867,14 @@ public class CarDetailActivity extends AppCompatActivity {
 
         if (driver || rental) {
             layoutBuyForm.setVisibility(View.GONE);
-            layoutRentForm.setVisibility(View.VISIBLE);
+            if (btnOpenRentSheet != null) btnOpenRentSheet.setVisibility(View.VISIBLE);
+            if (layoutRentContact != null) layoutRentContact.setVisibility(View.VISIBLE);
             configureBookMode(driver);
         } else {
             layoutBuyForm.setVisibility(View.VISIBLE);
-            layoutRentForm.setVisibility(View.GONE);
+            if (btnOpenRentSheet != null) btnOpenRentSheet.setVisibility(View.GONE);
+            if (layoutRentContact != null) layoutRentContact.setVisibility(View.GONE);
+            closeRentSheet();
         }
     }
 
@@ -732,20 +891,8 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    private static boolean isDriverType(String type) {
-        if (type == null) return false;
-        String t = type.toLowerCase();
-        return t.contains("driver") || t.contains("tai xe") || t.contains("tài xế");
-    }
-
-    private static boolean isRentalType(String type) {
-        if (type == null) return false;
-        String t = type.toLowerCase();
-        return t.contains("rental") || t.contains("rent") || t.contains("thue") || t.contains("thuê") || t.contains("tu lai");
-    }
-
     private void showOwnerMenu(View anchor) {
-        boolean isHidden = "hidden".equals(carStatus);
+        boolean isHidden = viewModel.isHidden();
         androidx.appcompat.widget.PopupMenu menu =
                 new androidx.appcompat.widget.PopupMenu(this, anchor);
         menu.getMenu().add(0, 1, 0, "✏️  Chỉnh sửa bài viết");
@@ -754,7 +901,7 @@ public class CarDetailActivity extends AppCompatActivity {
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
                 case 1: showEditPostDialog(); return true;
-                case 2: toggleHidePost();     return true;
+                case 2: viewModel.toggleHidePost(); return true;
                 case 3: confirmDeletePost();  return true;
                 default: return false;
             }
@@ -763,8 +910,6 @@ public class CarDetailActivity extends AppCompatActivity {
     }
 
     private void showEditPostDialog() {
-        if (carId == null || carId.isEmpty()) return;
-
         int pad = Math.round(20 * getResources().getDisplayMetrics().density);
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -788,149 +933,54 @@ public class CarDetailActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Chỉnh sửa bài viết")
                 .setView(layout)
-                .setPositiveButton("Lưu", (dialog, which) -> {
-                    String name = etName.getText().toString().trim();
-                    String price = etPrice.getText().toString().trim();
-                    String info = etInfo.getText().toString().trim();
-                    if (name.isEmpty() || price.isEmpty()) {
-                        Toast.makeText(this, "Tiêu đề và giá không được để trống!", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    Map<String, Object> update = new HashMap<>();
-                    update.put("name", name);
-                    update.put("price", price);
-                    update.put("info", info);
-                    db.collection("cars").document(carId).update(update)
-                            .addOnSuccessListener(aVoid -> {
-                                tvCarName.setText(name);
-                                if (tvDetailTitle != null) tvDetailTitle.setText(name);
-                                tvCarPrice.setText(price);
-                                tvCarInfo.setText(info);
-                                Toast.makeText(this, "✅ Đã cập nhật bài viết!", Toast.LENGTH_SHORT).show();
-                            })
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                })
+                .setPositiveButton("Lưu", (dialog, which) ->
+                        viewModel.editPost(
+                                etName.getText().toString().trim(),
+                                etPrice.getText().toString().trim(),
+                                etInfo.getText().toString().trim()))
                 .setNegativeButton("Hủy", null)
                 .show();
-    }
-
-    private void toggleHidePost() {
-        if (carId == null || carId.isEmpty()) return;
-
-        boolean isHidden = "hidden".equals(carStatus);
-        Map<String, Object> update = new HashMap<>();
-        if (isHidden) {
-            String restored = statusBeforeHide.isEmpty() ? "active" : statusBeforeHide;
-            update.put("status", restored);
-            update.put("statusBeforeHide", com.google.firebase.firestore.FieldValue.delete());
-            db.collection("cars").document(carId).update(update)
-                    .addOnSuccessListener(aVoid -> {
-                        carStatus = restored;
-                        statusBeforeHide = "";
-                        Toast.makeText(this, "✅ Bài viết đã hiển thị trở lại!", Toast.LENGTH_SHORT).show();
-                    })
-                    .addOnFailureListener(e ->
-                            Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-        } else {
-            update.put("status", "hidden");
-            update.put("statusBeforeHide", carStatus);
-            db.collection("cars").document(carId).update(update)
-                    .addOnSuccessListener(aVoid -> {
-                        statusBeforeHide = carStatus;
-                        carStatus = "hidden";
-                        Toast.makeText(this, "🙈 Đã ẩn bài viết khỏi danh sách!", Toast.LENGTH_SHORT).show();
-                    })
-                    .addOnFailureListener(e ->
-                            Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-        }
     }
 
     private void confirmDeletePost() {
-        if (carId == null || carId.isEmpty()) return;
         new AlertDialog.Builder(this)
                 .setTitle("Xóa bài viết")
                 .setMessage("Bạn có chắc muốn xóa bài viết này? Hành động không thể hoàn tác.")
-                .setPositiveButton("Xóa", (dialog, which) ->
-                        db.collection("cars").document(carId).delete()
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(this, "🗑 Đã xóa bài viết!", Toast.LENGTH_LONG).show();
-                                    finish();
-                                })
-                                .addOnFailureListener(e ->
-                                        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show()))
+                .setPositiveButton("Xóa", (dialog, which) -> viewModel.deletePost())
                 .setNegativeButton("Hủy", null)
                 .show();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    //  GỬI ĐƠN MUA XE — có thêm thông báo cho người bán
-    // ═══════════════════════════════════════════════════════════════════════════
-    private void sendBuyRequest() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            Toast.makeText(this, "Vui lòng đăng nhập để gửi yêu cầu!", Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(this, LoginActivity.class));
-            return;
-        }
-
-        // Kiểm tra đã có order pending cho xe này chưa → chặn spam
-        db.collection("orders")
-                .whereEqualTo("buyerId", user.getUid())
-                .whereEqualTo("carId",   carId != null ? carId : "")
-                .whereEqualTo("status",  "pending")
-                .limit(1)
-                .get()
-                .addOnSuccessListener(snap -> {
-                    if (!snap.isEmpty()) {
-                        Toast.makeText(this,
-                                "⏳ Đã gửi yêu cầu. Vui lòng chờ người bán phản hồi.",
-                                Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    doSendBuyRequest(user);
-                });
-    }
-
-    private void doSendBuyRequest(FirebaseUser user) {
-        Map<String, Object> order = new HashMap<>();
-        order.put("buyerId",  user.getUid());
-        order.put("sellerId", sellerId != null ? sellerId : "");
-        order.put("carId",    carId != null ? carId : "");
-        order.put("carName",  car != null ? car.getName() : "");
-        order.put("carPrice", car != null ? car.getPrice() : "");
-        order.put("type",     "Mua xe");
-        order.put("note",     etBuyerNote.getText().toString().trim());
-        order.put("status",   "pending");
-        order.put("createdAt", com.google.firebase.Timestamp.now());
-
-        db.collection("orders").add(order)
-                .addOnSuccessListener(ref -> {
-                    Toast.makeText(this, "✅ Gửi yêu cầu thành công!", Toast.LENGTH_LONG).show();
-                    etBuyerNote.setText("");
-                    notifySellerOrderSent(user, ref.getId());
-                    // ── Lên lịch nhắc nhở người bán mỗi 10 phút ──────────────────
-                    String buyerName = user.getDisplayName();
-                    if (buyerName == null || buyerName.isEmpty()) buyerName = "Khách hàng";
-                    OrderReminderService.schedule(
-                            CarDetailActivity.this,
-                            ref.getId(),
-                            sellerId != null ? sellerId : "",
-                            user.getUid(),
-                            buyerName,
-                            car != null ? car.getName() : "",
-                            carId != null ? carId : ""
-                    );
-                });
+    /** Ô "Ngày bắt đầu thuê": bấm mở lịch chọn ngày, luôn lưu dạng dd/MM/yyyy (tránh nhập tay sai). */
+    private void setupStartDatePicker() {
+        if (etRentStartDate == null) return;
+        final java.text.SimpleDateFormat sdf =
+                new java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US);
+        etRentStartDate.setOnClickListener(v -> {
+            java.util.Calendar c = java.util.Calendar.getInstance();
+            String cur = etRentStartDate.getText().toString().trim();
+            try {
+                java.util.Date d = sdf.parse(cur);
+                if (d != null) c.setTime(d);
+            } catch (Exception ignore) { }
+            DatePickerDialog dlg = new DatePickerDialog(this, (picker, year, month, day) -> {
+                java.util.Calendar picked = java.util.Calendar.getInstance();
+                picked.set(java.util.Calendar.YEAR, year);
+                picked.set(java.util.Calendar.MONTH, month);
+                picked.set(java.util.Calendar.DAY_OF_MONTH, day);
+                etRentStartDate.setText(sdf.format(picked.getTime()));
+            }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH),
+                    c.get(java.util.Calendar.DAY_OF_MONTH));
+            dlg.show();
+        });
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    //  GỬI ĐƠN THUÊ XE — có thêm thông báo cho người cho thuê
+    //  ĐIỀU KHOẢN THUÊ XE — buộc đọc 10s, tích đồng ý rồi mới được gửi yêu cầu
     // ═══════════════════════════════════════════════════════════════════════════
-    private void sendRentRequest() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            Toast.makeText(this, "Vui lòng đăng nhập!", Toast.LENGTH_SHORT).show();
+    private void showRentalTermsThenSend() {
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập để thuê xe!", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1013,175 +1063,89 @@ public class CarDetailActivity extends AppCompatActivity {
     }
 
     private void doSendRentRequest(FirebaseUser user) {
+        View view = getLayoutInflater().inflate(R.layout.dialog_rental_terms, null);
+        TextView tvCountdown = view.findViewById(R.id.tv_terms_countdown);
+        CheckBox cbAgree     = view.findViewById(R.id.cb_terms_agree);
+        Button btnCancel     = view.findViewById(R.id.btn_terms_cancel);
+        Button btnConfirm    = view.findViewById(R.id.btn_terms_confirm);
 
-        String renterName  = etRenterName.getText().toString().trim();
-        String renterPhone = etRenterPhone.getText().toString().trim();
-        String renterCccd  = etRenterCCCD.getText().toString().trim();
-        int    days        = parseDays(etRentDays.getText().toString());
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(view)
+                .setCancelable(false)   // không cho tắt bằng nút back / chạm ra ngoài
+                .create();
 
-        if (renterName.isEmpty() || renterPhone.isEmpty() || renterCccd.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập đầy đủ thông tin người thuê", Toast.LENGTH_SHORT).show();
-            return;
+        // Liquid Glass: nền cửa sổ trong suốt để lộ card kính bo góc; dim + blur thật phía sau
+        Window w = dialog.getWindow();
+        if (w != null) {
+            try {
+                w.setBackgroundDrawableResource(android.R.color.transparent);
+                w.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT);
+                w.setDimAmount(0.3f);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    // Blur nội dung sau card (frosted) + blur cả vùng nền phía sau cửa sổ — nhẹ thôi
+                    w.setBackgroundBlurRadius(24);
+                    w.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+                    WindowManager.LayoutParams lp = w.getAttributes();
+                    lp.setBlurBehindRadius(12);
+                    w.setAttributes(lp);
+                }
+            } catch (Throwable ignore) {
+                // Một số máy không hỗ trợ blur/thuộc tính cửa sổ → bỏ qua, dialog vẫn hiện
+            }
         }
-        if (days <= 0) {
-            Toast.makeText(this, "Vui lòng nhập số ngày thuê hợp lệ", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
-        long pricePerDay   = parseMoney(car != null ? car.getPrice() : null);
-        long total         = pricePerDay * days;
-        boolean needDeposit= WalletRepository.requiresDeposit(days);
-        long deposit       = needDeposit ? WalletRepository.deposit(total) : 0L;
-        String payMethod   = rgPaymentMethod != null
-                && rgPaymentMethod.getCheckedRadioButtonId() == R.id.rb_pay_transfer ? "transfer" : "cash";
+        // Khóa mọi tương tác trong 10 giây để người dùng đọc kỹ điều khoản
+        cbAgree.setEnabled(false);
+        btnCancel.setEnabled(false);
+        btnConfirm.setEnabled(false);
+        btnCancel.setAlpha(0.5f);
+        btnConfirm.setAlpha(0.5f);
 
-        if (needDeposit && walletBalance < deposit) {
-            Toast.makeText(this, "Số dư ví không đủ để đặt cọc " + money(deposit)
-                    + " đ. Vui lòng nhờ admin nạp tiền.", Toast.LENGTH_LONG).show();
-            return;
-        }
+        final CountDownTimer timer = new CountDownTimer(10_000, 1_000) {
+            @Override public void onTick(long ms) {
+                tvCountdown.setText("⏳ Vui lòng đọc kỹ điều khoản… còn " + (ms / 1000 + 1) + " giây");
+            }
+            @Override public void onFinish() {
+                tvCountdown.setText("✅ Bạn có thể tích đồng ý để tiếp tục");
+                tvCountdown.setTextColor(0xFF0E8C91);
+                cbAgree.setEnabled(true);
+                btnCancel.setEnabled(true);
+                btnCancel.setAlpha(1f);
+            }
+        }.start();
 
-        Map<String, Object> order = new HashMap<>();
-        order.put("buyerId",      user.getUid());
-        order.put("renterName",   renterName);
-        order.put("renterPhone",  renterPhone);
-        order.put("renterCccd",   renterCccd);
-        order.put("sellerId",     sellerId != null ? sellerId : "");
-        order.put("sellerName",   sellerName);
-        order.put("carId",        carId != null ? carId : "");
-        order.put("carName",      car != null ? car.getName() : "");
-        order.put("carPrice",     car != null ? car.getPrice() : "");
-        order.put("type",         isDriverType(carType) ? "Có tài xế" : "Thuê xe");
-        order.put("days",         String.valueOf(days));
-        order.put("startDate",    etRentStartDate.getText().toString().trim());
-        order.put("note",         etRenterNote.getText().toString().trim());
-        order.put("totalAmount",  total);
-        order.put("depositAmount", deposit);
-        order.put("paymentMethod", payMethod);
-        order.put("depositStatus", needDeposit ? "held" : "none");
-        order.put("status",       "pending");
-        order.put("createdAt",    com.google.firebase.Timestamp.now());
+        // Chỉ bật nút xác nhận khi đã tích đồng ý
+        cbAgree.setOnCheckedChangeListener((b, checked) -> {
+            btnConfirm.setEnabled(checked);
+            btnConfirm.setAlpha(checked ? 1f : 0.5f);
+        });
 
-        btnSendRentRequest.setEnabled(false);
-        db.collection("orders").add(order)
-                .addOnSuccessListener(ref -> {
-                    if (!needDeposit) {
-                        btnSendRentRequest.setEnabled(true);
-                        Toast.makeText(this, "✅ Gửi yêu cầu thuê xe thành công!", Toast.LENGTH_LONG).show();
+        btnCancel.setOnClickListener(v -> { timer.cancel(); dialog.dismiss(); });
+        btnConfirm.setOnClickListener(v -> {
+            timer.cancel();
+            dialog.dismiss();
+            submitRentRequest();   // đã đồng ý điều khoản → tiến hành gửi yêu cầu thuê
+        });
 
-                        // ── Thông báo cho người cho thuê ─────────────────────
-                        notifySellerOrderSent(user, ref.getId());
-                        OrderReminderService.schedule(
-                                CarDetailActivity.this,
-                                ref.getId(),
-                                sellerId != null ? sellerId : "",
-                                user.getUid(),
-                                renterName,
-                                car != null ? car.getName() : "",
-                                carId != null ? carId : ""
-                        );
-                        // ─────────────────────────────────────────────────────
-                        return;
-                    }
-                    // Giữ cọc: trừ tiền ví khách
-                    WalletRepository.holdDeposit(user.getUid(), deposit, ref.getId(),
-                            new WalletRepository.Callback() {
-                                @Override public void onSuccess() {
-                                    walletBalance -= deposit;
-                                    updateDepositInfo();
-                                    btnSendRentRequest.setEnabled(true);
-                                    Toast.makeText(CarDetailActivity.this,
-                                            "✅ Đặt xe thành công! Đã giữ cọc " + money(deposit) + " đ.",
-                                            Toast.LENGTH_LONG).show();
-
-                                    // ── Thông báo cho người cho thuê ─────────
-                                    notifySellerOrderSent(user, ref.getId());
-                                    OrderReminderService.schedule(
-                                            CarDetailActivity.this,
-                                            ref.getId(),
-                                            sellerId != null ? sellerId : "",
-                                            user.getUid(),
-                                            renterName,
-                                            car != null ? car.getName() : "",
-                                            carId != null ? carId : ""
-                                    );
-                                    // ─────────────────────────────────────────
-                                }
-                                @Override public void onError(String msg) {
-                                    ref.delete();
-                                    btnSendRentRequest.setEnabled(true);
-                                    Toast.makeText(CarDetailActivity.this,
-                                            "Không giữ được cọc: " + msg, Toast.LENGTH_LONG).show();
-                                }
-                            });
-                })
-                .addOnFailureListener(e -> {
-                    btnSendRentRequest.setEnabled(true);
-                    Toast.makeText(this, "Lỗi tạo đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+        dialog.show();
     }
 
-    /** Gửi đơn đặt "theo chuyến" (quãng đường) cho tài xế của bài đăng này. */
-    private void sendTripRequest(FirebaseUser user) {
-        String renterName  = etRenterName.getText().toString().trim();
-        String renterPhone = etRenterPhone.getText().toString().trim();
-
-        if (renterName.isEmpty() || renterPhone.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập họ tên và số điện thoại", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (tripDistanceKm <= 0 || tripPickup == null || tripDest == null) {
-            Toast.makeText(this, "Hãy chọn điểm đón & đến trên bản đồ", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (pricePerKm <= 0) {
-            Toast.makeText(this, "Tài xế này không nhận đặt theo chuyến", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        long total = Math.round(tripDistanceKm * pricePerKm);
-        String tripNote = "Chuyến: " + tripPickup + " → " + tripDest
-                + " (" + tripDistanceKm + " km). Tổng: " + money(total) + " đ."
-                + (etRenterNote.getText().toString().trim().isEmpty()
-                ? "" : " Ghi chú: " + etRenterNote.getText().toString().trim());
-
-        Map<String, Object> order = new HashMap<>();
-        order.put("buyerId",      user.getUid());
-        order.put("renterName",   renterName);
-        order.put("renterPhone",  renterPhone);
-        order.put("sellerId",     sellerId != null ? sellerId : "");
-        order.put("sellerName",   sellerName);
-        order.put("carId",        carId != null ? carId : "");
-        order.put("carName",      car != null ? car.getName() : "");
-        order.put("carPrice",     money(pricePerKm) + " đ/km");
-        order.put("type",         "Có tài xế");
-        order.put("rentMode",     "distance");
-        order.put("pickup",       tripPickup);
-        order.put("destination",  tripDest);
-        order.put("distanceKm",   tripDistanceKm);
-        order.put("note",         tripNote);
-        order.put("totalAmount",  total);
-        order.put("depositAmount", 0L);
-        order.put("paymentMethod", "cash");
-        order.put("depositStatus", "none");
-        order.put("status",       "pending");
-        order.put("createdAt",    com.google.firebase.Timestamp.now());
-
-        btnSendRentRequest.setEnabled(false);
-        db.collection("orders").add(order)
-                .addOnSuccessListener(ref -> {
-                    btnSendRentRequest.setEnabled(true);
-                    Toast.makeText(this, "✅ Đã gửi yêu cầu đặt chuyến! Chờ tài xế xác nhận.",
-                            Toast.LENGTH_LONG).show();
-
-                    // ── Thông báo cho tài xế ─────────────────────────────────
-                    notifySellerOrderSent(user, ref.getId());
-                    // ─────────────────────────────────────────────────────────
-                })
-                .addOnFailureListener(e -> {
-                    btnSendRentRequest.setEnabled(true);
-                    Toast.makeText(this, "Lỗi tạo đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+    /** Thu thập dữ liệu form thuê/chuyến rồi đẩy cho ViewModel xử lý. */
+    private void submitRentRequest() {
+        CarDetailViewModel.RentForm form = new CarDetailViewModel.RentForm();
+        form.renterName  = etRenterName.getText().toString().trim();
+        form.renterPhone = etRenterPhone.getText().toString().trim();
+        form.renterCccd  = etRenterCCCD.getText().toString().trim();
+        form.startDate   = etRentStartDate.getText().toString().trim();
+        form.note        = etRenterNote.getText().toString().trim();
+        form.days        = parseDays(etRentDays.getText().toString());
+        form.tripMode    = tripMode;
+        form.pickup      = tripPickup;
+        form.dest        = tripDest;
+        form.distanceKm  = tripDistanceKm;
+        form.paymentMethod = paymentMethod;
+        viewModel.sendRentRequest(form);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1190,7 +1154,7 @@ public class CarDetailActivity extends AppCompatActivity {
     private void notifySellerOrderSent(FirebaseUser buyer, String orderId) {
         if (sellerId == null || sellerId.isEmpty()) return;
 
-        db.collection("users").document(buyer.getUid()).get()
+        FirebaseFirestore.getInstance().collection("users").document(buyer.getUid()).get()
                 .addOnSuccessListener(snap -> {
                     String buyerName = snap.getString("name");
                     if (buyerName == null || buyerName.isEmpty()) buyerName = "Khách hàng";
@@ -1222,27 +1186,14 @@ public class CarDetailActivity extends AppCompatActivity {
     }
 
     private void showReportDialog() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) return;
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) return;
 
         final String[] reasons = {"Thông tin sai lệch", "Xe không tồn tại", "Giá bất hợp lý", "Lừa đảo"};
         new AlertDialog.Builder(this)
                 .setTitle("Báo cáo tin đăng")
-                .setItems(reasons, (dialog, which) -> submitReport(currentUser, reasons[which]))
+                .setItems(reasons, (dialog, which) -> viewModel.submitReport(reasons[which]))
                 .setNegativeButton("Hủy", null)
                 .show();
-    }
-
-    private void submitReport(FirebaseUser currentUser, String reason) {
-        Map<String, Object> report = new HashMap<>();
-        report.put("reporterId", currentUser.getUid());
-        report.put("targetId", carId);
-        report.put("reason", reason);
-        report.put("status", "pending");
-        report.put("createdAt", com.google.firebase.Timestamp.now());
-
-        db.collection("reports").add(report)
-                .addOnSuccessListener(ref -> Toast.makeText(this, "✅ Đã gửi báo cáo!", Toast.LENGTH_LONG).show());
     }
 
     @Override
