@@ -67,6 +67,18 @@ public class CarDetailViewModel extends ViewModel {
         public PostEdited(String n, String p, String i) { name = n; price = p; info = i; }
     }
 
+    private static final int REVIEW_PAGE_SIZE = 3;
+    private com.google.firebase.firestore.DocumentSnapshot lastReviewSnapshot = null;
+    private boolean reviewLoading = false;
+    private boolean reviewAllLoaded = false;
+
+    private final androidx.lifecycle.MutableLiveData<Boolean> reviewLoadingMore =
+            new androidx.lifecycle.MutableLiveData<>(false);
+    private final androidx.lifecycle.MutableLiveData<Boolean> reviewNoMore =
+            new androidx.lifecycle.MutableLiveData<>(false);
+
+    public androidx.lifecycle.LiveData<Boolean> getReviewLoadingMore() { return reviewLoadingMore; }
+    public androidx.lifecycle.LiveData<Boolean> getReviewNoMore()      { return reviewNoMore; }
     /** Dữ liệu form đặt thuê do View thu thập. */
     public static class RentForm {
         public String renterName, renterPhone, renterCccd, startDate, note;
@@ -161,7 +173,19 @@ public class CarDetailViewModel extends ViewModel {
             return;
         }
         showReviews.setValue(true);
-        CarRepository.loadDriverReviews(sellerId, reviews::setValue);
+        CarRepository.loadDriverReviews(sellerId, list -> {
+            if (list != null) {
+                list.sort((a, b) -> {
+                    com.google.firebase.Timestamp ta = a.getCreatedAt();
+                    com.google.firebase.Timestamp tb = b.getCreatedAt();
+                    if (ta == null && tb == null) return 0;
+                    if (ta == null) return 1;
+                    if (tb == null) return -1;
+                    return tb.compareTo(ta);
+                });
+            }
+            reviews.setValue(list);
+        });
         CarRepository.loadDriverRating(sellerId, (avg, count) -> {
             if (count > 0) ratingText.setValue(String.format(Locale.US, "⭐ %.1f  (%d đánh giá)", avg, count));
         });
@@ -228,6 +252,119 @@ public class CarDetailViewModel extends ViewModel {
             }
             @Override public void onError(String msg) { /* bỏ qua, đã có placeholder */ }
         });
+        // Gọi load đánh giá ngay sau khi có sellerId (nếu loadCarDetail chưa gọi)
+        if (carType != null) loadDriverReviewsAndRating();
+    }
+
+    // Thêm hàm loadFirstReviews() — gọi khi mở màn, thay thế loadReviews() cũ:
+    public void loadFirstReviews(String driverId) {
+        if (driverId == null || driverId.isEmpty()) return;
+        lastReviewSnapshot = null;
+        reviewAllLoaded    = false;
+        reviewLoading      = false;
+        showReviews.setValue(true);
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("reviews")
+                .whereEqualTo("driverId", driverId)
+                // Bỏ orderBy để tránh lỗi thiếu Firestore composite index
+                .limit(REVIEW_PAGE_SIZE)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    List<Review> list = new ArrayList<>();
+                    for (com.google.firebase.firestore.QueryDocumentSnapshot d : snap) {
+                        Review r = d.toObject(Review.class);
+                        r.setReviewId(d.getId());
+                        list.add(r);
+                    }
+                    // Sắp xếp mới nhất lên đầu phía client — không cần Firestore composite index
+                    list.sort((a, b) -> {
+                        com.google.firebase.Timestamp ta = a.getCreatedAt();
+                        com.google.firebase.Timestamp tb = b.getCreatedAt();
+                        if (ta == null && tb == null) return 0;
+                        if (ta == null) return 1;
+                        if (tb == null) return -1;
+                        return tb.compareTo(ta); // DESC
+                    });
+                    if (!snap.isEmpty())
+                        lastReviewSnapshot = snap.getDocuments()
+                                .get(snap.size() - 1);
+                    if (snap.size() < REVIEW_PAGE_SIZE) {
+                        reviewAllLoaded = true;
+                        reviewNoMore.postValue(true);
+                    }
+                    reviews.postValue(list);
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("CarDetailVM", "loadFirstReviews loi: " + e.getMessage());
+                    // fallback: query đơn giản, sort client-side
+                    com.example.doanmb.data.repository.CarRepository.loadDriverReviews(driverId, list -> {
+                        if (list != null) {
+                            list.sort((a, b) -> {
+                                com.google.firebase.Timestamp ta = a.getCreatedAt();
+                                com.google.firebase.Timestamp tb = b.getCreatedAt();
+                                if (ta == null && tb == null) return 0;
+                                if (ta == null) return 1;
+                                if (tb == null) return -1;
+                                return tb.compareTo(ta);
+                            });
+                        }
+                        reviews.postValue(list);
+                    });
+                });
+    }
+
+    // Thêm hàm loadMoreReviews() — gọi khi scroll đến cuối:
+    public void loadMoreReviews(String driverId) {
+        if (reviewLoading || reviewAllLoaded || lastReviewSnapshot == null) return;
+        reviewLoading = true;
+        reviewLoadingMore.postValue(true);
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("reviews")
+                .whereEqualTo("driverId", driverId)
+                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .startAfter(lastReviewSnapshot)
+                .limit(REVIEW_PAGE_SIZE)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    reviewLoading = false;
+                    reviewLoadingMore.postValue(false);
+
+                    if (snap.isEmpty()) {
+                        reviewAllLoaded = true;
+                        reviewNoMore.postValue(true);
+                        return;
+                    }
+
+                    lastReviewSnapshot = snap.getDocuments().get(snap.size() - 1);
+                    if (snap.size() < REVIEW_PAGE_SIZE) {
+                        reviewAllLoaded = true;
+                        reviewNoMore.postValue(true);
+                    }
+
+                    List<Review> current = reviews.getValue();
+                    List<Review> merged  = new ArrayList<>(current != null ? current : new ArrayList<>());
+                    for (com.google.firebase.firestore.QueryDocumentSnapshot d : snap) {
+                        Review r = d.toObject(Review.class);
+                        r.setReviewId(d.getId());
+                        merged.add(r);
+                    }
+                    // Giữ thứ tự mới nhất lên đầu sau khi thêm trang mới
+                    merged.sort((a, b) -> {
+                        com.google.firebase.Timestamp ta = a.getCreatedAt();
+                        com.google.firebase.Timestamp tb = b.getCreatedAt();
+                        if (ta == null && tb == null) return 0;
+                        if (ta == null) return 1;
+                        if (tb == null) return -1;
+                        return tb.compareTo(ta);
+                    });
+                    reviews.postValue(merged);
+                })
+                .addOnFailureListener(e -> {
+                    reviewLoading = false;
+                    reviewLoadingMore.postValue(false);
+                });
     }
 
     private void loadWalletBalance() {
@@ -501,7 +638,7 @@ public class CarDetailViewModel extends ViewModel {
     }
 
     private void emitOrderSent(Kind kind, String orderId, String customerName,
-                              boolean scheduleReminder, String msg) {
+                               boolean scheduleReminder, String msg) {
         OrderSent e = new OrderSent();
         e.kind = kind;
         e.orderId = orderId;
