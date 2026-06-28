@@ -25,6 +25,7 @@ import androidx.fragment.app.Fragment;
 import com.example.doanmb.ui.car.view.ReviewActivity;
 import com.example.doanmb.ui.driver.view.DriverDashboardActivity;
 import com.example.doanmb.ui.driver.view.DriverRegisterActivity;
+import com.example.doanmb.ui.profile.view.ChangePasswordActivity;
 import com.example.doanmb.core.util.ImageLoader;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.car.view.FavoriteCarsActivity;
@@ -63,6 +64,7 @@ public class ProfileFragment extends Fragment {
     private RelativeLayout menuPersonalInfoClick;
     private RelativeLayout menuFavoriteCars;
     private RelativeLayout menuRegisterDriver;
+    private RelativeLayout menuSecurity;
     private TextView tvDriverStatusHint;
     private TextView tvRegisterDriverLabel;
     // Trạng thái hồ sơ tài xế của user hiện tại: "" / pending / approved / rejected
@@ -119,6 +121,8 @@ public class ProfileFragment extends Fragment {
         tvDriverStatusHint = view.findViewById(R.id.tv_driver_status_hint);
         tvRegisterDriverLabel = view.findViewById(R.id.tv_register_driver_label);
         btnBackToMain = view.findViewById(R.id.btn_back_to_main);
+        // phần đổi mật khẩu
+        menuSecurity = view.findViewById(R.id.menu_security);
 
         btnBackToSettings = view.findViewById(R.id.btn_back_to_settings);
         edtInfoName = view.findViewById(R.id.edt_info_name);
@@ -240,6 +244,12 @@ public class ProfileFragment extends Fragment {
                         })
                         .create()
                         .show();
+            });
+        }
+        // logic phần đổi mật khâu
+        if (menuSecurity != null) {
+            menuSecurity.setOnClickListener(v -> {
+                startActivity(new Intent(getActivity(), ChangePasswordActivity.class));
             });
         }
     }
