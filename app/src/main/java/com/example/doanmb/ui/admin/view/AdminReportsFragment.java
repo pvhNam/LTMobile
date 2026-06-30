@@ -41,6 +41,11 @@ public class AdminReportsFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_admin_reports, container, false);
         db = FirebaseFirestore.getInstance();
 
+        view.findViewById(R.id.btn_reports_back).setOnClickListener(v -> {
+            if (getParentFragmentManager().getBackStackEntryCount() > 0)
+                getParentFragmentManager().popBackStack();
+        });
+
         rvReports = view.findViewById(R.id.rv_reports);
         tvReportCount = view.findViewById(R.id.tv_report_count);
         tvEmpty = view.findViewById(R.id.tv_empty_reports);

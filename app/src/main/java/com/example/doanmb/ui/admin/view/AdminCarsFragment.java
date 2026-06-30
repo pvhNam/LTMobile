@@ -43,6 +43,11 @@ public class AdminCarsFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_admin_cars, container, false);
         db = FirebaseFirestore.getInstance();
 
+        view.findViewById(R.id.btn_cars_back).setOnClickListener(v -> {
+            if (getParentFragmentManager().getBackStackEntryCount() > 0)
+                getParentFragmentManager().popBackStack();
+        });
+
         rvCars = view.findViewById(R.id.rv_cars_admin);
         tvCarCount = view.findViewById(R.id.tv_car_count);
         tvEmpty = view.findViewById(R.id.tv_empty_cars);
