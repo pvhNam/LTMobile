@@ -1,6 +1,8 @@
 package com.example.doanmb.ui.car.adapter;
 
+import android.content.Context;
 import android.content.res.ColorStateList;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +16,11 @@ import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
 import java.util.Map;
+
+import eightbitlab.com.blurview.BlurAlgorithm;
+import eightbitlab.com.blurview.BlurView;
+import eightbitlab.com.blurview.RenderEffectBlur;
+import eightbitlab.com.blurview.RenderScriptBlur;
 
 public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestViewHolder> {
 
@@ -45,7 +52,28 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
     @Override
     public RequestViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_request, parent, false);
-        return new RequestViewHolder(view);
+        RequestViewHolder holder = new RequestViewHolder(view);
+        setupBlur(holder.blurRequest, parent);
+        return holder;
+    }
+
+    /** Bật blur thật cho thẻ (Liquid Glass): blur nội dung cửa sổ phía sau thẻ. */
+    private void setupBlur(BlurView blurView, ViewGroup parent) {
+        if (blurView == null) return;
+        View root = parent.getRootView();
+        if (!(root instanceof ViewGroup)) return;
+        try {
+            blurView.setupWith((ViewGroup) root, newBlurAlgorithm(parent.getContext()))
+                    .setBlurRadius(16f);
+        } catch (Exception ignore) {
+            // Nếu thiết bị không hỗ trợ blur → thẻ vẫn hiển thị nền kính tĩnh (bg_glass_card).
+        }
+    }
+
+    private static BlurAlgorithm newBlurAlgorithm(Context c) {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                ? new RenderEffectBlur()
+                : new RenderScriptBlur(c);
     }
 
     @Override
@@ -251,6 +279,7 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
     }
 
     public static class RequestViewHolder extends RecyclerView.ViewHolder {
+        BlurView blurRequest;
         TextView tvRequestType, tvRequestStatus, tvRequestTime;
         TextView tvRequestCarName, tvRequestCarPrice;
         TextView tvBuyerInfo, tvBuyerPhone, tvBuyerCCCD, tvRentInfo, tvRequestNote;
@@ -260,6 +289,7 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
 
         public RequestViewHolder(@NonNull View itemView) {
             super(itemView);
+            blurRequest = itemView.findViewById(R.id.blur_request);
             tvRequestType = itemView.findViewById(R.id.tvRequestType);
             tvRequestStatus = itemView.findViewById(R.id.tvRequestStatus);
             tvRequestTime = itemView.findViewById(R.id.tvRequestTime);
