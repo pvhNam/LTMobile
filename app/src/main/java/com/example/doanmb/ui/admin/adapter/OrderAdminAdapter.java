@@ -34,11 +34,6 @@ public class OrderAdminAdapter extends RecyclerView.Adapter<OrderAdminAdapter.Vi
     /** Cache tên user theo id để khỏi tra Firestore lặp lại khi cuộn danh sách. */
     private static final Map<String, String> NAME_CACHE = new HashMap<>();
 
-    public OrderAdminAdapter(List<Map<String, Object>> orders, List<String> orderIds) {
-        this.orders = orders;
-        this.orderIds = orderIds;
-    }
-
     public OrderAdminAdapter(List<Map<String, Object>> orders, List<String> orderIds, OnOrderActionListener listener) {
         this.orders = orders;
         this.orderIds = orderIds;

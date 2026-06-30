@@ -96,6 +96,8 @@
             android:theme="@style/Theme.DOANMB.Admin" />
         <activity android:name="com.example.doanmb.ui.admin.view.AdminOrderDetailActivity"
             android:theme="@style/Theme.DOANMB.Admin" />
+        <activity android:name="com.example.doanmb.ui.admin.view.AdminDriverProfileActivity"
+            android:theme="@style/Theme.DOANMB.Admin" />
         <activity
             android:name="com.example.doanmb.ui.chat.view.ChatDetailActivity"
             android:windowSoftInputMode="adjustResize" />

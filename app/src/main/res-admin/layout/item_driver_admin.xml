@@ -19,10 +19,11 @@
         android:padding="16dp">
 
         <ImageView
-            android:id="@+id/iv_user_avatar"
+            android:id="@+id/iv_drv_avatar"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginEnd="14dp"
+            android:background="@drawable/bg_icon_circle_red"
             android:scaleType="centerCrop"
             android:src="@android:drawable/ic_menu_myplaces" />
 
@@ -33,42 +34,43 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tv_user_name"
+                android:id="@+id/tv_drv_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tên người dùng"
+                android:text="Tên tài xế"
                 android:textColor="#1A1A1A"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/tv_user_email"
+                android:id="@+id/tv_drv_cartype"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="email@example.com"
+                android:text="Loại xe: --"
                 android:textColor="#757575"
                 android:textSize="12sp" />
 
             <TextView
-                android:id="@+id/tv_user_phone"
+                android:id="@+id/tv_drv_rating"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="0xxxxxxxxx"
+                android:text="⭐ --"
                 android:textColor="#9E9E9E"
                 android:textSize="12sp" />
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tv_user_role"
+            android:id="@+id/tv_drv_online"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:paddingHorizontal="10dp"
             android:paddingVertical="4dp"
-            android:text="CUSTOMER"
+            android:text="Offline"
             android:textSize="11sp"
-            android:textStyle="bold" />
-
+            android:textStyle="bold"
+            android:textColor="#757575"
+            android:background="#EEEEEE" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>

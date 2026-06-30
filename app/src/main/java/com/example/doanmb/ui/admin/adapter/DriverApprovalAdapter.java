@@ -17,25 +17,18 @@ import java.util.Locale;
 
 public class DriverApprovalAdapter extends RecyclerView.Adapter<DriverApprovalAdapter.VH> {
 
-    public interface OnDecisionListener {
-        void onApprove(User u);
-        void onReject(User u);
-    }
-
     public interface OnItemClickListener {
         void onClick(User u);
     }
 
     private final List<User> pending;
-    private final OnDecisionListener decisionListener;
     private OnItemClickListener clickListener;
 
     private static final SimpleDateFormat SDF =
             new SimpleDateFormat("HH:mm  dd/MM/yyyy", Locale.getDefault());
 
-    public DriverApprovalAdapter(List<User> pending, OnDecisionListener decisionListener) {
+    public DriverApprovalAdapter(List<User> pending) {
         this.pending = pending;
-        this.decisionListener = decisionListener;
     }
 
     public void setOnItemClickListener(OnItemClickListener listener) {

@@ -11,7 +11,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +27,9 @@ public class ReportAdminAdapter extends RecyclerView.Adapter<ReportAdminAdapter.
     private List<Map<String, Object>> reports;
     private List<String> reportIds;
     private OnReportActionListener listener;
+
+    /** Cache tên user theo id để khỏi tra Firestore lặp lại khi cuộn danh sách. */
+    private static final Map<String, String> NAME_CACHE = new HashMap<>();
 
     public ReportAdminAdapter(List<Map<String, Object>> reports, List<String> reportIds, OnReportActionListener listener) {
         this.reports = reports;
@@ -50,15 +55,17 @@ public class ReportAdminAdapter extends RecyclerView.Adapter<ReportAdminAdapter.
         Map<String, Object> report = reports.get(position);
         String reportId = reportIds.get(position);
 
-        String carName = getStr(report, "targetName", "Xe không xác định");
+        // Báo cáo từ chat chỉ lưu id (targetId/reporterId) -> tra tên trong "users".
+        // Vẫn ưu tiên targetName/reporterName nếu sau này có ghi sẵn.
         String reason = getStr(report, "reason", "Không rõ lý do");
         String description = getStr(report, "description", "");
-        String reporterName = getStr(report, "reporterName", "Ẩn danh");
         String status = getStr(report, "status", "pending");
 
-        holder.tvCarName.setText(carName);
         holder.tvReason.setText(reason);
-        holder.tvReportBy.setText("Người báo cáo: " + reporterName);
+        bindName(holder.tvCarName, "",
+                getStr(report, "targetName", null),   getStr(report, "targetId", null),   "Không xác định");
+        bindName(holder.tvReportBy, "Người báo cáo: ",
+                getStr(report, "reporterName", null), getStr(report, "reporterId", null), "Ẩn danh");
 
         if (!description.isEmpty()) {
             holder.tvDescription.setText(description);
@@ -96,7 +103,48 @@ public class ReportAdminAdapter extends RecyclerView.Adapter<ReportAdminAdapter.
                 tv.setBackgroundColor(0xFFEEEEEE);
                 tv.setTextColor(0xFF757575);
                 break;
+            default:
+                tv.setText(status);
+                tv.setBackgroundColor(0xFFEEEEEE);
+                tv.setTextColor(0xFF757575);
+                break;
         }
+    }
+
+    /**
+     * Hiển thị tên (đối tượng bị báo cáo / người báo cáo). Ưu tiên tên ghi sẵn,
+     * nếu chỉ có id thì tra trong "users". Dùng setTag tránh sai tên khi RecyclerView
+     * tái sử dụng view lúc cuộn.
+     */
+    private void bindName(TextView tv, String prefix, String name, String userId, String fallback) {
+        if (name != null && !name.isEmpty()) {
+            tv.setTag(null);
+            tv.setText(prefix + name);
+            return;
+        }
+        if (userId == null || userId.isEmpty()) {
+            tv.setTag(null);
+            tv.setText(prefix + fallback);
+            return;
+        }
+        String cached = NAME_CACHE.get(userId);
+        if (cached != null) {
+            tv.setTag(null);
+            tv.setText(prefix + cached);
+            return;
+        }
+        tv.setTag(userId);
+        tv.setText(prefix + "Đang tải…");
+        FirebaseFirestore.getInstance().collection("users").document(userId).get()
+                .addOnSuccessListener(u -> {
+                    String fetched = u.exists() ? u.getString("name") : null;
+                    if (fetched == null || fetched.isEmpty()) fetched = fallback;
+                    NAME_CACHE.put(userId, fetched);
+                    if (userId.equals(tv.getTag())) tv.setText(prefix + fetched);
+                })
+                .addOnFailureListener(e -> {
+                    if (userId.equals(tv.getTag())) tv.setText(prefix + fallback);
+                });
     }
 
     private String getStr(Map<String, Object> map, String key, String def) {
