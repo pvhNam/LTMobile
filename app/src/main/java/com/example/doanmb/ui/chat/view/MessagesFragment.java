@@ -15,26 +15,24 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.doanmb.ui.chat.viewmodel.MessagesViewModel;
 import com.example.doanmb.ui.home.view.MainActivity;
 import com.example.doanmb.core.util.ImageLoader;
+import com.example.doanmb.data.repository.ChatRepository;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.home.adapter.ShortcutAdapter;
 import com.example.doanmb.data.model.Car;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -47,18 +45,12 @@ public class MessagesFragment extends Fragment {
     private TextView tvGreeting;
     private ImageView imgAvatar;
 
-    private FirebaseFirestore db;
-    private ListenerRegistration listener;
-    private ListenerRegistration notifListener;
+    private MessagesViewModel viewModel;
     private ConversationAdapter adapter;
     private ShortcutAdapter shortcutAdapter;
-    private final List<Map<String, Object>> convList     = new ArrayList<>();
     private final List<Map<String, Object>> filteredList = new ArrayList<>();
     private final List<Map<String, Object>> shortcutList = new ArrayList<>();
-
-    private boolean isSearchingMessages = false;
-
-    private final List<Map<String, Object>> messageSearchResults = new ArrayList<>();
+    private String searchQuery = "";
 
     private android.widget.FrameLayout frameMsgContent;
     private LinearLayout layoutChatTabContent;
@@ -67,7 +59,6 @@ public class MessagesFragment extends Fragment {
     private LinearLayout contentTabChat, contentTabNotification;
     private TextView tvTabChat, tvTabNotification;
     private boolean isChatTabActive = true;
-    private String selectedShortcutPartnerId = null;
 
     private RecyclerView rvNotifications;
     private TextView tvNotifEmpty;
@@ -80,7 +71,8 @@ public class MessagesFragment extends Fragment {
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_messages, container, false);
-        db = FirebaseFirestore.getInstance();
+
+        viewModel = new ViewModelProvider(this).get(MessagesViewModel.class);
 
         layoutNotLoggedIn = view.findViewById(R.id.layout_msg_not_logged_in);
         layoutEmpty       = view.findViewById(R.id.layout_msg_empty);
@@ -92,16 +84,15 @@ public class MessagesFragment extends Fragment {
         rvConversations = view.findViewById(R.id.rv_conversations);
         rvConversations.setLayoutManager(new LinearLayoutManager(getContext()));
         rvConversations.setNestedScrollingEnabled(false);
-        adapter = new ConversationAdapter(filteredList, db);
+        adapter = new ConversationAdapter(filteredList);
         rvConversations.setAdapter(adapter);
 
         rvShortcuts = view.findViewById(R.id.rv_shortcuts);
         rvShortcuts.setLayoutManager(
                 new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         rvShortcuts.setNestedScrollingEnabled(false);
-        shortcutAdapter = new ShortcutAdapter(shortcutList, partnerId -> {
-            onShortcutClicked(partnerId);
-        });
+        shortcutAdapter = new ShortcutAdapter(shortcutList, partnerId ->
+                viewModel.onShortcutClicked(partnerId));
         rvShortcuts.setAdapter(shortcutAdapter);
 
         setupSearch();
@@ -116,7 +107,6 @@ public class MessagesFragment extends Fragment {
         tvTabChat                      = view.findViewById(R.id.tv_tab_chat);
         tvTabNotification              = view.findViewById(R.id.tv_tab_notification);
 
-        // Setup notification RecyclerView
         rvNotifications = view.findViewById(R.id.rv_notifications);
         tvNotifEmpty    = view.findViewById(R.id.tv_notif_empty);
         if (rvNotifications != null) {
@@ -127,151 +117,56 @@ public class MessagesFragment extends Fragment {
 
         tabChat.setOnClickListener(v -> selectTab(true));
         tabNotification.setOnClickListener(v -> selectTab(false));
+
+        observeViewModel();
         return view;
+    }
+
+    private void observeViewModel() {
+        viewModel.getGreetingName().observe(getViewLifecycleOwner(), name -> {
+            if (tvGreeting != null && name != null) tvGreeting.setText(name);
+        });
+        viewModel.getAvatarUrl().observe(getViewLifecycleOwner(), url -> {
+            if (url != null && !url.isEmpty() && imgAvatar != null) ImageLoader.loadAvatar(imgAvatar, url);
+        });
+        viewModel.getConversations().observe(getViewLifecycleOwner(), list -> {
+            filteredList.clear();
+            if (list != null) filteredList.addAll(list);
+            adapter.setSearchQuery(searchQuery);
+            adapter.notifyDataSetChanged();
+        });
+        viewModel.getShortcuts().observe(getViewLifecycleOwner(), list -> {
+            shortcutList.clear();
+            if (list != null) shortcutList.addAll(list);
+            shortcutAdapter.notifyDataSetChanged();
+        });
+        viewModel.getSelectedShortcut().observe(getViewLifecycleOwner(), pid ->
+                shortcutAdapter.setSelectedPartnerId(pid));
+        viewModel.getShowEmpty().observe(getViewLifecycleOwner(), empty -> {
+            if (layoutEmpty != null)
+                layoutEmpty.setVisibility(Boolean.TRUE.equals(empty) ? View.VISIBLE : View.GONE);
+        });
+        viewModel.getNotifications().observe(getViewLifecycleOwner(), list -> {
+            notifList.clear();
+            if (list != null) notifList.addAll(list);
+            if (notifAdapter != null) notifAdapter.notifyDataSetChanged();
+            boolean empty = notifList.isEmpty();
+            if (tvNotifEmpty != null)
+                tvNotifEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+            if (rvNotifications != null)
+                rvNotifications.setVisibility(empty ? View.GONE : View.VISIBLE);
+        });
     }
 
     private void setupSearch() {
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void afterTextChanged(Editable s) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (selectedShortcutPartnerId != null) {
-                    selectedShortcutPartnerId = null;
-                    shortcutAdapter.setSelectedPartnerId(null);
-                }
-                String query = s.toString().trim();
-                if (query.isEmpty()) {
-                    // Quay lại hiển thị tất cả hội thoại
-                    isSearchingMessages = false;
-                    messageSearchResults.clear();
-                    showAllConversations();
-                } else {
-                    searchEverything(query);
-                }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                searchQuery = s.toString().trim();
+                viewModel.setSearchQuery(searchQuery);
             }
         });
-    }
-
-    private void searchEverything(String query) {
-        String lower = query.toLowerCase();
-
-        List<Map<String, Object>> nameMatches = new ArrayList<>();
-        for (Map<String, Object> item : convList) {
-            String carName     = String.valueOf(item.getOrDefault("carName", "")).toLowerCase();
-            String partnerName = String.valueOf(item.getOrDefault("partnerName", "")).toLowerCase();
-            if (carName.contains(lower) || partnerName.contains(lower)) {
-                nameMatches.add(item);
-            }
-        }
-
-        messageSearchResults.clear();
-        isSearchingMessages = true;
-
-        if (convList.isEmpty()) {
-            mergeAndShow(nameMatches);
-            return;
-        }
-
-        final int[] remaining = {convList.size()};
-        final List<Map<String, Object>> msgMatches = new ArrayList<>();
-
-        for (Map<String, Object> conv : convList) {
-            String roomId = String.valueOf(conv.getOrDefault("roomId", ""));
-            if (roomId.isEmpty()) {
-                decrementAndMerge(remaining, nameMatches, msgMatches);
-                continue;
-            }
-
-            db.collection("chat_rooms").document(roomId)
-                    .collection("messages")
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .limit(200)
-                    .get()
-                    .addOnSuccessListener(snapshots -> {
-                        if (!isAdded()) return;
-                        for (QueryDocumentSnapshot doc : snapshots) {
-                            Boolean recalled = doc.getBoolean("recalled");
-                            if (Boolean.TRUE.equals(recalled)) continue;
-
-                            String content = doc.getString("content");
-                            if (content != null && content.toLowerCase().contains(lower)) {
-                                Map<String, Object> resultItem = new HashMap<>(conv);
-                                resultItem.put("matchedMessage", content);
-                                synchronized (msgMatches) {
-                                    boolean alreadyAdded = false;
-                                    for (Map<String, Object> m : msgMatches) {
-                                        if (roomId.equals(m.get("roomId"))) {
-                                            alreadyAdded = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!alreadyAdded) msgMatches.add(resultItem);
-                                }
-                                break;
-                            }
-                        }
-                        decrementAndMerge(remaining, nameMatches, msgMatches);
-                    })
-                    .addOnFailureListener(e -> decrementAndMerge(remaining, nameMatches, msgMatches));
-        }
-    }
-
-    private void decrementAndMerge(int[] remaining,
-                                   List<Map<String, Object>> nameMatches,
-                                   List<Map<String, Object>> msgMatches) {
-        synchronized (remaining) {
-            remaining[0]--;
-            if (remaining[0] <= 0) {
-                if (isAdded()) {
-                    requireActivity().runOnUiThread(() -> mergeAndShow(nameMatches, msgMatches));
-                }
-            }
-        }
-    }
-
-    private void mergeAndShow(List<Map<String, Object>> nameMatches,
-                              List<Map<String, Object>> msgMatches) {
-        List<Map<String, Object>> merged = new ArrayList<>(nameMatches);
-        for (Map<String, Object> m : msgMatches) {
-            String roomId = String.valueOf(m.getOrDefault("roomId", ""));
-            boolean exists = false;
-            for (Map<String, Object> n : nameMatches) {
-                if (roomId.equals(n.getOrDefault("roomId", ""))) { exists = true; break; }
-            }
-            if (!exists) merged.add(m);
-        }
-        showFiltered(merged, etSearch.getText().toString().trim());
-    }
-
-    private void mergeAndShow(List<Map<String, Object>> nameMatches) {
-        showFiltered(nameMatches, etSearch.getText().toString().trim());
-    }
-
-    private void showAllConversations() {
-        filteredList.clear();
-        filteredList.addAll(convList);
-        adapter.setSearchQuery("");
-        adapter.notifyDataSetChanged();
-        updateEmptyState(false, "");
-    }
-
-    private void showFiltered(List<Map<String, Object>> results, String query) {
-        filteredList.clear();
-        filteredList.addAll(results);
-        adapter.setSearchQuery(query);
-        adapter.notifyDataSetChanged();
-        updateEmptyState(filteredList.isEmpty(), query);
-    }
-
-    private void updateEmptyState(boolean empty, String query) {
-        if (layoutEmpty == null) return;
-        if (empty && !query.isEmpty()) {
-            layoutEmpty.setVisibility(View.VISIBLE);
-        } else {
-            layoutEmpty.setVisibility(View.GONE);
-        }
     }
 
     @Override
@@ -287,107 +182,17 @@ public class MessagesFragment extends Fragment {
         if (layoutNotLoggedIn != null) layoutNotLoggedIn.setVisibility(View.GONE);
         if (layoutContent != null)     layoutContent.setVisibility(View.VISIBLE);
 
-        loadUserProfile(user.getUid());
-        loadConversations(user.getUid());
-    }
-
-    private void loadUserProfile(String uid) {
-        db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
-            if (doc.exists() && isAdded()) {
-                String name      = doc.getString("name");
-                String avatarUrl = doc.getString("avatarUrl");
-                if (tvGreeting != null)
-                    tvGreeting.setText("Hi, " + (name != null ? name : "User"));
-                if (avatarUrl != null && !avatarUrl.isEmpty() && imgAvatar != null) {
-                    ImageLoader.loadAvatar(imgAvatar, avatarUrl);
-                }
-            }
-        });
-    }
-
-    private void loadConversations(String uid) {
-        if (listener != null) listener.remove();
-
-        listener = db.collection("chat_rooms")
-                .whereArrayContains("participants", uid)
-                .orderBy("lastTimestamp", Query.Direction.DESCENDING)
-                .addSnapshotListener((snapshots, error) -> {
-                    if (error != null || snapshots == null || !isAdded()) return;
-
-                    convList.clear();
-                    shortcutList.clear();
-                    Map<String, Boolean> addedPartners = new HashMap<>();
-
-                    for (QueryDocumentSnapshot doc : snapshots) {
-                        Map<String, Object> data = new HashMap<>(doc.getData());
-                        data.put("roomId", doc.getId());
-                        android.util.Log.d("SNAPSHOT_DEBUG",
-                                "RAW doc=" + doc.getId() +
-                                        " unreadBy='" + doc.getString("unreadBy") + "'" +
-                                        " lastMsg='" + doc.getString("lastMessage") + "'");
-
-                        String buyerId   = (String) data.get("buyerId");
-                        String sellerId  = (String) data.get("sellerId");
-                        String partnerId = uid.equals(buyerId) ? sellerId : buyerId;
-                        data.put("partnerId", partnerId);
-
-                        if (partnerId != null) {
-                            db.collection("users").document(partnerId)
-                                    .get().addOnSuccessListener(userDoc -> {
-                                        if (userDoc.exists() && isAdded()) {
-                                            String name   = userDoc.getString("name");
-                                            String avatar = userDoc.getString("avatarUrl");
-                                            data.put("partnerName",   name);
-                                            data.put("partnerAvatar", avatar);
-
-                                            if (!addedPartners.containsKey(partnerId)
-                                                    && shortcutList.size() < 10) {
-                                                shortcutList.add(new HashMap<>(data));
-                                                addedPartners.put(partnerId, true);
-                                                shortcutAdapter.notifyDataSetChanged();
-                                            }
-
-                                            String q = etSearch != null
-                                                    ? etSearch.getText().toString().trim() : "";
-                                            if (!q.isEmpty()) {
-                                                searchEverything(q);
-                                            } else {
-                                                adapter.notifyDataSetChanged();
-                                                showAllConversations();
-                                            }
-                                        }
-                                    });
-                        }
-                        convList.add(data);
-                    }
-
-                    String q = etSearch != null ? etSearch.getText().toString().trim() : "";
-                    if (q.isEmpty()) showAllConversations();
-                    else searchEverything(q);
-                });
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        if (listener != null) listener.remove();
-        if (notifListener != null) {
-            notifListener.remove();
-            notifListener = null;
-        }
+        viewModel.loadUserProfile(user.getUid());
+        viewModel.startConversations(user.getUid());
     }
 
     static class ConversationAdapter
             extends RecyclerView.Adapter<ConversationAdapter.VH> {
 
         private final List<Map<String, Object>> list;
-        private final FirebaseFirestore db;
         private String searchQuery = "";
 
-        ConversationAdapter(List<Map<String, Object>> list, FirebaseFirestore db) {
-            this.list = list;
-            this.db   = db;
-        }
+        ConversationAdapter(List<Map<String, Object>> list) { this.list = list; }
 
         private String getCurrentUid() {
             FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
@@ -424,11 +229,6 @@ public class MessagesFragment extends Fragment {
             // ── Hiển thị chấm xanh nếu currentUser chưa đọc tin nhắn cuối ──
             String unreadBy = String.valueOf(item.getOrDefault("unreadBy", ""));
             boolean hasUnread = getCurrentUid().equals(unreadBy);
-            android.util.Log.d("UNREAD_DEBUG",
-                    "roomId=" + item.getOrDefault("roomId","?") +
-                            " unreadBy='" + unreadBy + "'"+
-                            " currentUid='" + getCurrentUid() + "'"+
-                            " hasUnread=" + hasUnread);
             if (h.viewUnreadDot != null)
                 h.viewUnreadDot.setVisibility(hasUnread ? View.VISIBLE : View.GONE);
             h.tvLastMsg.setTypeface(null,
@@ -459,15 +259,14 @@ public class MessagesFragment extends Fragment {
                 String carId     = String.valueOf(item.getOrDefault("carId",    ""));
                 String carType   = String.valueOf(item.getOrDefault("carType",  "sale"));
 
+                // Optimistic: ẩn chấm xanh ngay rồi mới ghi xuống server.
                 String unreadByNow = String.valueOf(item.getOrDefault("unreadBy", ""));
                 if (getCurrentUid().equals(unreadByNow)) {
                     item.put("unreadBy", "");
                     if (h.viewUnreadDot != null) h.viewUnreadDot.setVisibility(View.GONE);
                     h.tvLastMsg.setTypeface(null, android.graphics.Typeface.NORMAL);
                     h.tvLastMsg.setTextColor(0xFF6B7280);
-                    if (!roomId.isEmpty()) {
-                        db.collection("chat_rooms").document(roomId).update("unreadBy", "");
-                    }
+                    if (!roomId.isEmpty()) ChatRepository.clearUnread(roomId);
                 }
 
                 Intent intent = new Intent(v.getContext(), ChatDetailActivity.class);
@@ -508,7 +307,10 @@ public class MessagesFragment extends Fragment {
         if (chatSelected == isChatTabActive) return;
         isChatTabActive = chatSelected;
 
-        if (!chatSelected) loadNotifications();
+        if (!chatSelected) {
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user != null) viewModel.startNotifications(user.getUid());
+        }
 
         View incoming = chatSelected
                 ? layoutChatTabContent
@@ -572,39 +374,6 @@ public class MessagesFragment extends Fragment {
         colorAnimNotif.start();
     }
 
-    private void loadNotifications() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null || rvNotifications == null) return;
-
-        if (notifListener != null) {
-            notifListener.remove();
-            notifListener = null;
-        }
-
-        notifListener = FirebaseFirestore.getInstance()
-                .collection("notifications")
-                .whereEqualTo("userId", user.getUid())
-                // ✅ FIX: Sắp xếp mới nhất lên đầu trực tiếp từ Firestore
-                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                .addSnapshotListener((snapshots, error) -> {
-                    if (error != null || snapshots == null || !isAdded()) return;
-
-                    notifList.clear();
-                    for (QueryDocumentSnapshot doc : snapshots) {
-                        Map<String, Object> data = new HashMap<>(doc.getData());
-                        data.put("docId", doc.getId());
-                        notifList.add(data);
-                    }
-
-                    notifAdapter.notifyDataSetChanged();
-                    boolean empty = notifList.isEmpty();
-                    if (tvNotifEmpty != null)
-                        tvNotifEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
-                    if (rvNotifications != null)
-                        rvNotifications.setVisibility(empty ? View.GONE : View.VISIBLE);
-                });
-    }
-
     private class NotifAdapter extends RecyclerView.Adapter<NotifAdapter.VH> {
 
         private final SimpleDateFormat SDF =
@@ -635,25 +404,13 @@ public class MessagesFragment extends Fragment {
             h.tvBody.setText(body.isEmpty() ? "Đã gửi một tin nhắn" : body);
 
             switch (type) {
-                case "order_confirmed":
-                    h.ivIcon.setImageResource(R.drawable.ic_verified_check);
-                    break;
-                case "order_rejected":
-                    h.ivIcon.setImageResource(R.drawable.ic_warning);
-                    break;
-                case "order_sent":
-                    h.ivIcon.setImageResource(R.drawable.ic_admin_orders);
-                    break;
-                case "review_driver":
-                    h.ivIcon.setImageResource(R.drawable.ic_star);
-                    break;
+                case "order_confirmed": h.ivIcon.setImageResource(R.drawable.ic_verified_check); break;
+                case "order_rejected":  h.ivIcon.setImageResource(R.drawable.ic_warning); break;
+                case "order_sent":      h.ivIcon.setImageResource(R.drawable.ic_admin_orders); break;
+                case "review_driver":   h.ivIcon.setImageResource(R.drawable.ic_star); break;
                 case "invoice":
-                case "invoice_paid":
-                    h.ivIcon.setImageResource(R.drawable.ic_admin_orders);   // hóa đơn
-                    break;
-                default: // chat
-                    h.ivIcon.setImageResource(R.drawable.ic_nav_message);
-                    break;
+                case "invoice_paid":    h.ivIcon.setImageResource(R.drawable.ic_admin_orders); break;
+                default:                h.ivIcon.setImageResource(R.drawable.ic_nav_message); break;
             }
 
             if ("review_driver".equals(type)) {
@@ -682,55 +439,40 @@ public class MessagesFragment extends Fragment {
 
             Object createdAt = item.get("createdAt");
             if (createdAt instanceof com.google.firebase.Timestamp) {
-                h.tvTime.setText(SDF.format(
-                        ((com.google.firebase.Timestamp) createdAt).toDate()));
+                h.tvTime.setText(SDF.format(((com.google.firebase.Timestamp) createdAt).toDate()));
             } else {
                 h.tvTime.setText("");
             }
 
             Object read = item.get("read");
-            h.viewUnreadDot.setVisibility(
-                    Boolean.FALSE.equals(read) ? View.VISIBLE : View.GONE);
+            h.viewUnreadDot.setVisibility(Boolean.FALSE.equals(read) ? View.VISIBLE : View.GONE);
 
             String initial = (!senderName.isEmpty())
-                    ? String.valueOf(senderName.charAt(0)).toUpperCase()
-                    : "?";
+                    ? String.valueOf(senderName.charAt(0)).toUpperCase() : "?";
             h.tvAvatar.setText(initial);
             h.tvAvatar.setVisibility(View.VISIBLE);
             h.ivAvatar.setVisibility(View.GONE);
 
             if (!senderId.isEmpty()) {
-                FirebaseFirestore.getInstance()
-                        .collection("users").document(senderId).get()
-                        .addOnSuccessListener(doc -> {
-                            if (doc == null || !doc.exists() || !isAdded()) return;
-                            String avatarUrl = doc.getString("avatarUrl");
-                            if (avatarUrl != null && !avatarUrl.isEmpty()) {
-                                h.ivAvatar.setVisibility(View.VISIBLE);
-                                h.tvAvatar.setVisibility(View.GONE);
-                                ImageLoader.loadAvatar(h.ivAvatar, avatarUrl);
-                            } else {
-                                String name = doc.getString("name");
-                                if (name != null && !name.isEmpty()) {
-                                    h.tvAvatar.setText(
-                                            String.valueOf(name.charAt(0)).toUpperCase());
-                                }
-                            }
-                        });
+                ChatRepository.loadUserBrief(senderId, (name, avatarUrl) -> {
+                    if (!isAdded()) return;
+                    if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                        h.ivAvatar.setVisibility(View.VISIBLE);
+                        h.tvAvatar.setVisibility(View.GONE);
+                        ImageLoader.loadAvatar(h.ivAvatar, avatarUrl);
+                    } else if (name != null && !name.isEmpty()) {
+                        h.tvAvatar.setText(String.valueOf(name.charAt(0)).toUpperCase());
+                    }
+                });
             }
 
             h.itemView.setOnClickListener(v -> {
                 int pos = h.getAdapterPosition();
-                if (pos == RecyclerView.NO_ID) return;
+                if (pos == RecyclerView.NO_POSITION) return;
 
                 notifList.get(pos).put("read", true);
                 notifyItemChanged(pos);
-                if (!docId.isEmpty()) {
-                    FirebaseFirestore.getInstance()
-                            .collection("notifications")
-                            .document(docId)
-                            .update("read", true);
-                }
+                if (!docId.isEmpty()) viewModel.markNotificationRead(docId);
 
                 if ("invoice".equals(type) && !orderId.isEmpty()) {
                     Intent invoice = new Intent(v.getContext(),
@@ -740,59 +482,35 @@ public class MessagesFragment extends Fragment {
                     return;
                 }
 
-                // Điều hướng dựa vào type
                 if ("chat".equals(type) && !roomId.isEmpty()) {
-                    FirebaseFirestore.getInstance()
-                            .collection("chat_rooms")
-                            .document(roomId)
-                            .get()
-                            .addOnSuccessListener(roomDoc -> {
-                                Intent intent = new Intent(v.getContext(), ChatDetailActivity.class);
-                                intent.putExtra("ROOM_ID",      roomId);
-                                intent.putExtra("PARTNER_ID",   senderId);
-                                intent.putExtra("PARTNER_NAME",
-                                        senderName.isEmpty() ? "Người dùng" : senderName);
-
-                                if (roomDoc.exists()) {
-                                    String carName2  = roomDoc.getString("carName");
-                                    String carPrice2 = roomDoc.getString("carPrice");
-                                    String carImage2 = roomDoc.getString("carImage");
-                                    String carId2    = roomDoc.getString("carId");
-                                    String carType2  = roomDoc.getString("carType");
-                                    String sellerId2 = roomDoc.getString("sellerId");
-
-                                    Car car =
-                                            new Car(
-                                                    carName2  != null ? carName2  : "",
-                                                    carPrice2 != null ? carPrice2 : "",
-                                                    "", 0);
-                                    car.setId(carId2         != null ? carId2    : "");
-                                    car.setImageUrl(carImage2 != null ? carImage2 : "");
-                                    car.setSellerId(sellerId2 != null ? sellerId2 : "");
-                                    car.setType(carType2     != null ? carType2  : "sale");
-                                    intent.putExtra("CAR_DATA", car);
-                                }
-                                v.getContext().startActivity(intent);
-                            })
-                            .addOnFailureListener(e -> {
-                                Intent intent = new Intent(v.getContext(), ChatDetailActivity.class);
-                                intent.putExtra("ROOM_ID",      roomId);
-                                intent.putExtra("PARTNER_ID",   senderId);
-                                intent.putExtra("PARTNER_NAME",
-                                        senderName.isEmpty() ? "Người dùng" : senderName);
-                                v.getContext().startActivity(intent);
-                            });
+                    ChatRepository.loadRoom(roomId, new ChatRepository.OnDoc() {
+                        @Override public void onLoaded(com.google.firebase.firestore.DocumentSnapshot roomDoc) {
+                            Intent intent = buildChatIntent(v.getContext(), roomId, senderId, senderName);
+                            if (roomDoc != null && roomDoc.exists()) {
+                                Car car = new Car(
+                                        nz(roomDoc.getString("carName")),
+                                        nz(roomDoc.getString("carPrice")), "", 0);
+                                car.setId(nz(roomDoc.getString("carId")));
+                                car.setImageUrl(nz(roomDoc.getString("carImage")));
+                                car.setSellerId(nz(roomDoc.getString("sellerId")));
+                                car.setType(roomDoc.getString("carType") != null ? roomDoc.getString("carType") : "sale");
+                                intent.putExtra("CAR_DATA", car);
+                            }
+                            v.getContext().startActivity(intent);
+                        }
+                        @Override public void onError(String message) {
+                            v.getContext().startActivity(buildChatIntent(v.getContext(), roomId, senderId, senderName));
+                        }
+                    });
                 } else {
                     if (getActivity() instanceof MainActivity) {
-                        MainActivity main = (MainActivity) getActivity();
-                        main.openManageRequestsTab();
+                        ((MainActivity) getActivity()).openManageRequestsTab();
                     }
                 }
             });
         }
 
-        @Override
-        public int getItemCount() { return notifList.size(); }
+        @Override public int getItemCount() { return notifList.size(); }
 
         private String str(Map<String, Object> m, String key) {
             Object v = m.get(key);
@@ -815,33 +533,19 @@ public class MessagesFragment extends Fragment {
                 viewUnreadDot= v.findViewById(R.id.view_unread_dot);
                 btnReview    = v.findViewById(R.id.btn_notif_review);
                 tvReviewed   = v.findViewById(R.id.tv_notif_reviewed);
-
                 ivIcon       = v.findViewById(R.id.tv_notif_type_icon);
             }
         }
     }
 
-    public void onShortcutClicked(String partnerId) {
-        if (partnerId.equals(selectedShortcutPartnerId)) {
-            selectedShortcutPartnerId = null;
-            shortcutAdapter.setSelectedPartnerId(null);
-            String currentSearch = etSearch.getText().toString().trim();
-            if (currentSearch.isEmpty()) {
-                showAllConversations();
-            } else {
-                searchEverything(currentSearch);
-            }
-        } else {
-            selectedShortcutPartnerId = partnerId;
-            shortcutAdapter.setSelectedPartnerId(partnerId);
-            List<Map<String, Object>> userSpecificList = new ArrayList<>();
-            for (Map<String, Object> conv : convList) {
-                String pId = (String) conv.get("partnerId");
-                if (partnerId.equals(pId)) {
-                    userSpecificList.add(conv);
-                }
-            }
-            showFiltered(userSpecificList, "");
-        }
+    private static String nz(String s) { return s != null ? s : ""; }
+
+    private static Intent buildChatIntent(android.content.Context ctx, String roomId,
+                                          String senderId, String senderName) {
+        Intent intent = new Intent(ctx, ChatDetailActivity.class);
+        intent.putExtra("ROOM_ID",      roomId);
+        intent.putExtra("PARTNER_ID",   senderId);
+        intent.putExtra("PARTNER_NAME", senderName.isEmpty() ? "Người dùng" : senderName);
+        return intent;
     }
 }

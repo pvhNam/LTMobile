@@ -7,15 +7,14 @@ import android.widget.RatingBar;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.data.model.Review;
 import com.example.doanmb.ui.car.adapter.ReviewAdapter;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.example.doanmb.ui.car.viewmodel.ReviewListViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +31,7 @@ public class ReviewActivity extends AppCompatActivity {
 
     private ReviewAdapter reviewAdapter;
     private final List<Review> reviewList = new ArrayList<>();
-    private FirebaseFirestore db;
+    private ReviewListViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,8 +39,6 @@ public class ReviewActivity extends AppCompatActivity {
         EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_review);
         EdgeToEdgeUtil.padContentForSystemBars(this, 0xFFFFFFFF);
-
-        db = FirebaseFirestore.getInstance();
 
         ImageView btnBack = findViewById(R.id.btn_back);
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());
@@ -58,52 +55,33 @@ public class ReviewActivity extends AppCompatActivity {
             rvReviews.setAdapter(reviewAdapter);
         }
 
+        viewModel = new ViewModelProvider(this).get(ReviewListViewModel.class);
+        observeViewModel();
+
         String driverId = getIntent().getStringExtra(EXTRA_DRIVER_ID);
         if (driverId != null && !driverId.isEmpty()) {
-            loadDriverStats(driverId);
-            loadReviews(driverId);
+            viewModel.load(driverId);
         }
     }
 
-    private void loadDriverStats(String driverId) {
-        db.collection("drivers").document(driverId).get()
-                .addOnSuccessListener(doc -> {
-                    if (!doc.exists()) return;
-                    Double avg = doc.getDouble("avgRating");
-                    Long count = doc.getLong("reviewCount");
+    private void observeViewModel() {
+        viewModel.getAvgRating().observe(this, avg -> {
+            float avgVal = avg != null ? avg.floatValue() : 0f;
+            if (tvAvgRating  != null) tvAvgRating.setText(String.format("%.1f", avgVal));
+            if (ratingBarAvg != null) ratingBarAvg.setRating(avgVal);
+        });
 
-                    float avgVal  = avg != null ? avg.floatValue() : 0f;
-                    int countVal  = count != null ? count.intValue() : 0;
+        viewModel.getReviewCount().observe(this, count -> {
+            if (tvReviewCount != null)
+                tvReviewCount.setText("(" + (count != null ? count : 0) + " đánh giá)");
+        });
 
-                    if (tvAvgRating   != null) tvAvgRating.setText(String.format("%.1f", avgVal));
-                    if (tvReviewCount != null) tvReviewCount.setText("(" + countVal + " đánh giá)");
-                    if (ratingBarAvg  != null) ratingBarAvg.setRating(avgVal);
-                });
-    }
-
-    private void loadReviews(String driverId) {
-        db.collection("reviews")
-                .whereEqualTo("driverId", driverId)
-                .get()
-                .addOnSuccessListener(snap -> {
-                    reviewList.clear();
-                    for (QueryDocumentSnapshot d : snap) {
-                        Review r = d.toObject(Review.class);
-                        r.setReviewId(d.getId());
-                        reviewList.add(r);
-                    }
-
-                    reviewList.sort((a, b) -> {
-                        if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
-                        if (a.getCreatedAt() == null) return 1;
-                        if (b.getCreatedAt() == null) return -1;
-                        return b.getCreatedAt().compareTo(a.getCreatedAt());
-                    });
-                    reviewAdapter.notifyDataSetChanged();
-                    if (tvEmpty != null)
-                        tvEmpty.setVisibility(reviewList.isEmpty() ? View.VISIBLE : View.GONE);
-                })
-                .addOnFailureListener(e ->
-                        android.util.Log.e("ReviewActivity", "loadReviews lỗi: " + e.getMessage()));
+        viewModel.getReviews().observe(this, list -> {
+            reviewList.clear();
+            if (list != null) reviewList.addAll(list);
+            reviewAdapter.notifyDataSetChanged();
+            if (tvEmpty != null)
+                tvEmpty.setVisibility(reviewList.isEmpty() ? View.VISIBLE : View.GONE);
+        });
     }
 }

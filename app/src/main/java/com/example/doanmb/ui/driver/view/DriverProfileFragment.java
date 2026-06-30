@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
 import com.example.doanmb.ui.home.view.MainActivity;
@@ -18,9 +19,9 @@ import com.example.doanmb.R;
 import com.example.doanmb.ui.car.view.FavoriteCarsActivity;
 import com.example.doanmb.ui.car.view.ReviewActivity;
 import com.example.doanmb.ui.auth.view.LoginActivity;
+import com.example.doanmb.ui.driver.viewmodel.DriverProfileViewModel;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -28,6 +29,7 @@ public class DriverProfileFragment extends Fragment {
 
     private TextView tvName;
     private CircleImageView ivAvatar;
+    private DriverProfileViewModel viewModel;
 
     @Nullable
     @Override
@@ -59,8 +61,19 @@ public class DriverProfileFragment extends Fragment {
 
         v.findViewById(R.id.btn_dp_logout).setOnClickListener(x -> logout());
 
-        loadInfo();
+        viewModel = new ViewModelProvider(this).get(DriverProfileViewModel.class);
+        observeViewModel();
+        viewModel.loadInfo();
         return v;
+    }
+
+    private void observeViewModel() {
+        viewModel.getName().observe(getViewLifecycleOwner(), name ->
+                tvName.setText(name != null && !name.isEmpty() ? name : "Tài xế"));
+        viewModel.getAvatar().observe(getViewLifecycleOwner(), avatar -> {
+            if (avatar != null && !avatar.isEmpty() && isAdded())
+                Glide.with(this).load(avatar).into(ivAvatar);
+        });
     }
 
     private void openReviews() {
@@ -69,19 +82,6 @@ public class DriverProfileFragment extends Fragment {
         Intent intent = new Intent(getActivity(), ReviewActivity.class);
         intent.putExtra(ReviewActivity.EXTRA_DRIVER_ID, user.getUid());
         startActivity(intent);
-    }
-
-    private void loadInfo() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return;
-        FirebaseFirestore.getInstance().collection("users").document(user.getUid()).get()
-                .addOnSuccessListener(doc -> {
-                    if (!isAdded() || !doc.exists()) return;
-                    String name = doc.getString("name");
-                    tvName.setText(name != null && !name.isEmpty() ? name : "Tài xế");
-                    String avatar = doc.getString("avatarUrl");
-                    if (avatar != null && !avatar.isEmpty()) Glide.with(this).load(avatar).into(ivAvatar);
-                });
     }
 
     private void switchToUserMode() {
