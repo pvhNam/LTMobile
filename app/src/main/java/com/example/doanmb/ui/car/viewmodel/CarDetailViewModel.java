@@ -684,6 +684,8 @@ public class CarDetailViewModel extends ViewModel {
         Map<String, Object> report = new HashMap<>();
         report.put("reporterId", user.getUid());
         report.put("targetId", carId);
+        report.put("targetType", "car");
+        report.put("targetName", car != null && car.getName() != null ? car.getName() : "Tin đăng");
         report.put("reason", reason);
         report.put("status", "pending");
         report.put("createdAt", Timestamp.now());

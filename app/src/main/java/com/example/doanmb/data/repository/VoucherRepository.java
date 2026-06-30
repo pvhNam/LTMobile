@@ -109,6 +109,74 @@ public final class VoucherRepository {
                 .addOnFailureListener(e -> cb.onError(e.getMessage()));
     }
 
+    // ── Quản lý catalog (admin) ──────────────────────────────────────────────
+
+    /** Tải TẤT CẢ voucher trong catalog (cả đang tắt), mới-rẻ điểm lên trước. Dùng cho màn admin. */
+    public static void loadAllVouchers(@NonNull VoucherListCallback cb) {
+        db().collection(COL_VOUCHERS)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    List<Voucher> list = new ArrayList<>();
+                    for (QueryDocumentSnapshot d : snap) {
+                        Voucher v = d.toObject(Voucher.class);
+                        v.setId(d.getId());
+                        list.add(v);
+                    }
+                    // Còn mở lên trước, trong cùng nhóm thì điểm thấp lên trước.
+                    Collections.sort(list, (a, b) -> {
+                        if (a.isActive() != b.isActive()) return a.isActive() ? -1 : 1;
+                        return Integer.compare(a.getPointsCost(), b.getPointsCost());
+                    });
+                    cb.onLoaded(list);
+                })
+                .addOnFailureListener(e -> cb.onError(e.getMessage()));
+    }
+
+    /**
+     * Tạo mới (khi {@code voucher.getId()} null/rỗng) hoặc cập nhật một voucher trong catalog.
+     * Chỉ ghi các field thuộc về catalog, không đụng tới ví voucher của user đã đổi.
+     */
+    public static void saveVoucher(@NonNull Voucher voucher, @Nullable Callback cb) {
+        java.util.Map<String, Object> m = new java.util.HashMap<>();
+        m.put("title", voucher.getTitle());
+        m.put("description", voucher.getDescription());
+        m.put("discountType", voucher.getDiscountType());
+        m.put("discountValue", voucher.getDiscountValue());
+        m.put("maxDiscount", voucher.getMaxDiscount());
+        m.put("minOrderAmount", voucher.getMinOrderAmount());
+        m.put("pointsCost", voucher.getPointsCost());
+        m.put("quantity", voucher.getQuantity());
+        m.put("active", voucher.isActive());
+        m.put("validDays", voucher.getValidDays());
+
+        boolean isNew = voucher.getId() == null || voucher.getId().isEmpty();
+        DocumentReference ref = isNew
+                ? db().collection(COL_VOUCHERS).document()
+                : db().collection(COL_VOUCHERS).document(voucher.getId());
+        ref.set(m, com.google.firebase.firestore.SetOptions.merge())
+                .addOnSuccessListener(v -> ok(cb))
+                .addOnFailureListener(e -> fail(cb, e.getMessage()));
+    }
+
+    /** Bật/tắt một voucher trong catalog (admin tạm ngừng cho đổi mà không xoá). */
+    public static void setVoucherActive(@NonNull String voucherId, boolean active, @Nullable Callback cb) {
+        db().collection(COL_VOUCHERS).document(voucherId)
+                .update("active", active)
+                .addOnSuccessListener(v -> ok(cb))
+                .addOnFailureListener(e -> fail(cb, e.getMessage()));
+    }
+
+    /**
+     * Xoá hẳn một voucher khỏi catalog. Không ảnh hưởng các {@link UserVoucher} đã đổi
+     * (chúng giữ bản sao thông tin giảm giá độc lập).
+     */
+    public static void deleteVoucher(@NonNull String voucherId, @Nullable Callback cb) {
+        db().collection(COL_VOUCHERS).document(voucherId)
+                .delete()
+                .addOnSuccessListener(v -> ok(cb))
+                .addOnFailureListener(e -> fail(cb, e.getMessage()));
+    }
+
     // ── Ví voucher của user ──────────────────────────────────────────────────
 
     /** Tải toàn bộ voucher user đã đổi, mới nhất lên đầu. */
@@ -184,18 +252,6 @@ public final class VoucherRepository {
         up.put("used", true);
         up.put("orderId", orderId);
         up.put("usedAt", Timestamp.now());
-        db().collection(COL_USER_VOUCHERS).document(userVoucherId)
-                .update(up)
-                .addOnSuccessListener(v -> ok(cb))
-                .addOnFailureListener(e -> fail(cb, e.getMessage()));
-    }
-
-    /** Hoàn lại voucher (đánh dấu chưa dùng) — dùng khi huỷ đơn trước khi hoàn tất thanh toán. */
-    public static void revertUsed(@NonNull String userVoucherId, @Nullable Callback cb) {
-        java.util.Map<String, Object> up = new java.util.HashMap<>();
-        up.put("used", false);
-        up.put("orderId", null);
-        up.put("usedAt", null);
         db().collection(COL_USER_VOUCHERS).document(userVoucherId)
                 .update(up)
                 .addOnSuccessListener(v -> ok(cb))

@@ -8,18 +8,16 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.doanmb.R;
-import com.example.doanmb.data.repository.WalletRepository;
+import com.example.doanmb.ui.admin.viewmodel.AdminOrderDetailViewModel;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 /** Màn admin xem chi tiết 1 đơn hàng + xác nhận / hoàn thành / hủy. */
 public class AdminOrderDetailActivity extends AppCompatActivity {
@@ -35,10 +33,7 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
     private View cardRent, cardTrip, layoutActions;
     private Button btnCancel, btnPrimary;
 
-    private FirebaseFirestore db;
-    private String orderId;
-    /** Chặn thao tác trùng (double-tap) khi một lệnh ghi/đụng-tiền đang chạy. */
-    private boolean processing = false;
+    private AdminOrderDetailViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,8 +41,8 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_admin_order_detail);
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        db = FirebaseFirestore.getInstance();
-        orderId = getIntent().getStringExtra(EXTRA_ORDER_ID);
+        viewModel = new ViewModelProvider(this).get(AdminOrderDetailViewModel.class);
+        String orderId = getIntent().getStringExtra(EXTRA_ORDER_ID);
 
         tvCarName       = findViewById(R.id.tv_admin_order_car_name);
         tvPrice         = findViewById(R.id.tv_admin_order_price);
@@ -84,24 +79,22 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
         }
 
         tvId.setText("🆔  Mã đơn: " + orderId);
-        loadOrder();
-    }
 
-    private void loadOrder() {
-        db.collection("orders").document(orderId).get()
-                .addOnSuccessListener(this::bindOrder)
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Lỗi tải đơn hàng: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    finish();
-                });
+        viewModel.getOrder().observe(this, this::bindOrder);
+        viewModel.getBuyerName().observe(this, name -> tvBuyer.setText("👤  " + name));
+        viewModel.getSellerName().observe(this, name -> tvSeller.setText("👤  " + name));
+        viewModel.getMessage().observe(this, msg -> {
+            if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        });
+        viewModel.getFinishEvent().observe(this, f -> {
+            if (Boolean.TRUE.equals(f)) finish();
+        });
+
+        viewModel.start(orderId);
     }
 
     private void bindOrder(DocumentSnapshot doc) {
-        if (!doc.exists()) {
-            Toast.makeText(this, "Đơn hàng không còn tồn tại", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
+        if (doc == null) return;
 
         String carName = str(doc.getString("carName"), "Xe không xác định");
         String carPrice = str(doc.getString("carPrice"), "--");
@@ -118,15 +111,10 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
                 ? new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(createdAt.toDate())
                 : "--"));
 
-        // Khách hàng: ưu tiên tên trong đơn, nếu thiếu thì tra tên theo buyerId
-        String buyerName = str(doc.getString("renterName"), doc.getString("buyerName"));
-        resolveName(tvBuyer, buyerName, doc.getString("buyerId"));
+        // Khách hàng & chủ xe (tên) cập nhật qua observer buyerName/sellerName.
         showOrHide(tvBuyerPhone, "📞  ", doc.getString("renterPhone"));
         showOrHide(tvBuyerCccd, "🪪  CCCD: ", doc.getString("renterCccd"));
         showOrHide(tvNote, "📝  Ghi chú: ", doc.getString("note"));
-
-        // Chủ xe: ưu tiên sellerName, nếu thiếu thì tra tên theo sellerId
-        resolveName(tvSeller, doc.getString("sellerName"), doc.getString("sellerId"));
 
         // Thuê theo ngày vs chuyến đi theo km
         boolean isTrip = "distance".equals(doc.getString("rentMode"));
@@ -173,152 +161,29 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
         btnCancel.setOnClickListener(v -> askCancelOrder());
         if (isPending) {
             btnPrimary.setText("Xác nhận");
-            btnPrimary.setOnClickListener(v -> confirmOrder());
+            btnPrimary.setOnClickListener(v -> viewModel.confirmOrder());
         } else {
             btnPrimary.setText("Hoàn thành");
             btnPrimary.setOnClickListener(v -> askCompleteOrder());
         }
     }
 
-    private void confirmOrder() {
-        if (processing) return;
-        processing = true;
-        db.collection("orders").document(orderId).update("status", "confirmed")
-                .addOnSuccessListener(v -> {
-                    processing = false;
-                    Toast.makeText(this, "✅ Đã xác nhận đơn hàng", Toast.LENGTH_SHORT).show();
-                    loadOrder();
-                })
-                .addOnFailureListener(e -> {
-                    processing = false;
-                    Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
     private void askCompleteOrder() {
         new AlertDialog.Builder(this)
                 .setTitle("Hoàn thành đơn")
                 .setMessage("Xác nhận đơn đã hoàn thành?\nApp sẽ trừ 15% hoa hồng từ tiền cọc và trả 85% còn lại về ví chủ xe/tài xế.")
-                .setPositiveButton("Hoàn thành", (d, w) -> completeOrder())
+                .setPositiveButton("Hoàn thành", (d, w) -> viewModel.completeOrder())
                 .setNegativeButton("Đóng", null)
                 .show();
-    }
-
-    private void completeOrder() {
-        if (processing) return;
-        processing = true;
-        db.collection("orders").document(orderId).get().addOnSuccessListener(doc -> {
-            if (!doc.exists()) { processing = false; return; }
-            String depositStatus = doc.getString("depositStatus");
-            String sellerId = doc.getString("sellerId");
-            Long deposit = doc.getLong("depositAmount");
-            String status = doc.getString("status");
-
-            // Chặn chia tiền lặp: chỉ xử lý đơn đang "confirmed"
-            if (!"confirmed".equals(status)) {
-                processing = false;
-                Toast.makeText(this, "Đơn không ở trạng thái chờ hoàn thành", Toast.LENGTH_SHORT).show();
-                loadOrder();
-                return;
-            }
-
-            // Đơn không có cọc giữ qua ví -> chỉ đánh dấu hoàn thành
-            if (!"held".equals(depositStatus) || sellerId == null || sellerId.isEmpty()
-                    || deposit == null || deposit <= 0) {
-                markCompleted(null);
-                return;
-            }
-
-            WalletRepository.settle(sellerId, deposit, orderId, new WalletRepository.Callback() {
-                @Override public void onSuccess() { markCompleted("settled"); }
-                @Override public void onError(String message) {
-                    processing = false;
-                    Toast.makeText(AdminOrderDetailActivity.this,
-                            "Lỗi chia tiền: " + message, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }).addOnFailureListener(e -> {
-            processing = false;
-            Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        });
-    }
-
-    private void markCompleted(String newDepositStatus) {
-        Map<String, Object> update = new HashMap<>();
-        update.put("status", "completed");
-        if (newDepositStatus != null) update.put("depositStatus", newDepositStatus);
-        db.collection("orders").document(orderId).update(update)
-                .addOnSuccessListener(v -> {
-                    processing = false;
-                    Toast.makeText(this, "✅ Đơn đã hoàn thành & chia tiền", Toast.LENGTH_SHORT).show();
-                    loadOrder();
-                })
-                .addOnFailureListener(e -> {
-                    processing = false;
-                    Toast.makeText(this, "Lỗi cập nhật đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
     }
 
     private void askCancelOrder() {
         new AlertDialog.Builder(this)
                 .setTitle("Hủy đơn hàng")
                 .setMessage("Bạn có chắc muốn hủy đơn hàng này không?\nHành động này sẽ trả xe về trạng thái đang bán.")
-                .setPositiveButton("Hủy đơn", (d, w) -> cancelOrder())
+                .setPositiveButton("Hủy đơn", (d, w) -> viewModel.cancelOrder())
                 .setNegativeButton("Không", null)
                 .show();
-    }
-
-    private void cancelOrder() {
-        if (processing) return;
-        processing = true;
-        db.collection("orders").document(orderId).get().addOnSuccessListener(doc -> {
-            if (!doc.exists()) { processing = false; return; }
-            String carId = doc.getString("carId");
-            String buyerId = doc.getString("buyerId");
-            String depositStatus = doc.getString("depositStatus");
-            String status = doc.getString("status");
-            Long deposit = doc.getLong("depositAmount");
-
-            // Chỉ hủy được đơn đang chờ/đã xác nhận; chặn hoàn cọc lặp
-            if (!"pending".equals(status) && !"confirmed".equals(status)) {
-                processing = false;
-                Toast.makeText(this, "Đơn này không thể hủy", Toast.LENGTH_SHORT).show();
-                loadOrder();
-                return;
-            }
-
-            Map<String, Object> orderUpdate = new HashMap<>();
-            orderUpdate.put("status", "cancelled");
-
-            if (carId != null && !carId.isEmpty()) {
-                Map<String, Object> carUpdate = new HashMap<>();
-                carUpdate.put("status", "active");
-                db.collection("cars").document(carId).update(carUpdate);
-            }
-
-            // Còn giữ cọc -> hoàn lại 100% vào ví khách
-            final boolean refunded = "held".equals(depositStatus)
-                    && buyerId != null && deposit != null && deposit > 0;
-            if (refunded) {
-                orderUpdate.put("depositStatus", "refunded");
-                WalletRepository.refund(buyerId, deposit, orderId, null);
-            }
-
-            db.collection("orders").document(orderId).update(orderUpdate)
-                    .addOnSuccessListener(v -> {
-                        processing = false;
-                        Toast.makeText(this, "Đã hủy đơn hàng"
-                                + (refunded ? " & hoàn cọc cho khách" : ""), Toast.LENGTH_SHORT).show();
-                        loadOrder();
-                    })
-                    .addOnFailureListener(e -> {
-                        processing = false;
-                        Toast.makeText(this, "Lỗi hủy đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
-        }).addOnFailureListener(e -> {
-            processing = false;
-            Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        });
     }
 
     private void applyStatusStyle(String status) {
@@ -349,28 +214,6 @@ public class AdminOrderDetailActivity extends AppCompatActivity {
                 tvStatus.setBackgroundColor(0xFFEEEEEE);
                 tvStatus.setTextColor(0xFF757575);
         }
-    }
-
-    /**
-     * Hiển thị tên người dùng. Nếu đơn đã có sẵn tên thì dùng luôn,
-     * ngược lại tra tên trong collection "users" theo id (không hiển thị id thô).
-     */
-    private void resolveName(TextView tv, String name, String userId) {
-        if (name != null && !name.isEmpty()) {
-            tv.setText("👤  " + name);
-            return;
-        }
-        if (userId == null || userId.isEmpty()) {
-            tv.setText("👤  --");
-            return;
-        }
-        tv.setText("👤  Đang tải…");
-        db.collection("users").document(userId).get()
-                .addOnSuccessListener(u -> {
-                    String fetched = u.exists() ? u.getString("name") : null;
-                    tv.setText("👤  " + (fetched != null && !fetched.isEmpty() ? fetched : "Ẩn danh"));
-                })
-                .addOnFailureListener(e -> tv.setText("👤  Ẩn danh"));
     }
 
     private void showOrHide(TextView tv, String prefix, String value) {

@@ -11,13 +11,14 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.adapter.DriverAdminAdapter;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.example.doanmb.ui.admin.viewmodel.AdminDocList;
+import com.example.doanmb.ui.admin.viewmodel.AdminDriversViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,13 +32,13 @@ public class AdminDriversFragment extends Fragment {
     private DriverAdminAdapter adapter;
     private final List<Map<String, Object>> driverList = new ArrayList<>();
     private final List<String> driverIds = new ArrayList<>();
-    private FirebaseFirestore db;
+    private AdminDriversViewModel viewModel;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_admin_drivers, container, false);
-        db = FirebaseFirestore.getInstance();
+        viewModel = new ViewModelProvider(this).get(AdminDriversViewModel.class);
 
         rvDrivers = view.findViewById(R.id.rv_drivers);
         tvCount = view.findViewById(R.id.tv_drv_count);
@@ -50,40 +51,28 @@ public class AdminDriversFragment extends Fragment {
         rvDrivers.setLayoutManager(new LinearLayoutManager(getContext()));
         rvDrivers.setAdapter(adapter);
 
-        loadDrivers();
+        viewModel.getDrivers().observe(getViewLifecycleOwner(), this::render);
+        viewModel.getError().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null) Toast.makeText(getContext(), "Lỗi tải tài xế: " + msg, Toast.LENGTH_SHORT).show();
+        });
+
+        viewModel.load();
         return view;
+    }
+
+    private void render(AdminDocList list) {
+        driverList.clear(); driverList.addAll(list.data);
+        driverIds.clear(); driverIds.addAll(list.ids);
+        adapter.updateList(driverList, driverIds);
+        tvCount.setText(list.size() + " tài xế");
+        tvEmpty.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
+        rvDrivers.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        loadDrivers();
-    }
-
-    private void loadDrivers() {
-        // Tải tất cả users rồi lọc client-side: tài xế = isDriver==true HOẶC driverStatus=="approved".
-        // (Tài khoản duyệt từ trước có thể chỉ có driverStatus mà thiếu cờ isDriver.)
-        db.collection("users").get()
-                .addOnSuccessListener(snap -> {
-                    if (!isAdded()) return;
-                    driverList.clear();
-                    driverIds.clear();
-                    for (QueryDocumentSnapshot doc : snap) {
-                        boolean isDriver = Boolean.TRUE.equals(doc.getBoolean("isDriver"));
-                        boolean approved = "approved".equals(doc.getString("driverStatus"));
-                        if (!isDriver && !approved) continue;
-                        driverList.add(doc.getData());
-                        driverIds.add(doc.getId());
-                    }
-                    adapter.updateList(driverList, driverIds);
-                    tvCount.setText(driverList.size() + " tài xế");
-                    tvEmpty.setVisibility(driverList.isEmpty() ? View.VISIBLE : View.GONE);
-                    rvDrivers.setVisibility(driverList.isEmpty() ? View.GONE : View.VISIBLE);
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "Lỗi tải tài xế: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+        viewModel.load();
     }
 
     private void openDetail(String userId) {

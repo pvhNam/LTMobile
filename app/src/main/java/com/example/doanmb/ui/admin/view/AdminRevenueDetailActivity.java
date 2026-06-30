@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -19,15 +20,14 @@ import com.example.doanmb.ui.admin.adapter.RevenueItemAdapter;
 import com.example.doanmb.ui.admin.util.AdminFormat;
 import com.example.doanmb.ui.admin.util.AdminTab;
 import com.example.doanmb.ui.admin.util.RevenueCalculator;
+import com.example.doanmb.ui.admin.viewmodel.AdminRevenueDetailViewModel;
 import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
@@ -40,11 +40,10 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
     private Button btnTabCommission, btnTabPosting;
     private View filterMonthCard;
     private RevenueItemAdapter adapter;
-    private FirebaseFirestore db;
+    private AdminRevenueDetailViewModel viewModel;
 
     private final List<QueryDocumentSnapshot> orderDocs = new ArrayList<>();
     private final List<QueryDocumentSnapshot> carDocs   = new ArrayList<>();
-    private int loadedCount = 0;
     private int currentTab  = 0;
 
     // Bộ lọc theo khoảng ngày: filterAll = true nghĩa là không lọc (tất cả thời gian)
@@ -63,7 +62,7 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_admin_revenue_detail);
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        db = FirebaseFirestore.getInstance();
+        viewModel = new ViewModelProvider(this).get(AdminRevenueDetailViewModel.class);
 
         tvGrandTotal      = findViewById(R.id.tv_revenue_grand_total);
         tvCommissionTotal = findViewById(R.id.tv_commission_total);
@@ -88,7 +87,25 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
         tvMonthReset.setOnClickListener(v -> resetMonthFilter());
 
         applyTabStyle(0);
-        loadData();
+
+        viewModel.getData().observe(this, data -> {
+            orderDocs.clear(); orderDocs.addAll(data.orders);
+            carDocs.clear();   carDocs.addAll(data.cars);
+            progressBar.setVisibility(View.GONE);
+            applyFilter();
+        });
+        viewModel.getError().observe(this, msg -> {
+            if (msg == null) return;
+            progressBar.setVisibility(View.GONE);
+            tvEmpty.setVisibility(View.VISIBLE);
+            tvEmpty.setText("Lỗi tải dữ liệu doanh thu");
+            Toast.makeText(this, "Lỗi: " + msg, Toast.LENGTH_SHORT).show();
+        });
+
+        progressBar.setVisibility(View.VISIBLE);
+        rvRevenue.setVisibility(View.GONE);
+        tvEmpty.setVisibility(View.GONE);
+        viewModel.load();
     }
 
     // ── Bộ lọc theo khoảng ngày ────────────────────────────────────────────
@@ -305,47 +322,6 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
         if (ts == null) return false;
         long t = ts.toDate().getTime();
         return t >= filterStart && t <= filterEnd;
-    }
-
-    // ── Tải dữ liệu song song ──────────────────────────────────────────────
-
-    private void loadData() {
-        progressBar.setVisibility(View.VISIBLE);
-        rvRevenue.setVisibility(View.GONE);
-        tvEmpty.setVisibility(View.GONE);
-        loadedCount = 0;
-
-        // Doanh thu = đơn đã chốt: gồm cả "confirmed" lẫn "completed"
-        db.collection("orders").whereIn("status", Arrays.asList("confirmed", "completed")).get()
-                .addOnSuccessListener(snap -> {
-                    orderDocs.clear();
-                    for (QueryDocumentSnapshot doc : snap) orderDocs.add(doc);
-                    onDatasetReady();
-                })
-                .addOnFailureListener(this::onLoadFailed);
-
-        db.collection("cars").get()
-                .addOnSuccessListener(snap -> {
-                    carDocs.clear();
-                    for (QueryDocumentSnapshot doc : snap) carDocs.add(doc);
-                    onDatasetReady();
-                })
-                .addOnFailureListener(this::onLoadFailed);
-    }
-
-    private void onLoadFailed(Exception e) {
-        progressBar.setVisibility(View.GONE);
-        tvEmpty.setVisibility(View.VISIBLE);
-        tvEmpty.setText("Lỗi tải dữ liệu doanh thu");
-        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-    }
-
-    private void onDatasetReady() {
-        loadedCount++;
-        if (loadedCount < 2) return;
-
-        progressBar.setVisibility(View.GONE);
-        applyFilter();
     }
 
     /** Tính lại tổng + danh sách theo khoảng ngày đang lọc. */

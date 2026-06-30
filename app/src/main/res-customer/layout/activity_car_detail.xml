@@ -695,6 +695,19 @@
             android:layout_weight="1" />
 
         <ImageView
+            android:id="@+id/btn_report_float"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/bg_circle_scrim"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Báo cáo tin này"
+            android:padding="9dp"
+            android:src="@drawable/ic_flag_report"
+            android:visibility="gone" />
+
+        <ImageView
             android:id="@+id/btn_favorite_float"
             android:layout_width="40dp"
             android:layout_height="40dp"

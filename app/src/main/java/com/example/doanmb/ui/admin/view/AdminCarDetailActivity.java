@@ -8,23 +8,21 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.example.doanmb.ui.admin.viewmodel.AdminCarDetailViewModel;
 import com.example.doanmb.ui.car.adapter.CarImageAdapter;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /** Màn admin xem chi tiết 1 bài đăng xe + duyệt / từ chối / xóa. */
 public class AdminCarDetailActivity extends AppCompatActivity {
@@ -34,11 +32,7 @@ public class AdminCarDetailActivity extends AppCompatActivity {
     private TextView tvName, tvPrice, tvType, tvStatus, tvDate, tvInfo, tvSeller, tvPhone;
     private Button btnApprove, btnReject, btnDelete;
     private CarImageAdapter imageAdapter;
-
-    private FirebaseFirestore db;
-    private String carId;
-    private String sellerId = "";
-    private String carName  = "";
+    private AdminCarDetailViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,8 +40,8 @@ public class AdminCarDetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_admin_car_detail);
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        db = FirebaseFirestore.getInstance();
-        carId = getIntent().getStringExtra(EXTRA_CAR_ID);
+        viewModel = new ViewModelProvider(this).get(AdminCarDetailViewModel.class);
+        String carId = getIntent().getStringExtra(EXTRA_CAR_ID);
 
         tvName     = findViewById(R.id.tv_admin_detail_name);
         tvPrice    = findViewById(R.id.tv_admin_detail_price);
@@ -75,24 +69,19 @@ public class AdminCarDetailActivity extends AppCompatActivity {
             return;
         }
 
-        loadCar();
-    }
+        viewModel.getCar().observe(this, this::bindCar);
+        viewModel.getMessage().observe(this, msg -> {
+            if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        });
+        viewModel.getFinishEvent().observe(this, finish -> {
+            if (Boolean.TRUE.equals(finish)) finish();
+        });
 
-    private void loadCar() {
-        db.collection("cars").document(carId).get()
-                .addOnSuccessListener(this::bindCar)
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Lỗi tải bài đăng: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    finish();
-                });
+        viewModel.start(carId);
     }
 
     private void bindCar(DocumentSnapshot doc) {
-        if (!doc.exists()) {
-            Toast.makeText(this, "Bài đăng không còn tồn tại", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
+        if (doc == null) return;
 
         String name   = str(doc.getString("name"), "Không tên");
         String price   = doc.getString("price");
@@ -101,9 +90,6 @@ public class AdminCarDetailActivity extends AppCompatActivity {
         String status  = str(doc.getString("status"), "");
         String seller  = doc.getString("sellerName");
         String phone   = doc.getString("sellerPhone");
-
-        carName  = name;
-        sellerId = str(doc.getString("sellerId"), str(doc.getString("userId"), ""));
 
         tvName.setText(name);
         tvPrice.setText(price == null || price.isEmpty() ? "Chưa có giá" : price);
@@ -134,87 +120,18 @@ public class AdminCarDetailActivity extends AppCompatActivity {
         boolean isPending = status.isEmpty() || "pending".equals(status);
         btnApprove.setVisibility(isPending ? View.VISIBLE : View.GONE);
         btnReject.setVisibility(isPending ? View.VISIBLE : View.GONE);
-        btnApprove.setOnClickListener(v -> approveCar());
-        btnReject.setOnClickListener(v -> rejectCar());
+        btnApprove.setOnClickListener(v -> viewModel.approve());
+        btnReject.setOnClickListener(v -> viewModel.reject());
         btnDelete.setOnClickListener(v -> confirmDelete(name));
-    }
-
-    /** Duyệt bài + gửi thông báo cho người đăng (đối xứng với luồng từ chối). */
-    private void approveCar() {
-        db.collection("cars").document(carId)
-                .update("status", "active")
-                .addOnSuccessListener(v -> {
-                    sendNotification(sellerId,
-                            "Bài đăng được duyệt ✅",
-                            "Tin đăng \"" + carName + "\" của bạn đã được duyệt và hiển thị tới người dùng.");
-                    Toast.makeText(this, "✅ Đã duyệt xe", Toast.LENGTH_SHORT).show();
-                    finish();
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-    }
-
-    /** Từ chối bài + gửi thông báo cho người đăng (giống luồng duyệt tài xế). */
-    private void rejectCar() {
-        db.collection("cars").document(carId)
-                .update("status", "rejected")
-                .addOnSuccessListener(v -> {
-                    sendNotification(sellerId,
-                            "Bài đăng bị từ chối ❌",
-                            "Tin đăng \"" + carName + "\" của bạn chưa đạt yêu cầu và đã bị từ chối. "
-                                    + "Vui lòng kiểm tra lại và đăng lại.");
-                    Toast.makeText(this, "❌ Đã từ chối xe", Toast.LENGTH_SHORT).show();
-                    finish();
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-    }
-
-    /** Tạo thông báo trong collection "notifications" cho người dùng. */
-    private void sendNotification(String userId, String title, String body) {
-        if (userId == null || userId.isEmpty()) return;
-        Map<String, Object> notif = new HashMap<>();
-        notif.put("userId", userId);
-        notif.put("title", title);
-        notif.put("body", body);
-        notif.put("createdAt", Timestamp.now());
-        notif.put("read", false);
-        db.collection("notifications").add(notif);
     }
 
     private void confirmDelete(String name) {
         new AlertDialog.Builder(this)
                 .setTitle("Xóa xe")
                 .setMessage("Bạn có chắc muốn xóa tin đăng \"" + name + "\" không?\nHành động này không thể hoàn tác.")
-                .setPositiveButton("Xóa", (d, w) -> deleteCarChecked())
+                .setPositiveButton("Xóa", (d, w) -> viewModel.delete())
                 .setNegativeButton("Hủy", null)
                 .show();
-    }
-
-    /** Chặn xóa khi xe còn đơn đang xử lý -> tránh đơn mồ côi. */
-    private void deleteCarChecked() {
-        db.collection("orders").whereEqualTo("carId", carId).get()
-                .addOnSuccessListener(snap -> {
-                    int active = 0;
-                    for (QueryDocumentSnapshot doc : snap) {
-                        String st = doc.getString("status");
-                        if ("pending".equals(st) || "confirmed".equals(st)) active++;
-                    }
-                    if (active > 0) {
-                        Toast.makeText(this,
-                                "Không thể xóa: xe còn " + active + " đơn đang xử lý", Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    db.collection("cars").document(carId).delete()
-                            .addOnSuccessListener(v -> {
-                                Toast.makeText(this, "🗑️ Đã xóa xe khỏi hệ thống", Toast.LENGTH_SHORT).show();
-                                finish();
-                            })
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Lỗi kiểm tra đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private void applyStatusStyle(String status) {
