@@ -45,7 +45,6 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
         String note       = (String) order.get("note");
         Object createdAt  = order.get("createdAt");
         String orderId    = (String) order.get("orderId");
-        // Với xe có tài xế: driverId = sellerId (người đăng bài = tài xế)
         String driverIdField = (String) order.get("driverId");
         String driverId   = (driverIdField != null && !driverIdField.isEmpty())
                 ? driverIdField
@@ -135,7 +134,6 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
             holder.tvOrderNote.setVisibility(View.GONE);
         }
 
-        // Nút "Đánh giá tài xế": hiện khi completed + canReview=true + reviewed=false
         boolean showReviewBtn = "completed".equals(status)
                 && Boolean.TRUE.equals(canReview)
                 && !Boolean.TRUE.equals(reviewed);

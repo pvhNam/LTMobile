@@ -93,14 +93,14 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
     private String selectedLocation = ""; // rỗng = tất cả khu vực
     private int sortMode = SORT_NONE;
     private TextView tvSortPrice;
-    private Calendar pickupTime;  // null = chưa chọn giờ đón
-    private Calendar returnTime;  // null = chưa chọn giờ trả
+    private Calendar pickupTime;
+    private Calendar returnTime;
     private final SimpleDateFormat timeFmt = new SimpleDateFormat("dd/MM/yyyy", new Locale("vi"));
 
-    // Bỏ qua các từ chỉ đơn vị hành chính khi so khớp khu vực (vd "Thành phố Hồ Chí Minh").
+
     private static final List<String> LOCATION_STOPWORDS = java.util.Arrays.asList(
             "thanh", "pho", "tinh", "quan", "huyen", "phuong", "xa", "thi", "viet", "nam");
-    // Danh sách tỉnh/thành lấy từ API, cache lại để khỏi gọi mạng mỗi lần mở.
+
     private List<Place> provincesCache;
 
     @Nullable
@@ -177,10 +177,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         return view;
     }
 
-    /**
-     * Khi cuộn danh sách xe xuống thì thu gọn ô địa điểm/thời gian và hàng "Hãng xe"
-     * để chừa thêm chỗ cho danh sách; cuộn về đầu thì bung lại.
-     */
     private void setupCollapseOnScroll() {
         rvCategoryCars.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -269,10 +265,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         updateTimeFilterVisibility();
     }
 
-    /**
-     * Ô "Thời gian" chỉ có ý nghĩa với xe thuê tự lái và xe có tài xế.
-     * Tab Mua xe / Bán xe không cần thời gian thuê nên ẩn đi cho gọn.
-     */
     private void updateTimeFilterVisibility() {
         boolean show = currentCategory.equals(CATEGORY_DRIVER) || currentCategory.equals(CATEGORY_RENTAL);
         if (layoutTimeFilter != null) {
@@ -284,7 +276,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         }
     }
 
-    /** Chọn ngày đón, rồi tiếp tục chọn ngày trả. */
     private void showTimePicker() {
         if (getContext() == null) return;
         final Calendar now = Calendar.getInstance();
@@ -299,7 +290,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         dateDialog.show();
     }
 
-    /** Chọn ngày trả; không cho trả trước ngày đón. */
     private void promptReturnTime() {
         if (getContext() == null || pickupTime == null) return;
         final Calendar start = (Calendar) pickupTime.clone();
@@ -357,15 +347,14 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                 .collection("cars")
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
-                    // Nếu người dùng đã thoát Fragment, dừng xử lý ngay lập tức
+
                     if (!isAdded() || getActivity() == null) return;
 
                     allCars.clear();
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                         String name = doc.getString("name");
                         if (name == null || name.trim().isEmpty()) continue;
-                        // Chỉ hiện xe đã được admin duyệt (active) hoặc đang đặt cọc (holding);
-                        // ẩn pending/rejected/sold/hidden và xe chưa có trạng thái (null)
+
                         String status = doc.getString("status");
                         if (!"active".equals(status) && !"holding".equals(status)) continue;
 
@@ -387,7 +376,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                         car.setImageUrl(imageUrl != null ? imageUrl : "");
                         car.setSellerId(sellerId != null ? sellerId : "");
 
-                        // Load driverRating + driverReviewCount (cache từ Firestore)
                         Double driverRating = doc.getDouble("driverRating");
                         Long driverReviewCount = doc.getLong("driverReviewCount");
                         car.setDriverRating(driverRating != null ? driverRating.floatValue() : 0f);
@@ -416,7 +404,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         allCars.add(new Car("Toyota Fortuner 2023", "1.600.000đ / ngày", "TP.HCM - Có tài xế", "driver", "Toyota", android.R.drawable.ic_menu_gallery));
     }
 
-    /** Nút "Tìm xe": áp dụng bộ lọc hiện tại (loại xe + hãng + khu vực) và cuộn về đầu kết quả. */
     private void performSearch() {
         showBrowseContent();
         applyFilter();
@@ -426,10 +413,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         }
     }
 
-    /**
-     * Mở danh sách tỉnh/thành lấy từ API provinces.open-api.vn. Đã cache thì mở ngay,
-     * chưa có thì tải về; lỗi mạng thì báo Toast để người dùng thử lại.
-     */
     private void openLocationPicker() {
         if (getContext() == null) return;
         if (provincesCache != null) {
@@ -456,13 +439,12 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
             }
         });
     }
-    /** Đặt lại nhãn ô địa điểm về khu vực đang chọn (hoặc "Tất cả khu vực"). */
+
     private void restoreLocationLabel() {
         if (tvSearchLocation == null) return;
         tvSearchLocation.setText(
                 (selectedLocation == null || selectedLocation.isEmpty()) ? LOCATION_ALL : selectedLocation);
     }
-    /** Hộp thoại chọn tỉnh/thành từ dữ liệu API (kèm mục "Tất cả khu vực"). */
     private void showProvinceDialog(List<Place> places) {
         if (getContext() == null) return;
         final String[] items = new String[places.size() + 1];
@@ -478,14 +460,12 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                         restoreLocationLabel();
                         applyFilter();
                     } else {
-                        // Đã chọn tỉnh → sang bước chọn phường/xã.
                         openWardPicker(places.get(which - 1));
                     }
                 })
                 .show();
     }
 
-    /** Bước 2: tải phường/xã của tỉnh đã chọn rồi hiện hộp thoại chọn. */
     private void openWardPicker(Place province) {
         if (getContext() == null) return;
         if (tvSearchLocation != null) tvSearchLocation.setText("Đang tải phường/xã...");
@@ -495,7 +475,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                 if (!isAdded()) return;
                 restoreLocationLabel();
                 if (wards.isEmpty()) {
-                    // Không có phường/xã → lọc theo nguyên tỉnh.
                     selectedLocation = province.name;
                     restoreLocationLabel();
                     applyFilter();
@@ -513,7 +492,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
             }
         });
     }
-    /** Hộp thoại chọn phường/xã (kèm mục "Toàn tỉnh/thành"). */
     private void showWardDialog(Place province, List<Place> wards) {
         if (getContext() == null) return;
         final String[] items = new String[wards.size() + 1];
@@ -544,11 +522,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                 + " " + (car.getName() != null ? car.getName() : ""));
         String needle = normalizeText(selectedLocation);
         if (needle.isEmpty()) return true;
-
-        // Khớp trực tiếp cả chuỗi.
         if (haystack.contains(needle)) return true;
-        // Địa chỉ Google thường có dạng "Thành phố Hồ Chí Minh, Việt Nam":
-        // bỏ các từ hành chính rồi khớp theo từng từ khoá còn lại (Hồ, Chí, Minh...).
         for (String token : needle.split("[\\s,]+")) {
             if (token.length() >= 3 && !LOCATION_STOPWORDS.contains(token) && haystack.contains(token)) {
                 return true;
@@ -557,7 +531,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         return false;
     }
 
-    /** Hộp thoại chọn cách sắp xếp theo giá. */
     private void showSortDialog() {
         if (getContext() == null) return;
         final String[] items = {"Mặc định", "Giá: thấp → cao", "Giá: cao → thấp"};
@@ -587,7 +560,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         }
     }
 
-    /** Lấy phần số trong chuỗi giá (vd "450.000.000 VNĐ" → 450000000). */
     private long parsePrice(String price) {
         if (price == null) return 0L;
         String digits = price.replaceAll("[^0-9]", "");

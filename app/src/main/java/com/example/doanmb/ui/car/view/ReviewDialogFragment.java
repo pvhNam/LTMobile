@@ -25,13 +25,6 @@ import java.util.HashMap;
 import java.util.Map;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
-/**
- * Dialog đánh giá tài xế.
- *
- * Cách dùng:
- *   ReviewDialogFragment.newInstance(orderId, driverId, carId)
- *       .show(getSupportFragmentManager(), "review");
- */
 public class ReviewDialogFragment extends DialogFragment {
 
     private static final String ARG_ORDER_ID       = "orderId";
@@ -46,12 +39,10 @@ public class ReviewDialogFragment extends DialogFragment {
     private String orderId, driverId, carId, notificationId;
     private FirebaseFirestore db;
 
-    /** Gọi từ OrderHistoryAdapter (không có notificationId) */
     public static ReviewDialogFragment newInstance(String orderId, String driverId, String carId) {
         return newInstance(orderId, driverId, carId, "");
     }
 
-    /** Gọi từ NotifAdapter (có notificationId để cập nhật actionCompleted) */
     public static ReviewDialogFragment newInstance(String orderId, String driverId,
                                                    String carId, String notificationId) {
         ReviewDialogFragment f = new ReviewDialogFragment();
@@ -82,7 +73,6 @@ public class ReviewDialogFragment extends DialogFragment {
         super.onStart();
         android.app.Dialog dialog = getDialog();
         if (dialog != null && dialog.getWindow() != null) {
-            // Chiếm toàn bộ chiều ngang, tự co theo chiều dọc
             dialog.getWindow().setLayout(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
@@ -90,7 +80,6 @@ public class ReviewDialogFragment extends DialogFragment {
             dialog.getWindow().setBackgroundDrawable(
                     new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
             );
-            // Cho phép scroll khi bàn phím mở
             dialog.getWindow().setSoftInputMode(
                     android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
             );
@@ -115,7 +104,6 @@ public class ReviewDialogFragment extends DialogFragment {
         btnCancel.setOnClickListener(v -> dismiss());
         btnSubmit.setOnClickListener(v -> submitReview());
 
-        // Chip gợi ý nhanh → append vào edittext
         setupChip(view, R.id.chip_ontime,   "Đúng giờ, đáng tin cậy.");
         setupChip(view, R.id.chip_safe,     "Lái xe an toàn, tốc độ ổn định.");
         setupChip(view, R.id.chip_friendly, "Tài xế thân thiện, nhiệt tình.");
@@ -171,8 +159,6 @@ public class ReviewDialogFragment extends DialogFragment {
                     DocumentReference orderRef  = db.collection("orders").document(orderId);
                     DocumentReference driverRef = db.collection("drivers").document(driverId);
 
-                    // Dùng Transaction để atomic: thêm review + đánh dấu reviewed + cập nhật avgRating
-                    // Dùng array để capture giá trị từ trong transaction ra ngoài lambda
                     double[] computedAvg   = {0};
                     long[]   computedCount = {0};
 
@@ -214,7 +200,6 @@ public class ReviewDialogFragment extends DialogFragment {
                         dismiss();
                         if (getActivity() != null) getActivity().setResult(android.app.Activity.RESULT_OK);
 
-                        // Dùng giá trị đã capture để sync TẤT CẢ xe của tài xế
                         double finalAvg   = computedAvg[0];
                         long   finalCount = computedCount[0];
 

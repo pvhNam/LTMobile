@@ -14,10 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Gom thao tác Firestore với collection "cars" (tải chi tiết xe, tin của tôi,
- * đăng / sửa / ẩn / xoá tin, báo cáo) và đọc thông tin liên hệ người bán.
- */
 public final class CarRepository {
 
     private static final String COL_CARS    = "cars";
@@ -28,7 +24,6 @@ public final class CarRepository {
 
     private static FirebaseFirestore db() { return FirebaseFirestore.getInstance(); }
 
-    // ── Callbacks ────────────────────────────────────────────────────────────
 
     public interface OnCar { void onLoaded(DocumentSnapshot doc); void onError(String message); }
 
@@ -50,7 +45,6 @@ public final class CarRepository {
 
     public interface OnAvailable { void onResult(boolean available); }
 
-    // ── Đọc ───────────────────────────────────────────────────────────────────
 
     public static void loadCar(@Nullable String carId, @NonNull OnCar cb) {
         if (carId == null || carId.isEmpty()) { cb.onError("Thiếu mã xe"); return; }
@@ -59,7 +53,6 @@ public final class CarRepository {
                 .addOnFailureListener(e -> cb.onError(e.getMessage()));
     }
 
-    /** Lấy uid chủ xe từ document xe (ưu tiên sellerId, fallback userId). */
     public static void loadOwner(@Nullable String carId, @NonNull OnOwner cb) {
         if (carId == null || carId.isEmpty()) { cb.onLoaded(null); return; }
         db().collection(COL_CARS).document(carId).get()
@@ -71,7 +64,6 @@ public final class CarRepository {
                 .addOnFailureListener(e -> cb.onLoaded(null));
     }
 
-    /** Đọc tên + số điện thoại của một user (dùng cho thông tin người bán). */
     public static void loadUserContact(@Nullable String uid, @NonNull OnContact cb) {
         if (uid == null || uid.isEmpty()) { cb.onError("Thiếu thông tin người dùng"); return; }
         db().collection(COL_USERS).document(uid).get()
@@ -82,7 +74,6 @@ public final class CarRepository {
                 .addOnFailureListener(e -> cb.onError(e.getMessage()));
     }
 
-    /** Danh sách tin xe của user (đã gắn nhãn "đang giữ cọc" nếu status = holding). */
     public static void loadMyPosts(@Nullable String userId, @NonNull OnCars cb) {
         if (userId == null || userId.isEmpty()) { cb.onLoaded(new ArrayList<>()); return; }
         db().collection(COL_CARS).whereEqualTo("userId", userId).get()
@@ -117,7 +108,6 @@ public final class CarRepository {
                 .addOnFailureListener(e -> cb.onError(e.getMessage()));
     }
 
-    /** Lấy danh sách carId của user (dùng cho fallback lắng nghe đơn theo carId). */
     public static void loadMyCarIds(@Nullable String userId, @NonNull OnIds cb) {
         if (userId == null || userId.isEmpty()) { cb.onLoaded(new ArrayList<>()); return; }
         db().collection(COL_CARS).whereEqualTo("userId", userId).get()
@@ -128,8 +118,6 @@ public final class CarRepository {
                 })
                 .addOnFailureListener(e -> cb.onLoaded(new ArrayList<>()));
     }
-
-    // ── Ghi ────────────────────────────────────────────────────────────────────
 
     public static void setStatus(@Nullable String carId, @NonNull String status,
                                  @Nullable OnResult cb) {
@@ -166,11 +154,6 @@ public final class CarRepository {
                 .addOnFailureListener(e -> cb.onError(e.getMessage()));
     }
 
-    // ── Đánh giá tài xế ───────────────────────────────────────────────────────
-
-    /** 5 đánh giá mới nhất của một tài xế (collection "reviews", lọc theo driverId).
-     *  Không dùng orderBy để tránh yêu cầu composite index trên Firestore.
-     *  Khi đã tạo index (driverId ASC + createdAt DESC), có thể thêm lại orderBy. */
     public static void loadDriverReviews(@Nullable String driverId, @NonNull OnReviews cb) {
         if (driverId == null || driverId.isEmpty()) { cb.onLoaded(new ArrayList<>()); return; }
         db().collection("reviews")
@@ -193,7 +176,6 @@ public final class CarRepository {
                 });
     }
 
-    /** Điểm trung bình + số lượng đánh giá của tài xế (drivers/{id}). */
     public static void loadDriverRating(@Nullable String driverId, @NonNull OnRating cb) {
         if (driverId == null || driverId.isEmpty()) { cb.onLoaded(0, 0); return; }
         db().collection("drivers").document(driverId).get()
@@ -206,10 +188,6 @@ public final class CarRepository {
                 .addOnFailureListener(e -> cb.onLoaded(0, 0));
     }
 
-    /**
-     * Tài xế có đang nhận chuyến không (drivers/{id}.isAvailable). Coi là sẵn sàng nếu
-     * không có document / không có field / lỗi mạng — để không chặn người dùng.
-     */
     public static void loadDriverAvailability(@Nullable String driverId, @NonNull OnAvailable cb) {
         if (driverId == null || driverId.isEmpty()) { cb.onResult(true); return; }
         db().collection("drivers").document(driverId).get()

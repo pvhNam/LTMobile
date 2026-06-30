@@ -23,17 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * ViewModel cho màn chi tiết xe: tải dữ liệu xe/người bán/số dư ví, quản lý yêu thích
- * và xử lý các nghiệp vụ (gửi đơn mua/thuê/chuyến, sửa/ẩn/xoá tin, báo cáo).
- *
- * View chỉ giữ phần giao diện thuần (animation bảng thuê, pager ảnh, header cuộn…)
- * và observe các LiveData ở đây; các tác vụ cần Context (lịch nhắc, FCM) được phát ra
- * dưới dạng sự kiện {@link OrderSent} để View tự thực hiện.
- */
 public class CarDetailViewModel extends ViewModel {
-
-    // ── Models / events ────────────────────────────────────────────────────────
 
     public static class CarDetail {
         public List<String> images = new ArrayList<>();
@@ -79,7 +69,6 @@ public class CarDetailViewModel extends ViewModel {
 
     public androidx.lifecycle.LiveData<Boolean> getReviewLoadingMore() { return reviewLoadingMore; }
     public androidx.lifecycle.LiveData<Boolean> getReviewNoMore()      { return reviewNoMore; }
-    /** Dữ liệu form đặt thuê do View thu thập. */
     public static class RentForm {
         public String renterName, renterPhone, renterCccd, startDate, note;
         public int days;
@@ -88,8 +77,6 @@ public class CarDetailViewModel extends ViewModel {
         public double distanceKm;
         public String paymentMethod = "cash";
     }
-
-    // ── LiveData ──────────────────────────────────────────────────────────────
 
     private final MutableLiveData<CarDetail> detail = new MutableLiveData<>();
     private final MutableLiveData<Contact> contact = new MutableLiveData<>();
@@ -121,8 +108,6 @@ public class CarDetailViewModel extends ViewModel {
     public LiveData<String> getRatingText() { return ratingText; }
     public LiveData<Boolean> getShowReviews() { return showReviews; }
 
-    // ── Trạng thái nội bộ ───────────────────────────────────────────────────────
-
     private Car car;
     private String carId, sellerId, sellerName = "", carType;
     private String carStatus = "", statusBeforeHide = "";
@@ -134,8 +119,6 @@ public class CarDetailViewModel extends ViewModel {
         Long b = walletBalance.getValue();
         return b != null ? b : 0L;
     }
-
-    // ── Khởi tạo ────────────────────────────────────────────────────────────────
 
     public void init(Car car, String carId, String sellerId, String carType) {
         if (initialized) return;
@@ -166,7 +149,6 @@ public class CarDetailViewModel extends ViewModel {
         loadFavorite();
     }
 
-    /** Tải đánh giá + điểm trung bình của tài xế (chỉ với xe có tài xế). */
     private void loadDriverReviewsAndRating() {
         if (!isDriverType(carType) || sellerId == null || sellerId.isEmpty()) {
             showReviews.setValue(false);
@@ -190,8 +172,6 @@ public class CarDetailViewModel extends ViewModel {
             if (count > 0) ratingText.setValue(String.format(Locale.US, "⭐ %.1f  (%d đánh giá)", avg, count));
         });
     }
-
-    // ── Tải dữ liệu ──────────────────────────────────────────────────────────────
 
     private void loadCarDetail() {
         CarRepository.loadCar(carId, new CarRepository.OnCar() {
@@ -230,7 +210,7 @@ public class CarDetailViewModel extends ViewModel {
                 emitTypeInfo(carType);
                 loadDriverReviewsAndRating();
             }
-            @Override public void onError(String msg) { /* giữ nguyên dữ liệu sơ bộ từ intent */ }
+            @Override public void onError(String msg) { }
         });
     }
 
@@ -250,13 +230,11 @@ public class CarDetailViewModel extends ViewModel {
                 if (name != null && !name.isEmpty()) sellerName = name;
                 contact.setValue(new Contact(name, phone));
             }
-            @Override public void onError(String msg) { /* bỏ qua, đã có placeholder */ }
+            @Override public void onError(String msg) {  }
         });
-        // Gọi load đánh giá ngay sau khi có sellerId (nếu loadCarDetail chưa gọi)
         if (carType != null) loadDriverReviewsAndRating();
     }
 
-    // Thêm hàm loadFirstReviews() — gọi khi mở màn, thay thế loadReviews() cũ:
     public void loadFirstReviews(String driverId) {
         if (driverId == null || driverId.isEmpty()) return;
         lastReviewSnapshot = null;
@@ -277,7 +255,6 @@ public class CarDetailViewModel extends ViewModel {
                         r.setReviewId(d.getId());
                         list.add(r);
                     }
-                    // Sắp xếp mới nhất lên đầu phía client — không cần Firestore composite index
                     list.sort((a, b) -> {
                         com.google.firebase.Timestamp ta = a.getCreatedAt();
                         com.google.firebase.Timestamp tb = b.getCreatedAt();
@@ -314,7 +291,6 @@ public class CarDetailViewModel extends ViewModel {
                 });
     }
 
-    // Thêm hàm loadMoreReviews() — gọi khi scroll đến cuối:
     public void loadMoreReviews(String driverId) {
         if (reviewLoading || reviewAllLoaded || lastReviewSnapshot == null) return;
         reviewLoading = true;
@@ -350,7 +326,6 @@ public class CarDetailViewModel extends ViewModel {
                         r.setReviewId(d.getId());
                         merged.add(r);
                     }
-                    // Giữ thứ tự mới nhất lên đầu sau khi thêm trang mới
                     merged.sort((a, b) -> {
                         com.google.firebase.Timestamp ta = a.getCreatedAt();
                         com.google.firebase.Timestamp tb = b.getCreatedAt();
@@ -382,8 +357,6 @@ public class CarDetailViewModel extends ViewModel {
         typeInfo.setValue(new TypeInfo(type, isOwner));
     }
 
-    // ── Yêu thích ────────────────────────────────────────────────────────────────
-
     private void loadFavorite() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || carId == null || carId.isEmpty()) return;
@@ -399,8 +372,6 @@ public class CarDetailViewModel extends ViewModel {
         else FavoriteRepository.remove(user.getUid(), carId);
         isFavorite.setValue(fav);
     }
-
-    // ── Gửi đơn MUA ──────────────────────────────────────────────────────────────
 
     public void sendBuyRequest(String note) {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -469,8 +440,6 @@ public class CarDetailViewModel extends ViewModel {
             }
         });
     }
-
-    // ── Gửi đơn THUÊ / CHUYẾN ─────────────────────────────────────────────────────
 
     public void sendRentRequest(RentForm form) {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -648,8 +617,6 @@ public class CarDetailViewModel extends ViewModel {
         orderSent.setValue(e);
     }
 
-    // ── Quản lý bài đăng (chủ xe) ─────────────────────────────────────────────────
-
     public void editPost(String name, String price, String info) {
         if (carId == null || carId.isEmpty()) return;
         if (name.isEmpty() || price.isEmpty()) {
@@ -726,13 +693,10 @@ public class CarDetailViewModel extends ViewModel {
         });
     }
 
-    // ── Getters phụ trợ cho View ──────────────────────────────────────────────────
-
     public String getSellerId() { return sellerId; }
     public String getCarId() { return carId; }
     public Car getCar() { return car; }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────────
 
     public static boolean isDriverType(String type) {
         if (type == null) return false;

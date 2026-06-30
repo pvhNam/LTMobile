@@ -92,7 +92,7 @@ public class ReviewActivity extends AppCompatActivity {
                         r.setReviewId(d.getId());
                         reviewList.add(r);
                     }
-                    // Sort mới nhất lên đầu trong memory, không cần composite index
+
                     reviewList.sort((a, b) -> {
                         if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
                         if (a.getCreatedAt() == null) return 1;

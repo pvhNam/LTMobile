@@ -74,15 +74,12 @@ public class CarDetailActivity extends AppCompatActivity {
     private TextView tvDepositInfo;
     private long walletBalance = 0L;
     private boolean datePickerShowing = false; // chống mở 2 hộp thoại lịch cùng lúc
-
-    // Phương thức thanh toán: "cash" | "vnpay" | "wallet"
     private com.google.android.material.button.MaterialButtonToggleGroup togglePaymentMethod;
     private TextView tvPaymentMethodHint;
     private String paymentMethod = "cash";
 
-    // Bảng "Đặt thuê xe": bấm CTA mới trượt lên (panel + animation, không dùng BottomSheetBehavior)
     private Button btnOpenRentSheet;
-    private View layoutRentContact;   // hàng Gọi điện / Nhắn tin (ngoài sheet)
+    private View layoutRentContact;
     private View sheetRent;
     private View rentScrim;
     private boolean rentSheetOpen = false;
@@ -106,7 +103,7 @@ public class CarDetailActivity extends AppCompatActivity {
     private final List<Review> reviewList = new ArrayList<>();
     private TextView tvReviewLoadingMore;
     private TextView tvReviewNoMore;
-    private String driverIdForReviews; // lưu driverId để dùng khi load more
+    private String driverIdForReviews;
 
     private final androidx.activity.result.ActivityResultLauncher<Intent> mapLauncher =
             registerForActivityResult(
@@ -240,7 +237,6 @@ public class CarDetailActivity extends AppCompatActivity {
             updateFavoriteIcons();
         });
 
-        // ── Đánh giá tài xế ──
         viewModel.getShowReviews().observe(this, show -> {
             if (layoutReviewSection != null)
                 layoutReviewSection.setVisibility(Boolean.TRUE.equals(show) ? View.VISIBLE : View.GONE);
@@ -373,12 +369,11 @@ public class CarDetailActivity extends AppCompatActivity {
         if (rvDetailReviews != null) {
             rvDetailReviews.setLayoutManager(new LinearLayoutManager(this));
             rvDetailReviews.setAdapter(reviewAdapter);
-            // Chặn NestedScrollView ăn touch khi đang cuộn bên trong khung review
             rvDetailReviews.setOnTouchListener((v, event) -> {
                 v.getParent().requestDisallowInterceptTouchEvent(true);
                 return false;
             });
-            // Load more khi cuộn gần cuối khung
+
             rvDetailReviews.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
                 @Override
                 public void onScrolled(@NonNull androidx.recyclerview.widget.RecyclerView rv, int dx, int dy) {
@@ -409,13 +404,12 @@ public class CarDetailActivity extends AppCompatActivity {
         if (rentScrim != null) rentScrim.setOnClickListener(v -> closeRentSheet());
     }
 
-    /** Trượt bảng thuê xe lên từ đáy + làm mờ nền. */
     private void openRentSheet() {
         if (sheetRent == null || rentSheetOpen) return;
         rentSheetOpen = true;
 
         int offscreen = getResources().getDisplayMetrics().heightPixels;
-        sheetRent.setTranslationY(offscreen);          // đặt ngoài màn trước khi hiện (tránh nháy)
+        sheetRent.setTranslationY(offscreen);
         sheetRent.setVisibility(View.VISIBLE);
         sheetRent.post(() -> {
             sheetRent.setTranslationY(sheetRent.getHeight());
@@ -430,7 +424,6 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
-    /** Trượt bảng thuê xe xuống + bỏ nền mờ. */
     private void closeRentSheet() {
         rentSheetOpen = false;
         if (sheetRent == null || sheetRent.getVisibility() != View.VISIBLE) return;
@@ -458,7 +451,6 @@ public class CarDetailActivity extends AppCompatActivity {
         super.onBackPressed();
     }
 
-    /** Bộ chọn phương thức thanh toán cho đơn thuê: mặc định tiền mặt. */
     private void setupPaymentMethod() {
         if (togglePaymentMethod == null) return;
         if (togglePaymentMethod.getCheckedButtonId() == View.NO_ID) {
@@ -551,7 +543,6 @@ public class CarDetailActivity extends AppCompatActivity {
                     (NestedScrollView.OnScrollChangeListener) (v, scrollX, scrollY, oldX, oldY) -> {
                         updateDetailHeader(scrollY);
 
-                        // load more review được xử lý bởi RV scroll listener bên trong khung
                     });
         }
     }
@@ -943,17 +934,13 @@ public class CarDetailActivity extends AppCompatActivity {
                 .show();
     }
 
-    /** Ô "Ngày bắt đầu thuê": bấm mở lịch chọn ngày, luôn lưu dạng dd/MM/yyyy (tránh nhập tay sai). */
     private void setupStartDatePicker() {
         if (etRentStartDate == null) return;
-        // Ô không focusable → mỗi lần chạm đều kích onClick (tránh bị NestedScrollView nuốt focus,
-        // không bật bàn phím), chỉ mở lịch qua một entry point duy nhất.
         etRentStartDate.setFocusable(false);
         etRentStartDate.setFocusableInTouchMode(false);
         etRentStartDate.setOnClickListener(v -> showStartDatePicker());
     }
 
-    /** Mở hộp thoại chọn ngày bắt đầu thuê (định dạng dd/MM/yyyy, không cho ngày quá khứ). */
     private void showStartDatePicker() {
         if (etRentStartDate == null) return;
         if (datePickerShowing) return;
@@ -980,9 +967,6 @@ public class CarDetailActivity extends AppCompatActivity {
         dlg.show();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    //  ĐIỀU KHOẢN THUÊ XE — buộc đọc 10s, tích đồng ý rồi mới được gửi yêu cầu
-    // ═══════════════════════════════════════════════════════════════════════════
     private void showRentalTermsThenSend() {
         if (FirebaseAuth.getInstance().getCurrentUser() == null) {
             Toast.makeText(this, "Vui lòng đăng nhập để thuê xe!", Toast.LENGTH_SHORT).show();
@@ -997,10 +981,9 @@ public class CarDetailActivity extends AppCompatActivity {
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(view)
-                .setCancelable(false)   // không cho tắt bằng nút back / chạm ra ngoài
+                .setCancelable(false)
                 .create();
 
-        // Liquid Glass: nền cửa sổ trong suốt để lộ card kính bo góc; dim + blur thật phía sau
         Window w = dialog.getWindow();
         if (w != null) {
             try {
@@ -1016,11 +999,9 @@ public class CarDetailActivity extends AppCompatActivity {
                     w.setAttributes(lp);
                 }
             } catch (Throwable ignore) {
-                // Một số máy không hỗ trợ blur/thuộc tính cửa sổ → bỏ qua, dialog vẫn hiện
             }
         }
 
-        // Khóa mọi tương tác trong 10 giây để người dùng đọc kỹ điều khoản
         cbAgree.setEnabled(false);
         btnCancel.setEnabled(false);
         btnConfirm.setEnabled(false);
@@ -1040,7 +1021,6 @@ public class CarDetailActivity extends AppCompatActivity {
             }
         }.start();
 
-        // Chỉ bật nút xác nhận khi đã tích đồng ý
         cbAgree.setOnCheckedChangeListener((b, checked) -> {
             btnConfirm.setEnabled(checked);
             btnConfirm.setAlpha(checked ? 1f : 0.5f);
@@ -1050,13 +1030,12 @@ public class CarDetailActivity extends AppCompatActivity {
         btnConfirm.setOnClickListener(v -> {
             timer.cancel();
             dialog.dismiss();
-            submitRentRequest();   // đã đồng ý điều khoản → tiến hành gửi yêu cầu thuê
+            submitRentRequest();
         });
 
         dialog.show();
     }
 
-    /** Thu thập dữ liệu form thuê/chuyến rồi đẩy cho ViewModel xử lý. */
     private void submitRentRequest() {
         CarDetailViewModel.RentForm form = new CarDetailViewModel.RentForm();
         form.renterName  = etRenterName.getText().toString().trim();
@@ -1073,9 +1052,6 @@ public class CarDetailActivity extends AppCompatActivity {
         viewModel.sendRentRequest(form);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    //  HELPER — lấy tên customer từ Firestore rồi gửi thông báo cho người bán
-    // ═══════════════════════════════════════════════════════════════════════════
     private void notifySellerOrderSent(FirebaseUser buyer, String orderId) {
         if (sellerId == null || sellerId.isEmpty()) return;
 

@@ -26,21 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Fragment lịch sử đơn hàng của khách hàng (customer).
- *
- * - Load tất cả orders có buyerId == currentUser.uid
- * - Map đủ field cần thiết: canReview, reviewed, driverId/sellerId, orderId, carId
- *   để OrderHistoryAdapter hiển thị nút "Đánh giá tài xế" đúng điều kiện.
- * - Bộ lọc nhanh: Tất cả / Chờ xác nhận
- *
- * Dùng trong tab "Đơn hàng" của màn hình customer (MainActivity hoặc ProfileFragment).
- *
- * Cách thêm vào navigation:
- *   getChildFragmentManager().beginTransaction()
- *       .replace(R.id.container, new OrderHistoryFragment())
- *       .commit();
- */
 public class OrderHistoryFragment extends Fragment {
 
     private RecyclerView rvOrders;
@@ -55,10 +40,7 @@ public class OrderHistoryFragment extends Fragment {
     private FirebaseFirestore db;
     private String uid;
 
-    // Bộ lọc hiện tại: null = tất cả, "pending" = chờ xác nhận
     private String activeFilter = null;
-
-    // ─── lifecycle ────────────────────────────────────────────────────────────
 
     @Nullable
     @Override
@@ -90,11 +72,8 @@ public class OrderHistoryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Reload mỗi khi quay lại (sau khi đánh giá xong, reviewed = true → ẩn nút)
         loadOrders();
     }
-
-    // ─── load data ────────────────────────────────────────────────────────────
 
     private void loadOrders() {
         if (uid.isEmpty()) {
