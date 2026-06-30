@@ -73,7 +73,6 @@ public class ProfileCarAdapter extends RecyclerView.Adapter<ProfileCarAdapter.Vi
             holder.tvType.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#757575")));
         }
 
-        // Hiển thị rating của tài xế (cache từ Firestore)
         float driverRating      = car.getDriverRating();
         int driverReviewCount   = car.getDriverReviewCount();
         boolean hasRating       = driverRating > 0f && driverReviewCount > 0;

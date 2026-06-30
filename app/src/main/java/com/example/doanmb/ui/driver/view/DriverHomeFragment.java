@@ -25,51 +25,36 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
-/**
- * DriverHomeFragment — màn hình chính của tài xế.
- *
- * Bổ sung so với phiên bản cũ:
- *  1. Switch "Đang nhận chuyến" → ghi isAvailable vào drivers/{uid}
- *  2. Section "Chuyến gần nhất" — realtime listener query orders pending của driver
- *  3. Nút Nhận chuyến (pending → accepted) và Từ chối (pending → rejected)
- *
- * Không thay đổi bất kỳ UI/logic nào khác đang có trong fragment_driver_home.xml.
- * Các view mới được tìm theo ID; nếu layout chưa có thì setVisibility sẽ không crash.
- */
 public class DriverHomeFragment extends Fragment {
 
-    // IDs phải khớp với fragment_driver_home.xml (xem hướng dẫn thêm view bên dưới)
     private static final String COL_ORDERS  = "orders";
     private static final String COL_DRIVERS = "drivers";
 
     private SwitchMaterial switchAvailable;
     private TextView  tvAvailableLabel;
 
-    // Card "Chuyến gần nhất"
     private TextView     tvLatestCarName, tvLatestRenter,
             tvLatestDate,    tvLatestNote;
-    private View         layoutNoteBox; // LinearLayout bọc ghi chú trong card_nearest
+    private View         layoutNoteBox;
     private Button       btnAcceptLatest, btnRejectLatest;
 
     private FirebaseFirestore db;
     private String uid;
-    private String latestOrderId; // id của pending order đang hiển thị
+    private String latestOrderId;
     private String driverName;
     private ListenerRegistration pendingListener;
 
-    // ─── lifecycle ────────────────────────────────────────────────────────────
     @Nullable @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        // Inflate layout gốc của project — KHÔNG tạo layout mới
+
         View v = inflater.inflate(R.layout.fragment_driver_home, container, false);
 
         db  = FirebaseFirestore.getInstance();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         uid = user != null ? user.getUid() : "";
 
-        // Bind views (null-safe — nếu layout chưa thêm view thì bỏ qua)
         CircleImageView ivAvatar = v.findViewById(R.id.iv_home_avatar);
         switchAvailable  = v.findViewById(R.id.switch_available);
         tvAvailableLabel = v.findViewById(R.id.tv_available_label);
@@ -100,7 +85,6 @@ public class DriverHomeFragment extends Fragment {
         stopPendingListener();
     }
 
-    // ─── load driver info + setup switch ─────────────────────────────────────
     private void loadDriverInfo() {
         if (uid.isEmpty()) return;
         db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
@@ -116,7 +100,6 @@ public class DriverHomeFragment extends Fragment {
 
         db.collection(COL_DRIVERS).document(uid).get().addOnSuccessListener(doc -> {
             if (!isAdded() || switchAvailable == null) return;
-            // Mặc định true nếu chưa có field
             boolean available = !doc.exists() || !doc.contains("isAvailable")
                     || Boolean.TRUE.equals(doc.getBoolean("isAvailable"));
             applyAvailableUi(available);
@@ -153,7 +136,6 @@ public class DriverHomeFragment extends Fragment {
                 });
     }
 
-    // ─── realtime listener cho pending orders ─────────────────────────────────
     private void startPendingListener() {
         if (uid.isEmpty()) return;
         stopPendingListener();
@@ -180,9 +162,7 @@ public class DriverHomeFragment extends Fragment {
         }
     }
 
-    // ─── UI helpers ───────────────────────────────────────────────────────────
     private void showLatestOrder(QueryDocumentSnapshot d) {
-        // Hiện card_nearest, ẩn empty state tv_no_nearest
         View cardNearest = getView() != null ? getView().findViewById(R.id.card_nearest) : null;
         View tvNoNearest = getView() != null ? getView().findViewById(R.id.tv_no_nearest) : null;
         if (cardNearest != null) cardNearest.setVisibility(View.VISIBLE);
@@ -194,30 +174,25 @@ public class DriverHomeFragment extends Fragment {
         String carName = d.getString("carName");
         String price   = d.getString("carPrice");
 
-        // Tên xe + loại
         setText(tvLatestCarName, carName);
         TextView tvNCartype = getView() != null ? getView().findViewById(R.id.tv_n_cartype) : null;
         String type = d.getString("type");
         if (tvNCartype != null)
             tvNCartype.setText(type != null && !type.isEmpty() ? type : "Có tài xế");
 
-        // Giá (hiện vào tv_n_price trong layout mới)
         TextView tvNPrice = getView() != null ? getView().findViewById(R.id.tv_n_price) : null;
         if (tvNPrice != null) setText(tvNPrice, price);
 
-        // Khách hàng
         String rn = d.getString("renterName");
         String rp = d.getString("renterPhone");
         setText(tvLatestRenter, (rn != null ? rn : "") +
                 (rp != null && !rp.isEmpty() ? "  |  " + rp : ""));
 
-        // Ghi chú — hiện/ẩn cả box
         String note = d.getString("note");
         boolean hasNote = note != null && !note.isEmpty();
         if (layoutNoteBox != null) layoutNoteBox.setVisibility(hasNote ? View.VISIBLE : View.GONE);
         if (hasNote) setText(tvLatestNote, note);
 
-        // Ngày giờ
         Timestamp ts = d.getTimestamp("createdAt");
         if (tvLatestDate != null && ts != null)
             tvLatestDate.setText("📅 " + fmt.format(ts.toDate()));
@@ -225,15 +200,12 @@ public class DriverHomeFragment extends Fragment {
 
     private void showNoTrip() {
         latestOrderId = null;
-        // Ẩn card_nearest, hiện empty state tv_no_nearest
         View cardNearest = getView() != null ? getView().findViewById(R.id.card_nearest) : null;
         View tvNoNearest = getView() != null ? getView().findViewById(R.id.tv_no_nearest) : null;
         if (cardNearest != null) cardNearest.setVisibility(View.GONE);
         if (tvNoNearest != null) tvNoNearest.setVisibility(View.VISIBLE);
     }
 
-    // ─── actions ──────────────────────────────────────────────────────────────
-    /** pending → accepted (dùng Transaction để tránh race condition) */
     private void acceptLatest() {
         if (latestOrderId == null) return;
         String savedOrderId = latestOrderId;
@@ -288,7 +260,6 @@ public class DriverHomeFragment extends Fragment {
                 });
     }
 
-    /** pending → rejected */
     private void rejectLatest() {
         if (latestOrderId == null) return;
         String savedOrderId = latestOrderId;
@@ -297,7 +268,6 @@ public class DriverHomeFragment extends Fragment {
                 .addOnSuccessListener(x -> {
                     if (!isAdded()) return;
                     Toast.makeText(getContext(), "Đã từ chối chuyến.", Toast.LENGTH_SHORT).show();
-                    // Gửi thông báo về customer
                     notifyCustomerRejected(savedOrderId);
                 })
                 .addOnFailureListener(e -> {
@@ -334,7 +304,6 @@ public class DriverHomeFragment extends Fragment {
                 });
     }
 
-    // ─── utils ────────────────────────────────────────────────────────────────
     private static void setText(TextView tv, String text) {
         if (tv != null) tv.setText(text != null ? text : "");
     }

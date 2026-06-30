@@ -49,20 +49,15 @@ public class MessagesFragment extends Fragment {
 
     private FirebaseFirestore db;
     private ListenerRegistration listener;
-    private ListenerRegistration notifListener; // Lắng nghe thông báo real-time
+    private ListenerRegistration notifListener;
     private ConversationAdapter adapter;
     private ShortcutAdapter shortcutAdapter;
-
-    // Toàn bộ danh sách hội thoại gốc (chưa lọc)
     private final List<Map<String, Object>> convList     = new ArrayList<>();
-    // Danh sách hiện lên RecyclerView (đã lọc)
     private final List<Map<String, Object>> filteredList = new ArrayList<>();
     private final List<Map<String, Object>> shortcutList = new ArrayList<>();
 
-    // Đang tìm kiếm trong tin nhắn hay không
     private boolean isSearchingMessages = false;
-    // Kết quả tìm kiếm trong nội dung tin nhắn:
-    // mỗi item = map hội thoại + thêm key "matchedMessage" (nội dung tin nhắn khớp)
+
     private final List<Map<String, Object>> messageSearchResults = new ArrayList<>();
 
     private android.widget.FrameLayout frameMsgContent;
@@ -74,7 +69,6 @@ public class MessagesFragment extends Fragment {
     private boolean isChatTabActive = true;
     private String selectedShortcutPartnerId = null;
 
-    // Notification tab
     private RecyclerView rvNotifications;
     private TextView tvNotifEmpty;
     private NotifAdapter notifAdapter;
@@ -106,7 +100,6 @@ public class MessagesFragment extends Fragment {
                 new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         rvShortcuts.setNestedScrollingEnabled(false);
         shortcutAdapter = new ShortcutAdapter(shortcutList, partnerId -> {
-            // Khi người dùng bấm vào Avatar, Adapter sẽ trả partnerId về đây
             onShortcutClicked(partnerId);
         });
         rvShortcuts.setAdapter(shortcutAdapter);
@@ -137,9 +130,6 @@ public class MessagesFragment extends Fragment {
         return view;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Search  —  tìm theo tên cuộc trò chuyện  VÀ  nội dung tin nhắn
-    // ══════════════════════════════════════════════════════════════════════════
     private void setupSearch() {
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
@@ -167,7 +157,6 @@ public class MessagesFragment extends Fragment {
     private void searchEverything(String query) {
         String lower = query.toLowerCase();
 
-        // ── Bước 1: lọc local theo tên ────────────────────────────────────
         List<Map<String, Object>> nameMatches = new ArrayList<>();
         for (Map<String, Object> item : convList) {
             String carName     = String.valueOf(item.getOrDefault("carName", "")).toLowerCase();
@@ -177,7 +166,6 @@ public class MessagesFragment extends Fragment {
             }
         }
 
-        // ── Bước 2: tìm trong nội dung tin nhắn Firestore ─────────────────
         messageSearchResults.clear();
         isSearchingMessages = true;
 
@@ -286,9 +274,6 @@ public class MessagesFragment extends Fragment {
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Lifecycle
-    // ══════════════════════════════════════════════════════════════════════════
     @Override
     public void onResume() {
         super.onResume();
@@ -392,9 +377,6 @@ public class MessagesFragment extends Fragment {
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  ConversationAdapter
-    // ══════════════════════════════════════════════════════════════════════════
     static class ConversationAdapter
             extends RecyclerView.Adapter<ConversationAdapter.VH> {
 
@@ -477,7 +459,6 @@ public class MessagesFragment extends Fragment {
                 String carId     = String.valueOf(item.getOrDefault("carId",    ""));
                 String carType   = String.valueOf(item.getOrDefault("carType",  "sale"));
 
-                // Ẩn chấm xanh ngay lập tức + cập nhật Firestore
                 String unreadByNow = String.valueOf(item.getOrDefault("unreadBy", ""));
                 if (getCurrentUid().equals(unreadByNow)) {
                     item.put("unreadBy", "");
@@ -523,9 +504,6 @@ public class MessagesFragment extends Fragment {
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Xử lý chuyển Tab: Trò chuyện / Thông báo
-    // ══════════════════════════════════════════════════════════════════════════
     private void selectTab(boolean chatSelected) {
         if (chatSelected == isChatTabActive) return;
         isChatTabActive = chatSelected;
@@ -594,9 +572,6 @@ public class MessagesFragment extends Fragment {
         colorAnimNotif.start();
     }
 
-    // ══════════════════════════════════════════════════════════════════════════════
-    //  loadNotifications() — THAY THẾ
-    // ══════════════════════════════════════════════════════════════════════════════
     private void loadNotifications() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || rvNotifications == null) return;
@@ -619,8 +594,6 @@ public class MessagesFragment extends Fragment {
                         Map<String, Object> data = new HashMap<>(doc.getData());
                         data.put("docId", doc.getId());
                         notifList.add(data);
-                        // ✅ FIX: KHÔNG tự động đánh dấu read ở đây
-                        // → chỉ đánh dấu khi user BẤM vào từng thông báo (xem onBindViewHolder)
                     }
 
                     notifAdapter.notifyDataSetChanged();
@@ -632,9 +605,6 @@ public class MessagesFragment extends Fragment {
                 });
     }
 
-    // ══════════════════════════════════════════════════════════════════════════════
-    //  NotifAdapter — THAY THẾ
-    // ══════════════════════════════════════════════════════════════════════════════
     private class NotifAdapter extends RecyclerView.Adapter<NotifAdapter.VH> {
 
         private final SimpleDateFormat SDF =
@@ -664,19 +634,18 @@ public class MessagesFragment extends Fragment {
             h.tvTitle.setText(senderName.isEmpty() ? (title.isEmpty() ? "Thông báo" : title) : senderName);
             h.tvBody.setText(body.isEmpty() ? "Đã gửi một tin nhắn" : body);
 
-            // ── THÊM BƯỚC 5: Phân biệt loại icon bằng Emoji cho tvTypeIcon ──
             switch (type) {
                 case "order_confirmed":
-                    h.ivIcon.setImageResource(R.drawable.ic_verified_check); // icon tick xanh
+                    h.ivIcon.setImageResource(R.drawable.ic_verified_check);
                     break;
                 case "order_rejected":
-                    h.ivIcon.setImageResource(R.drawable.ic_warning);        // icon cảnh báo
+                    h.ivIcon.setImageResource(R.drawable.ic_warning);
                     break;
                 case "order_sent":
-                    h.ivIcon.setImageResource(R.drawable.ic_admin_orders);   // icon đơn hàng
+                    h.ivIcon.setImageResource(R.drawable.ic_admin_orders);
                     break;
                 case "review_driver":
-                    h.ivIcon.setImageResource(R.drawable.ic_star);           // icon sao đánh giá
+                    h.ivIcon.setImageResource(R.drawable.ic_star);
                     break;
                 case "invoice":
                 case "invoice_paid":
@@ -686,9 +655,7 @@ public class MessagesFragment extends Fragment {
                     h.ivIcon.setImageResource(R.drawable.ic_nav_message);
                     break;
             }
-            // ────────────────────────────────────────────────────────────────
 
-            // ── Hiển thị nút Đánh giá cho type=review_driver ──────────────
             if ("review_driver".equals(type)) {
                 Boolean actionCompleted = (Boolean) item.get("actionCompleted");
                 boolean alreadyReviewed = Boolean.TRUE.equals(actionCompleted);
@@ -712,7 +679,6 @@ public class MessagesFragment extends Fragment {
                 if (h.btnReview  != null) h.btnReview.setVisibility(View.GONE);
                 if (h.tvReviewed != null) h.tvReviewed.setVisibility(View.GONE);
             }
-            // ────────────────────────────────────────────────────────────────
 
             Object createdAt = item.get("createdAt");
             if (createdAt instanceof com.google.firebase.Timestamp) {
@@ -753,12 +719,10 @@ public class MessagesFragment extends Fragment {
                         });
             }
 
-            // ── THÊM BƯỚC 5: Xử lý Click tùy theo loại thông báo ───────────
             h.itemView.setOnClickListener(v -> {
                 int pos = h.getAdapterPosition();
                 if (pos == RecyclerView.NO_ID) return;
 
-                // Đánh dấu đã đọc (ẩn chấm xanh trên UI & update Firestore)
                 notifList.get(pos).put("read", true);
                 notifyItemChanged(pos);
                 if (!docId.isEmpty()) {
@@ -768,7 +732,6 @@ public class MessagesFragment extends Fragment {
                             .update("read", true);
                 }
 
-                // Hóa đơn → mở màn thanh toán hóa đơn
                 if ("invoice".equals(type) && !orderId.isEmpty()) {
                     Intent invoice = new Intent(v.getContext(),
                             com.example.doanmb.ui.car.view.InvoiceActivity.class);
@@ -779,7 +742,6 @@ public class MessagesFragment extends Fragment {
 
                 // Điều hướng dựa vào type
                 if ("chat".equals(type) && !roomId.isEmpty()) {
-                    // Mở màn hình chat như cũ
                     FirebaseFirestore.getInstance()
                             .collection("chat_rooms")
                             .document(roomId)
@@ -821,14 +783,12 @@ public class MessagesFragment extends Fragment {
                                 v.getContext().startActivity(intent);
                             });
                 } else {
-                    // Thông báo đơn hàng → mở tab Quản lí
                     if (getActivity() instanceof MainActivity) {
                         MainActivity main = (MainActivity) getActivity();
                         main.openManageRequestsTab();
                     }
                 }
             });
-            // ────────────────────────────────────────────────────────────────
         }
 
         @Override
@@ -841,7 +801,7 @@ public class MessagesFragment extends Fragment {
 
         class VH extends RecyclerView.ViewHolder {
             TextView  tvTitle, tvBody, tvTime, tvAvatar, tvReviewed;
-            ImageView ivAvatar, ivIcon; // Khai báo ivIcon thay vì tvTypeIcon
+            ImageView ivAvatar, ivIcon;
             View      viewUnreadDot;
             android.widget.Button btnReview;
 
@@ -856,7 +816,6 @@ public class MessagesFragment extends Fragment {
                 btnReview    = v.findViewById(R.id.btn_notif_review);
                 tvReviewed   = v.findViewById(R.id.tv_notif_reviewed);
 
-                // Nhớ đổi ID này cho khớp với ImageView trong file layout XML của bạn
                 ivIcon       = v.findViewById(R.id.tv_notif_type_icon);
             }
         }

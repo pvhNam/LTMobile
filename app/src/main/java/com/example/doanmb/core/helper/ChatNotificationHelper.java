@@ -24,11 +24,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-/**
- * Helper gửi thông báo qua FCM V1 API.
- * Hỗ trợ cả thông báo chat và thông báo đơn hàng (mua/thuê xe).
- */
 public final class ChatNotificationHelper {
 
     private static final String TAG        = "ChatNotifHelper";
@@ -45,16 +40,9 @@ public final class ChatNotificationHelper {
 
     private ChatNotificationHelper() {}
 
-    /**
-     * Gọi khi app khởi động để cache access token sẵn.
-     */
     public static void warmUpAccessToken(Context context) {
         executor.execute(() -> getAccessToken(context));
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // THÔNG BÁO CHAT (giữ nguyên, không thay đổi)
-    // ─────────────────────────────────────────────────────────────────────────
 
     public static void sendChatNotification(Context context,
                                             String receiverId,
@@ -133,16 +121,6 @@ public final class ChatNotificationHelper {
                         "Dùng overload: sendChatNotification(context, receiverId, ...)");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // THÔNG BÁO CHỈ FCM PUSH (không lưu Firestore) — dùng cho customer khi
-    // driver confirm/reject: customer nhận push điện thoại nhưng KHÔNG thấy
-    // notification trong tab app.
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Gửi FCM push đến người nhận mà KHÔNG lưu document vào Firestore.
-     * Dùng khi muốn thông báo điện thoại nhưng không hiển thị trong tab Thông báo của app.
-     */
     public static void sendFcmOnlyOrderNotification(Context context,
                                                     String receiverId,
                                                     String senderId,
@@ -190,11 +168,6 @@ public final class ChatNotificationHelper {
                 .addOnFailureListener(e -> Log.w(TAG, "Failed to get FCM token (fcmOnly)", e));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // THÔNG BÁO ĐƠN HÀNG — MỚI
-    // type: "order_sent" | "order_confirmed" | "order_rejected"
-    // ─────────────────────────────────────────────────────────────────────────
-
     /**
      * Gửi thông báo liên quan đến đơn mua/thuê xe.
      *
@@ -235,8 +208,6 @@ public final class ChatNotificationHelper {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        // docId cố định theo buyer + car → mỗi cặp chỉ có 1 doc duy nhất
-        // Gửi lại sẽ update read=false + createdAt=now → nổi lên đầu, không tạo thêm doc mới
         String notifDocId = receiverId + "_order_" + safe(senderId) + "_" + safe(carId);
 
         Map<String, Object> notif = new HashMap<>();
@@ -256,7 +227,7 @@ public final class ChatNotificationHelper {
                 .addOnSuccessListener(v -> Log.d(TAG, "Order notif upserted: " + notifDocId))
                 .addOnFailureListener(e -> Log.w(TAG, "Failed to save order notif", e));
 
-        // 2. Lấy FCM token → gửi push notification
+        // Lấy FCM token → gửi push notification
         final String finalTitle = title;
         final String finalBody  = body;
         final String finalType  = type != null ? type : "order_sent";
@@ -278,10 +249,6 @@ public final class ChatNotificationHelper {
                 })
                 .addOnFailureListener(e -> Log.w(TAG, "Failed to get FCM token for order", e));
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // FCM V1 API — gọi từ background thread (dùng chung cho chat + order)
-    // ─────────────────────────────────────────────────────────────────────────
 
     private static void sendFcmV1(Context context,
                                   String deviceToken,
@@ -344,10 +311,6 @@ public final class ChatNotificationHelper {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-// THÔNG BÁO NHẮC NHỞ — gửi lại mỗi 10 phút nếu đơn vẫn pending
-// ─────────────────────────────────────────────────────────────────────────
-
     public static void sendReminderNotification(Context context,
                                                 String sellerId,
                                                 String buyerId,
@@ -363,8 +326,6 @@ public final class ChatNotificationHelper {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        // Dùng cùng docId với order_sent → ghi đè lên notification cũ
-        // createdAt=now() → nổi lên đầu, read=false → chấm xanh xuất hiện lại
         String notifDocId = sellerId + "_order_" + safe(buyerId) + "_" + safe(carId);
 
         Map<String, Object> notif = new HashMap<>();
@@ -394,11 +355,6 @@ public final class ChatNotificationHelper {
                             buyerName, carName, "order_sent", safe(orderId), buyerId));
                 });
     }
-
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // OAUTH2 ACCESS TOKEN
-    // ─────────────────────────────────────────────────────────────────────────
 
     private static synchronized String getAccessToken(Context context) {
         if (cachedAccessToken != null &&
@@ -510,10 +466,6 @@ public final class ChatNotificationHelper {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // HELPERS
-    // ─────────────────────────────────────────────────────────────────────────
-
     public static String buildTitle(String senderName) {
         if (senderName != null && !senderName.isEmpty())
             return "Tin nhắn từ " + senderName;
@@ -544,7 +496,6 @@ public final class ChatNotificationHelper {
         return buildBody(senderName, carName, "sale", messagePreview);
     }
 
-    /** Trả về "" nếu giá trị null, tránh NullPointerException khi build payload. */
     private static String safe(String s) {
         return s != null ? s : "";
     }

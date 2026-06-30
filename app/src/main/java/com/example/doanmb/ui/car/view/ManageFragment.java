@@ -36,19 +36,16 @@ import java.util.Map;
 
 public class ManageFragment extends Fragment {
 
-    // Tab pill (giống trang Danh mục)
     private CardView cardTabPosts, cardTabRequests;
     private LinearLayout tabPostsContent, tabRequestsContent;
     private TextView tvTabPosts, tvTabRequests;
     private LinearLayout layoutMyPosts, layoutRequests;
 
-    // Tab 1: Xe đã đăng
     private RecyclerView rvMyPosts;
     private TextView tvMyPostCount, tvEmptyPosts;
     private ProfileCarAdapter myPostsAdapter;
     private final List<Car> myCarList = new ArrayList<>();
 
-    // Tab 2: Yêu cầu nhận được
     private RecyclerView rvRequests;
     private TextView tvRequestCount, tvEmptyRequests;
     private RequestAdapter requestAdapter;
@@ -77,7 +74,6 @@ public class ManageFragment extends Fragment {
 
         viewModel.start();
 
-        // Nếu được điều hướng đến với yêu cầu mở tab Yêu cầu (từ notification)
         Bundle args = getArguments();
         if (args != null && args.getBoolean("showRequests", false)) {
             showTab(false); // false = tab Yêu cầu nhận được
@@ -152,7 +148,6 @@ public class ManageFragment extends Fragment {
         setTabSelected(tabRequestsContent, tvTabRequests, !showPosts);
     }
 
-    // Tab đang chọn = pill trắng + chữ xanh; tab còn lại = trong suốt + chữ trắng (giống trang Danh mục)
     private void setTabSelected(LinearLayout tabContent, TextView tabLabel, boolean selected) {
         if (selected) {
             tabContent.setBackgroundResource(R.drawable.bg_tab_active_pill);
@@ -164,12 +159,10 @@ public class ManageFragment extends Fragment {
     }
 
     private void setupRecyclerViews() {
-        // Tab 1: Xe đã đăng — bấm vào item để xem chi tiết xe
         rvMyPosts.setLayoutManager(new LinearLayoutManager(getContext()));
         myPostsAdapter = new ProfileCarAdapter(myCarList, this::openCarDetail);
         rvMyPosts.setAdapter(myPostsAdapter);
 
-        // Tab 2: Yêu cầu (gồm đơn nhận được + đơn mình gửi đi)
         rvRequests.setLayoutManager(new LinearLayoutManager(getContext()));
         requestAdapter = new RequestAdapter(orderList, orderIds, currentUserId,
                 new RequestAdapter.OnActionListener() {
@@ -204,7 +197,6 @@ public class ManageFragment extends Fragment {
         rvRequests.setAdapter(requestAdapter);
     }
 
-    // Mở màn hình chi tiết xe khi bấm vào tin đã đăng
     private void openCarDetail(Car car) {
         if (getActivity() == null) return;
         Intent intent = new Intent(getActivity(), CarDetailActivity.class);
@@ -215,9 +207,6 @@ public class ManageFragment extends Fragment {
         startActivity(intent);
     }
 
-    // ── Hộp thoại (UI) → gọi ViewModel ────────────────────────────────────────
-
-    /** Chủ xe xác nhận khách đã trả xe → xem hoá đơn (phạt trễ nếu có) rồi gửi. */
     private void showMarkReturnedDialog(String orderId, Map<String, Object> order) {
         ManageViewModel.ReturnInvoice inv = viewModel.computeReturnInvoice(order);
         new AlertDialog.Builder(requireContext())
@@ -259,7 +248,6 @@ public class ManageFragment extends Fragment {
         return String.format(Locale.US, "%,d", v).replace(',', '.') + " đ";
     }
 
-    /** Báo cho người mua/thuê biết trạng thái đơn (cần Context → giữ ở View). */
     private void notifyBuyerOrderStatus(String orderId, String type) {
         db.collection("orders").document(orderId).get()
                 .addOnSuccessListener(snap -> {
@@ -286,7 +274,7 @@ public class ManageFragment extends Fragment {
                                         myUid,
                                         sellerName,
                                         carName != null ? carName : "",
-                                        carId   != null ? carId   : "",  // ← thêm carId
+                                        carId   != null ? carId   : "",
                                         type,
                                         orderId
                                 );
