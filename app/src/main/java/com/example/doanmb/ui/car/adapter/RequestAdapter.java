@@ -126,8 +126,22 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
                     holder.tvDoneLabel.setVisibility(View.VISIBLE);
                     holder.tvDoneLabel.setText("Đã xử lý");
                     break;
+                case "accepted":
+                    holder.tvRequestStatus.setText("✅ Tài xế đã nhận");
+                    holder.tvRequestStatus.setTextColor(0xFF4CAF50);
+                    break;
+                case "in_progress":
+                    holder.tvRequestStatus.setText("🚗 Đang thực hiện");
+                    holder.tvRequestStatus.setTextColor(0xFF1976D2);
+                    break;
+                case "cancelled":
+                    holder.tvRequestStatus.setText("↩️ Đã hủy");
+                    holder.tvRequestStatus.setTextColor(0xFFF44336);
+                    holder.tvDoneLabel.setVisibility(View.VISIBLE);
+                    holder.tvDoneLabel.setText("Đã hủy");
+                    break;
                 default:
-                    holder.tvRequestStatus.setText(status);
+                    holder.tvRequestStatus.setText("⏳ Đang xử lý");
                     holder.tvRequestStatus.setTextColor(0xFFFF9800);
                     break;
             }
@@ -176,8 +190,22 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
                     holder.tvDoneLabel.setVisibility(View.VISIBLE);
                     holder.tvDoneLabel.setText("Đã xử lý");
                     break;
+                case "accepted":
+                    holder.tvRequestStatus.setText("✅ Đã nhận chuyến");
+                    holder.tvRequestStatus.setTextColor(0xFF4CAF50);
+                    break;
+                case "in_progress":
+                    holder.tvRequestStatus.setText("🚗 Đang chạy");
+                    holder.tvRequestStatus.setTextColor(0xFF1976D2);
+                    break;
+                case "cancelled":
+                    holder.tvRequestStatus.setText("↩️ Đã hủy");
+                    holder.tvRequestStatus.setTextColor(0xFFF44336);
+                    holder.tvDoneLabel.setVisibility(View.VISIBLE);
+                    holder.tvDoneLabel.setText("Đã hủy");
+                    break;
                 default:
-                    holder.tvRequestStatus.setText(status);
+                    holder.tvRequestStatus.setText("⏳ Đang xử lý");
                     holder.tvRequestStatus.setTextColor(0xFFFF9800);
                     break;
             }

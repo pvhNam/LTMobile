@@ -74,49 +74,64 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="-26dp"
-                app:cardCornerRadius="16dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
+                    android:minHeight="64dp"
                     android:orientation="horizontal"
-                    android:padding="14dp">
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp">
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/switch_available"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="true"
-                        app:thumbTint="#FFFFFF"
-                        app:trackTint="@color/driver_green" />
+                    <!-- Chấm trạng thái: xanh = đang nhận, xám = tạm dừng -->
+                    <View
+                        android:id="@+id/dot_available"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="@drawable/bg_status_dot"
+                        android:backgroundTint="@color/driver_green" />
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
                         android:layout_weight="1"
                         android:orientation="vertical">
 
                         <TextView
                             android:id="@+id/tv_available_label"
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
                             android:text="Đang nhận chuyến"
                             android:textColor="@color/driver_text"
                             android:textSize="15sp"
                             android:textStyle="bold" />
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:id="@+id/tv_available_sub"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Bạn đang ở chế độ nhận chuyến gần nhất"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="Hệ thống sẽ gửi chuyến mới cho bạn"
                             android:textColor="@color/driver_text_secondary"
                             android:textSize="12sp" />
                     </LinearLayout>
 
-
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switch_available"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:checked="true"
+                        app:thumbTint="@color/driver_switch_thumb"
+                        app:trackTint="@color/driver_switch_track" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -176,6 +191,63 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
+                    <!-- ĐIỀU HƯỚNG NHIỀU ĐƠN (ẩn khi chỉ có 1 đơn) -->
+                    <LinearLayout
+                        android:id="@+id/layout_nearest_nav"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@color/driver_surface_blue"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="6dp"
+                        android:paddingVertical="2dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="Yêu cầu đặt chuyến"
+                            android:textColor="@color/driver_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <ImageButton
+                            android:id="@+id/btn_nearest_prev"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Đơn trước"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_back"
+                            app:tint="@color/driver_primary" />
+
+                        <TextView
+                            android:id="@+id/tv_nearest_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:minWidth="36dp"
+                            android:text="1/1"
+                            android:textColor="@color/driver_primary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageButton
+                            android:id="@+id/btn_nearest_next"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Đơn sau"
+                            android:padding="8dp"
+                            android:rotation="180"
+                            android:src="@drawable/ic_back"
+                            app:tint="@color/driver_primary" />
+                    </LinearLayout>
+
                     <!-- TOP BANNER gradient xanh -->
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -211,6 +283,8 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="6dp"
+                                android:ellipsize="end"
+                                android:maxLines="1"
                                 android:textColor="#FFFFFF"
                                 android:textSize="18sp"
                                 android:textStyle="bold" />
@@ -235,6 +309,9 @@
                                 android:id="@+id/tv_n_price"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:maxWidth="150dp"
                                 android:textColor="#FFFFFF"
                                 android:textSize="16sp"
                                 android:textStyle="bold"
@@ -287,6 +364,8 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
+                                android:ellipsize="end"
+                                android:maxLines="1"
                                 android:textColor="@color/driver_text"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -408,32 +487,225 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <androidx.cardview.widget.CardView
+            <!--
+                Lưới 2x2 các thẻ thống kê.
+                - Dùng layout_weight="1" + layout_width="0dp" để mỗi thẻ tự co giãn
+                  theo bề ngang màn hình => tương thích mọi kích thước (điện thoại nhỏ -> máy tính bảng).
+                - Mỗi thẻ một màu riêng để dễ phân biệt.
+                Giá trị mặc định là "0", hãy bind dữ liệu thật vào các id:
+                  tv_overview_revenue / tv_overview_trips / tv_overview_rating / tv_overview_online
+            -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
+                android:layout_marginTop="10dp"
+                android:orientation="vertical">
 
+                <!-- HÀNG 1 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="6dp">
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
 
-                    <include layout="@layout/item_driver_overview_stat" android:id="@+id/stat_revenue"
-                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+                    <!-- Doanh thu -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="5dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_round_16"
+                        android:backgroundTint="@color/driver_green_bg"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="14dp">
 
-                    <include layout="@layout/item_driver_overview_stat" android:id="@+id/stat_trips"
-                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+                        <ImageView
+                            android:layout_width="42dp"
+                            android:layout_height="42dp"
+                            android:background="@drawable/bg_stat_icon_circle"
+                            android:padding="10dp"
+                            android:src="@drawable/ic_money"
+                            app:tint="@color/driver_green" />
 
-                    <include layout="@layout/item_driver_overview_stat" android:id="@+id/stat_rating"
-                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
-                    <include layout="@layout/item_driver_overview_stat" android:id="@+id/stat_online"
-                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+                            <TextView
+                                android:id="@+id/tv_overview_revenue"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="0₫"
+                                android:textColor="@color/driver_text"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Doanh thu"
+                                android:textColor="@color/driver_text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Chuyến xe -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="5dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_round_16"
+                        android:backgroundTint="@color/driver_surface_blue"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="14dp">
+
+                        <ImageView
+                            android:layout_width="42dp"
+                            android:layout_height="42dp"
+                            android:background="@drawable/bg_stat_icon_circle"
+                            android:padding="10dp"
+                            android:src="@drawable/ic_driver_trips"
+                            app:tint="@color/driver_primary" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_overview_trips"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="0"
+                                android:textColor="@color/driver_text"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Chuyến xe"
+                                android:textColor="@color/driver_text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+
+                <!-- HÀNG 2 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <!-- Đánh giá -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="5dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_round_16"
+                        android:backgroundTint="@color/driver_orange_bg"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="14dp">
+
+                        <ImageView
+                            android:layout_width="42dp"
+                            android:layout_height="42dp"
+                            android:background="@drawable/bg_stat_icon_circle"
+                            android:padding="10dp"
+                            android:src="@drawable/ic_star"
+                            app:tint="@color/driver_orange" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_overview_rating"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="0.0"
+                                android:textColor="@color/driver_text"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Đánh giá"
+                                android:textColor="@color/driver_text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Giờ online -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="5dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_round_16"
+                        android:backgroundTint="@color/driver_purple_bg"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="14dp">
+
+                        <ImageView
+                            android:layout_width="42dp"
+                            android:layout_height="42dp"
+                            android:background="@drawable/bg_stat_icon_circle"
+                            android:padding="10dp"
+                            android:src="@drawable/ic_clock"
+                            app:tint="@color/driver_purple" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_overview_online"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="0h"
+                                android:textColor="@color/driver_text"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Giờ online"
+                                android:textColor="@color/driver_text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
 
             <!-- NHẮC AN TOÀN -->
             <LinearLayout

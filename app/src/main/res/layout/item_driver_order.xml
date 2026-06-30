@@ -1,142 +1,174 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Thẻ 1 đơn chuyến trong màn "Chuyến mới / Đang chạy / Lịch sử".
+    - Dùng driver_* color để đồng bộ với toàn bộ giao diện tài xế.
+    - match_parent + weight => tương thích mọi bề ngang màn hình.
+    - Pill trạng thái được tô màu theo status trong adapter.
+-->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
+    android:layout_marginHorizontal="14dp"
+    android:layout_marginVertical="6dp"
+    app:cardBackgroundColor="#FFFFFF"
     app:cardCornerRadius="18dp"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="@color/lg_glass_fill_strong"
-    app:strokeColor="@color/lg_glass_stroke"
-    app:strokeWidth="1dp">
+    app:cardElevation="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:paddingHorizontal="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="14dp">
 
-        <!-- TRẠNG THÁI -->
-        <TextView
-            android:id="@+id/tv_do_status"
+        <!-- Hàng đầu: trạng thái (pill) + ngày -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="13sp"
-            android:textColor="#FF9800"
-            android:textStyle="bold"
-            android:layout_marginBottom="6dp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <!-- TÊN XE -->
-        <TextView
-            android:id="@+id/tv_do_car_name"
+            <TextView
+                android:id="@+id/tv_do_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill_round"
+                android:backgroundTint="@color/driver_surface_blue"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="Chuyến mới"
+                android:textColor="@color/driver_primary"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_do_date"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="end"
+                android:maxLines="1"
+                android:textColor="@color/driver_text_secondary"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <!-- Tên xe + giá -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/color_on_background"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginTop="10dp"
+            android:baselineAligned="false"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <!-- GIÁ -->
-        <TextView
-            android:id="@+id/tv_do_price"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="#E53935"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="6dp" />
+            <TextView
+                android:id="@+id/tv_do_car_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Tên xe"
+                android:textColor="@color/driver_text"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
-        <!-- KHÁCH -->
-        <TextView
-            android:id="@+id/tv_do_renter"
+            <TextView
+                android:id="@+id/tv_do_price"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/driver_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Khách hàng (khung mềm) -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/color_on_surface_secondary"
-            android:textSize="13sp"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_round_12"
+            android:backgroundTint="#F5F7FB"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp">
 
-        <!-- GHI CHÚ -->
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/ic_dnav_profile"
+                app:tint="@color/driver_primary" />
+
+            <TextView
+                android:id="@+id/tv_do_renter"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/driver_text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Ghi chú (ẩn nếu không có) -->
         <TextView
             android:id="@+id/tv_do_note"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/color_on_surface_secondary"
-            android:textSize="12sp"
-            android:maxLines="2"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_round_12"
+            android:backgroundTint="#FFF8EC"
+            android:drawablePadding="8dp"
             android:ellipsize="end"
-            android:layout_marginBottom="4dp"
+            android:maxLines="2"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp"
+            android:textColor="#B07800"
+            android:textSize="12sp"
             android:visibility="gone" />
 
-        <!-- NGÀY -->
-        <TextView
-            android:id="@+id/tv_do_date"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="@color/color_on_surface_secondary"
-            android:textSize="12sp"
-            android:layout_marginBottom="10dp" />
-
-        <!-- NÚT PENDING: Chấp nhận / Từ chối (dùng ở Driver Home, ẩn ở đây) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:weightSum="2">
-
-            <Button
-                android:id="@+id/btn_do_accept"
-                style="@style/Widget.MaterialComponents.Button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="✅ Chấp nhận"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="#4CAF50"
-                android:textSize="13sp"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/btn_do_reject"
-                style="@style/Widget.MaterialComponents.Button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="❌ Từ chối"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="#F44336"
-                android:textSize="13sp"
-                android:visibility="gone" />
-        </LinearLayout>
-
         <!-- NÚT ACCEPTED: Bắt đầu chuyến -->
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_do_start"
-            style="@style/Widget.MaterialComponents.Button"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="🚗 Bắt đầu chuyến"
+            android:layout_height="48dp"
+            android:layout_marginTop="14dp"
+            android:backgroundTint="@color/driver_green"
+            android:text="Bắt đầu chuyến"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#4CAF50"
             android:textSize="14sp"
             android:textStyle="bold"
+            app:cornerRadius="14dp"
+            app:icon="@drawable/ic_driver_trips"
+            app:iconGravity="textStart"
+            app:iconTint="#FFFFFF"
             android:visibility="gone" />
 
         <!-- NÚT IN_PROGRESS: Hoàn thành chuyến -->
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_do_complete"
-            style="@style/Widget.MaterialComponents.Button"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="🏁 Hoàn thành chuyến"
+            android:layout_height="48dp"
+            android:layout_marginTop="14dp"
+            android:backgroundTint="@color/driver_primary"
+            android:text="Hoàn thành chuyến"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#1976D2"
             android:textSize="14sp"
             android:textStyle="bold"
+            app:cornerRadius="14dp"
+            app:icon="@drawable/ic_shield"
+            app:iconGravity="textStart"
+            app:iconTint="#FFFFFF"
             android:visibility="gone" />
 
     </LinearLayout>
