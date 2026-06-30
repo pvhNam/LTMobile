@@ -22,6 +22,8 @@
     <color name="driver_red">#EF4444</color>
     <color name="driver_red_bg">#FDECEC</color>
     <color name="driver_divider">#EEF1F5</color>
+    <color name="driver_purple">#7C5CFC</color>
+    <color name="driver_purple_bg">#EFEBFF</color>
 
     <!-- Role badge colors -->
     <color name="role_admin_bg">#FFCDD2</color>
@@ -71,21 +73,17 @@
     <!-- Item backgrounds -->
     <color name="color_item_bg">#FFFFFF</color>
 
-    <!-- ============================================================= -->
-    <!-- Liquid Glass design system (iOS 26 style)                     -->
-    <!-- Nền gradient pastel mint -> kem -> xanh trời (giống giaodien)  -->
-    <!-- ============================================================= -->
-    <color name="lg_bg_top">#E5F6F0</color>      <!-- mint nhạt -->
-    <color name="lg_bg_mid">#FBF7EC</color>      <!-- kem -->
-    <color name="lg_bg_bottom">#E2EFF9</color>   <!-- xanh trời nhạt -->
 
-    <!-- Lớp kính: phủ trắng bán trong suốt + viền sáng -->
-    <color name="lg_glass_fill">#80FFFFFF</color>        <!-- card kính (50% trắng) -->
-    <color name="lg_glass_fill_strong">#B3FFFFFF</color> <!-- card đặc hơn (70%) -->
-    <color name="lg_glass_fill_soft">#4DFFFFFF</color>   <!-- nhẹ (30%) -->
-    <color name="lg_glass_stroke">#73FFFFFF</color>      <!-- viền highlight trên -->
-    <color name="lg_glass_stroke_dim">#33FFFFFF</color>  <!-- viền mờ -->
-    <color name="lg_glass_tint">#26FFFFFF</color>        <!-- tint mỏng trên lớp blur -->
+    <color name="lg_bg_top">#E5F6F0</color>
+    <color name="lg_bg_mid">#FBF7EC</color>
+    <color name="lg_bg_bottom">#E2EFF9</color>
+
+    <color name="lg_glass_fill">#80FFFFFF</color>
+    <color name="lg_glass_fill_strong">#B3FFFFFF</color>
+    <color name="lg_glass_fill_soft">#4DFFFFFF</color>
+    <color name="lg_glass_stroke">#73FFFFFF</color>
+    <color name="lg_glass_stroke_dim">#33FFFFFF</color>
+    <color name="lg_glass_tint">#26FFFFFF</color>
 
     <!-- Chữ trên nền pastel -->
     <color name="lg_text">#14202B</color>
@@ -94,12 +92,9 @@
     <!-- Accent xanh ngọc của Liquid Glass -->
     <color name="lg_accent">#19C3C9</color>
     <color name="lg_accent_soft">#9AEDF0</color>
-    <color name="lg_accent_pale">#DCF5F6</color>   <!-- nền nút/chip phụ tông teal nhạt -->
-    <color name="lg_accent_dark">#12A7AD</color>   <!-- teal đậm cho chữ trên nền nhạt -->
-    <color name="lg_accent_text">#0E8C91</color>   <!-- chữ teal đậm dễ đọc -->
+    <color name="lg_accent_pale">#DCF5F6</color>
+    <color name="lg_accent_dark">#12A7AD</color>
+    <color name="lg_accent_text">#0E8C91</color>
 
-
-    <!-- Bề mặt frosted ĐẶC (không trong suốt) cho panel cấu trúc/đè lớp:
-         tránh lộ đường nối & rỉ màu lớp phía sau (header teal, banner...) -->
     <color name="lg_surface">#F4FAFC</color>
 </resources>

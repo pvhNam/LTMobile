@@ -75,6 +75,7 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
             setText(h.tvCarName,  o.carName);
             setText(h.tvPrice,    o.carPrice);
             setText(h.tvStatus,   labelFor(o.status));
+            styleStatusPill(h.tvStatus, o.status);
             setText(h.tvRenter,
                     (o.renterName  != null ? o.renterName  : "")
                             + (o.renterPhone != null && !o.renterPhone.isEmpty() ? "  |  " + o.renterPhone : ""));
@@ -92,8 +93,6 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
 
             setVisible(h.btnStart,    isAccepted);
             setVisible(h.btnComplete, isInProgress);
-            setVisible(h.btnAccept, false);
-            setVisible(h.btnReject, false);
 
             if (h.btnStart    != null) h.btnStart.setOnClickListener(v    -> startOrder(o));
             if (h.btnComplete != null) h.btnComplete.setOnClickListener(v -> completeOrder(o));
@@ -103,7 +102,7 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
 
         class VH extends RecyclerView.ViewHolder {
             TextView tvCarName, tvRenter, tvPrice, tvNote, tvDate, tvStatus;
-            Button   btnAccept, btnReject, btnStart, btnComplete;
+            Button   btnStart, btnComplete;
             VH(@NonNull View v) {
                 super(v);
                 tvCarName   = v.findViewById(R.id.tv_do_car_name);
@@ -112,8 +111,6 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
                 tvNote      = v.findViewById(R.id.tv_do_note);
                 tvDate      = v.findViewById(R.id.tv_do_date);
                 tvStatus    = v.findViewById(R.id.tv_do_status);
-                btnAccept   = v.findViewById(R.id.btn_do_accept);
-                btnReject   = v.findViewById(R.id.btn_do_reject);
                 btnStart    = v.findViewById(R.id.btn_do_start);
                 btnComplete = v.findViewById(R.id.btn_do_complete);
             }
@@ -323,13 +320,34 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
     private static String labelFor(String s) {
         if (s == null) return "";
         switch (s) {
-            case "accepted":    return "✅ Đã nhận – Chờ bắt đầu";
-            case "in_progress": return "🚗 Đang chạy";
-            case "completed":   return "🏁 Hoàn thành";
-            case "rejected":    return "❌ Đã từ chối";
-            case "cancelled":   return "↩️ Đã hủy";
+            case "accepted":    return "Chờ bắt đầu";
+            case "in_progress": return "Đang chạy";
+            case "completed":   return "Hoàn thành";
+            case "rejected":    return "Đã từ chối";
+            case "cancelled":   return "Đã hủy";
             default:            return s;
         }
+    }
+
+    /** Tô màu pill trạng thái theo từng trạng thái đơn. */
+    private static void styleStatusPill(TextView tv, String status) {
+        if (tv == null) return;
+        int bgRes, fgRes;
+        switch (status == null ? "" : status) {
+            case "in_progress":
+            case "completed":
+                bgRes = R.color.driver_green_bg;   fgRes = R.color.driver_green;   break;
+            case "rejected":
+            case "cancelled":
+                bgRes = R.color.driver_red_bg;     fgRes = R.color.driver_red;     break;
+            case "accepted":
+            default:
+                bgRes = R.color.driver_surface_blue; fgRes = R.color.driver_primary;
+        }
+        android.content.Context c = tv.getContext();
+        tv.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                androidx.core.content.ContextCompat.getColor(c, bgRes)));
+        tv.setTextColor(androidx.core.content.ContextCompat.getColor(c, fgRes));
     }
 
     private static void setText(TextView tv, String text) {

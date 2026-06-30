@@ -71,8 +71,9 @@
                 <LinearLayout style="@style/EarningStatCol">
 
                     <TextView
+                        android:id="@+id/tv_e_online"
                         style="@style/EarningStatValue"
-                        android:text="8h 30m" />
+                        android:text="0m" />
 
                     <TextView style="@style/EarningStatLabel" android:text="Online" />
                 </LinearLayout>
@@ -208,6 +209,7 @@
                         android:layout_height="wrap_content">
 
                         <TextView
+                            android:id="@+id/tv_chart_title"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_alignParentStart="true"
