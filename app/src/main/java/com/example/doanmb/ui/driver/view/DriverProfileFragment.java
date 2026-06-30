@@ -24,7 +24,6 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
-/** Tab "Cá nhân" của tài xế (thiết kế driver5): hồ sơ + menu + đăng xuất. */
 public class DriverProfileFragment extends Fragment {
 
     private TextView tvName;
@@ -47,7 +46,6 @@ public class DriverProfileFragment extends Fragment {
         v.findViewById(R.id.row_favorites).setOnClickListener(x ->
                 startActivity(new Intent(getActivity(), FavoriteCarsActivity.class)));
 
-        // Mở màn hình Bài đánh giá của tài xế
         v.findViewById(R.id.row_reviews).setOnClickListener(x -> openReviews());
 
         View.OnClickListener soon = x ->
@@ -86,7 +84,6 @@ public class DriverProfileFragment extends Fragment {
                 });
     }
 
-    /** Quay về giao diện khách hàng, vẫn giữ đăng nhập. */
     private void switchToUserMode() {
         Intent intent = new Intent(getActivity(), MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

@@ -31,24 +31,8 @@ import java.util.List;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
-/**
- * Tab "Chuyến" của tài xế.
- *
- * Quy ước status (orders collection):
- *   pending     → Driver Home xử lý (nhận / từ chối)
- *   accepted    → Tab 0 "Chuyến mới"  → nút "Bắt đầu chuyến"
- *   in_progress → Tab 1 "Đang chạy"  → nút "Hoàn thành chuyến"
- *   completed / rejected / cancelled → Tab 2 "Lịch sử"
- *   scheduled   → Tab 3 "Đặt trước"
- *
- * Lưu ý: file giữ nguyên implements TripAdapter.OnTripActionListener
- * để không làm vỡ build nếu TripAdapter vẫn đang được dùng.
- * Tuy nhiên adapter thực tế bây giờ là OrderDriverAdapter (inner class).
- */
 public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripActionListener {
 
-    // ─── inner model ──────────────────────────────────────────────────────────
-    /** Ánh xạ đơn giản từ Firestore document sang POJO để tránh phụ thuộc vào Trip. */
     private static class OrderItem {
         String orderId, status, carName, carPrice,
                 renterName, renterPhone, note, type, carId, buyerId;
@@ -71,7 +55,6 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
         }
     }
 
-    // ─── inner adapter ────────────────────────────────────────────────────────
     private class OrderDriverAdapter extends RecyclerView.Adapter<OrderDriverAdapter.VH> {
         private final List<OrderItem> list;
         OrderDriverAdapter(List<OrderItem> list) { this.list = list; }
@@ -107,11 +90,8 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
             boolean isAccepted   = "accepted".equals(o.status);
             boolean isInProgress = "in_progress".equals(o.status);
 
-            // Tab Chuyến mới → chỉ nút "Bắt đầu chuyến"
             setVisible(h.btnStart,    isAccepted);
-            // Tab Đang chạy → chỉ nút "Hoàn thành chuyến"
             setVisible(h.btnComplete, isInProgress);
-            // Các nút pending (ẩn trong tab này vì đã xử lý ở Driver Home)
             setVisible(h.btnAccept, false);
             setVisible(h.btnReject, false);
 
@@ -140,26 +120,23 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
         }
     }
 
-    // ─── state ────────────────────────────────────────────────────────────────
     private TextView     tvName, tvSectionTitle, tvCountdown, tvEmpty;
     private CircleImageView ivAvatar;
     private TabLayout    tabs;
     private RecyclerView rv;
     private OrderDriverAdapter orderAdapter;
 
-    /** Giữ lại để TripAdapter.OnTripActionListener không gây lỗi build. */
     private TripAdapter legacyAdapter;
 
     private final List<OrderItem> shown    = new ArrayList<>();
-    private final List<OrderItem> accepted = new ArrayList<>();  // Tab 0 Chuyến mới
-    private final List<OrderItem> running  = new ArrayList<>();  // Tab 1 Đang chạy
-    private final List<OrderItem> history  = new ArrayList<>();  // Tab 2 Lịch sử
+    private final List<OrderItem> accepted = new ArrayList<>();
+    private final List<OrderItem> running  = new ArrayList<>();
+    private final List<OrderItem> history  = new ArrayList<>();
 
     private FirebaseFirestore db;
     private String uid, driverName;
     private int currentTab = 0;
 
-    // ─── lifecycle ────────────────────────────────────────────────────────────
     @Nullable @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
@@ -203,7 +180,6 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
         loadAll();
     }
 
-    // ─── data ─────────────────────────────────────────────────────────────────
     private void loadAll() {
         if (uid.isEmpty()) return;
         db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
@@ -280,8 +256,6 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
             tvEmpty.setVisibility(shown.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
-    // ─── actions ──────────────────────────────────────────────────────────────
-    /** accepted → in_progress */
     private void startOrder(OrderItem o) {
         db.collection("orders").document(o.orderId)
                 .update("status", "in_progress", "startedAt", Timestamp.now())
@@ -297,7 +271,6 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
                 });
     }
 
-    /** in_progress → completed; mở khóa đánh giá cho Customer */
     private void completeOrder(OrderItem o) {
         db.collection("orders").document(o.orderId)
                 .update(
@@ -309,7 +282,6 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
                 .addOnSuccessListener(x -> {
                     if (!isAdded()) return;
                     Toast.makeText(getContext(), "🏁 Đã hoàn thành chuyến!", Toast.LENGTH_SHORT).show();
-                    // Tạo Notification mời Customer đánh giá
                     createReviewNotification(o);
                     loadOrders();
                     selectTab(2);
@@ -320,7 +292,6 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
                 });
     }
 
-    /** Tạo notification type=review_driver gửi cho Customer */
     private void createReviewNotification(OrderItem o) {
         if (o.buyerId == null || o.buyerId.isEmpty()) return;
 
@@ -340,11 +311,9 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
         db.collection("notifications").add(notif);
     }
 
-    // ─── TripAdapter.OnTripActionListener (giữ cho build không vỡ) ────────────
     @Override public void onPrimary(Trip trip) { /* xử lý ở Driver Home */ }
     @Override public void onSkip(Trip trip)    { /* xử lý ở Driver Home */ }
 
-    // ─── helpers ──────────────────────────────────────────────────────────────
     private void selectTab(int i) {
         if (tabs == null) return;
         TabLayout.Tab tab = tabs.getTabAt(i);

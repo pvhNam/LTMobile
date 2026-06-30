@@ -43,10 +43,8 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     public void onBindViewHolder(@NonNull ReviewViewHolder holder, int position) {
         Review review = reviewList.get(position);
 
-        // Tên người đánh giá
         holder.tvBuyerName.setText(review.getBuyerName() != null ? review.getBuyerName() : "Ẩn danh");
 
-        // Avatar
         String avatar = review.getBuyerAvatar();
         if (avatar != null && !avatar.isEmpty()) {
             Glide.with(holder.itemView.getContext()).load(avatar).into(holder.ivAvatar);
@@ -54,11 +52,9 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             holder.ivAvatar.setImageResource(R.drawable.ic_person_placeholder);
         }
 
-        // Rating
         holder.ratingBar.setRating(review.getRating());
         holder.tvRatingValue.setText(String.format(Locale.getDefault(), "%.1f", review.getRating()));
 
-        // Comment
         String comment = review.getComment();
         if (comment != null && !comment.isEmpty()) {
             holder.tvComment.setText(comment);
@@ -67,7 +63,6 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             holder.tvComment.setVisibility(View.GONE);
         }
 
-        // Ngày
         Timestamp ts = review.getCreatedAt();
         if (ts != null) {
             Date date = ts.toDate();
