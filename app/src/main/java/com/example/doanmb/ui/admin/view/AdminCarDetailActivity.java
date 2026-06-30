@@ -17,6 +17,7 @@ import com.example.doanmb.ui.car.adapter.CarImageAdapter;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -133,9 +134,24 @@ public class AdminCarDetailActivity extends AppCompatActivity {
         boolean isPending = status.isEmpty() || "pending".equals(status);
         btnApprove.setVisibility(isPending ? View.VISIBLE : View.GONE);
         btnReject.setVisibility(isPending ? View.VISIBLE : View.GONE);
-        btnApprove.setOnClickListener(v -> updateStatus("active", "✅ Đã duyệt xe"));
+        btnApprove.setOnClickListener(v -> approveCar());
         btnReject.setOnClickListener(v -> rejectCar());
         btnDelete.setOnClickListener(v -> confirmDelete(name));
+    }
+
+    /** Duyệt bài + gửi thông báo cho người đăng (đối xứng với luồng từ chối). */
+    private void approveCar() {
+        db.collection("cars").document(carId)
+                .update("status", "active")
+                .addOnSuccessListener(v -> {
+                    sendNotification(sellerId,
+                            "Bài đăng được duyệt ✅",
+                            "Tin đăng \"" + carName + "\" của bạn đã được duyệt và hiển thị tới người dùng.");
+                    Toast.makeText(this, "✅ Đã duyệt xe", Toast.LENGTH_SHORT).show();
+                    finish();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     /** Từ chối bài + gửi thông báo cho người đăng (giống luồng duyệt tài xế). */
@@ -166,30 +182,39 @@ public class AdminCarDetailActivity extends AppCompatActivity {
         db.collection("notifications").add(notif);
     }
 
-    private void updateStatus(String newStatus, String successMsg) {
-        db.collection("cars").document(carId)
-                .update("status", newStatus)
-                .addOnSuccessListener(v -> {
-                    Toast.makeText(this, successMsg, Toast.LENGTH_SHORT).show();
-                    finish();
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-    }
-
     private void confirmDelete(String name) {
         new AlertDialog.Builder(this)
                 .setTitle("Xóa xe")
                 .setMessage("Bạn có chắc muốn xóa tin đăng \"" + name + "\" không?\nHành động này không thể hoàn tác.")
-                .setPositiveButton("Xóa", (d, w) -> db.collection("cars").document(carId).delete()
-                        .addOnSuccessListener(v -> {
-                            Toast.makeText(this, "🗑️ Đã xóa xe khỏi hệ thống", Toast.LENGTH_SHORT).show();
-                            finish();
-                        })
-                        .addOnFailureListener(e ->
-                                Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show()))
+                .setPositiveButton("Xóa", (d, w) -> deleteCarChecked())
                 .setNegativeButton("Hủy", null)
                 .show();
+    }
+
+    /** Chặn xóa khi xe còn đơn đang xử lý -> tránh đơn mồ côi. */
+    private void deleteCarChecked() {
+        db.collection("orders").whereEqualTo("carId", carId).get()
+                .addOnSuccessListener(snap -> {
+                    int active = 0;
+                    for (QueryDocumentSnapshot doc : snap) {
+                        String st = doc.getString("status");
+                        if ("pending".equals(st) || "confirmed".equals(st)) active++;
+                    }
+                    if (active > 0) {
+                        Toast.makeText(this,
+                                "Không thể xóa: xe còn " + active + " đơn đang xử lý", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    db.collection("cars").document(carId).delete()
+                            .addOnSuccessListener(v -> {
+                                Toast.makeText(this, "🗑️ Đã xóa xe khỏi hệ thống", Toast.LENGTH_SHORT).show();
+                                finish();
+                            })
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Lỗi kiểm tra đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private void applyStatusStyle(String status) {

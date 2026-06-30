@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.adapter.DriverApprovalAdapter;
 import com.example.doanmb.data.model.User;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
@@ -46,10 +47,7 @@ public class AdminDriverApprovalFragment extends Fragment {
             }
         });
 
-        adapter = new DriverApprovalAdapter(pendingList, new DriverApprovalAdapter.OnDecisionListener() {
-            @Override public void onApprove(User u) {}
-            @Override public void onReject(User u) {}
-        });
+        adapter = new DriverApprovalAdapter(pendingList);
         adapter.setOnItemClickListener(u -> {
             AdminDriverDetailFragment detail = AdminDriverDetailFragment.newInstance(u.getUid());
             getParentFragmentManager().beginTransaction()
@@ -79,9 +77,8 @@ public class AdminDriverApprovalFragment extends Fragment {
                     if (!isAdded()) return;
                     pendingList.clear();
                     for (QueryDocumentSnapshot doc : snap) {
-                        User u = doc.toObject(User.class);
-                        u.setUid(doc.getId());
-                        pendingList.add(u);
+                        User u = parseUser(doc);
+                        if (u != null) pendingList.add(u);
                     }
                     adapter.notifyDataSetChanged();
                     int count = pendingList.size();
@@ -95,5 +92,35 @@ public class AdminDriverApprovalFragment extends Fragment {
                 });
     }
 
+    /**
+     * Đọc 1 hồ sơ tài xế từ document một cách an toàn.
+     * Tránh dùng toObject(User.class) vì nó ném exception (gây crash cả màn)
+     * nếu một field bị lưu sai kiểu trong Firestore (vd appliedAt lưu thành số).
+     * Trả về null nếu doc lỗi để bỏ qua, không làm sập danh sách.
+     */
+    private User parseUser(QueryDocumentSnapshot doc) {
+        try {
+            User u = new User();
+            u.setUid(doc.getId());
+            u.setName(getStr(doc, "name"));
+            u.setPhone(getStr(doc, "phone"));
+            u.setCccd(getStr(doc, "cccd"));
+            u.setLicenseNumber(getStr(doc, "licenseNumber"));
+            u.setCccdImageUrl(getStr(doc, "cccdImageUrl"));
+            u.setLicenseImageUrl(getStr(doc, "licenseImageUrl"));
+            u.setDriverCarType(getStr(doc, "driverCarType"));
+            u.setDriverStatus(getStr(doc, "driverStatus"));
+            Object applied = doc.get("appliedAt");
+            if (applied instanceof Timestamp) u.setAppliedAt((Timestamp) applied);
+            return u;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
+    /** Lấy field dạng String an toàn — trả "" nếu thiếu hoặc sai kiểu, không ném exception. */
+    private String getStr(QueryDocumentSnapshot doc, String key) {
+        Object v = doc.get(key);
+        return v instanceof String ? (String) v : null;
+    }
 }

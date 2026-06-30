@@ -2,4 +2,9 @@
 <resources>
     <item name="nav_admin_users" type="id" />
     <item name="nav_admin_driver_approval" type="id" />
+    <item name="nav_admin_drivers" type="id" />
+    <!-- Các mục đã rời khỏi thanh điều hướng dưới, truy cập qua nút ở Trang chủ -->
+    <item name="nav_admin_cars" type="id" />
+    <item name="nav_admin_orders" type="id" />
+    <item name="nav_admin_reports" type="id" />
 </resources>

@@ -21,18 +21,21 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.doanmb.R;
+import com.example.doanmb.ui.admin.util.AdminFormat;
+import com.example.doanmb.ui.admin.util.RevenueCalculator;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 
 public class AdminOverviewFragment extends Fragment {
 
     private TextView tvTotalRevenue, tvDriverPendingCount;
-    private View btnViewUsers, btnViewCars, btnViewDriverApproval;
+    private View btnViewCars, btnViewDriverApproval;
     private BarChart barChart;
     private FirebaseFirestore db;
 
@@ -49,10 +52,10 @@ public class AdminOverviewFragment extends Fragment {
         tvTotalRevenue      = view.findViewById(R.id.tv_total_revenue);
         tvDriverPendingCount = view.findViewById(R.id.tv_driver_pending_count);
 
-        btnViewUsers         = view.findViewById(R.id.btn_view_users);
         btnViewCars          = view.findViewById(R.id.btn_view_cars);
         btnViewDriverApproval = view.findViewById(R.id.btn_view_driver_approval);
         View btnViewOrders   = view.findViewById(R.id.btn_view_orders);
+        View btnViewReports  = view.findViewById(R.id.btn_view_reports);
         barChart = view.findViewById(R.id.bar_chart_revenue);
 
         setupChart();
@@ -62,9 +65,9 @@ public class AdminOverviewFragment extends Fragment {
         view.findViewById(R.id.tv_view_revenue_detail).setOnClickListener(v ->
                 startActivity(new Intent(getActivity(), AdminRevenueDetailActivity.class)));
 
-        btnViewUsers.setOnClickListener(v -> navigate(R.id.nav_admin_users));
         btnViewCars.setOnClickListener(v -> navigate(R.id.nav_admin_cars));
         btnViewOrders.setOnClickListener(v -> navigate(R.id.nav_admin_orders));
+        btnViewReports.setOnClickListener(v -> navigate(R.id.nav_admin_reports));
         btnViewDriverApproval.setOnClickListener(v -> navigate(R.id.nav_admin_driver_approval));
 
         return view;
@@ -76,73 +79,32 @@ public class AdminOverviewFragment extends Fragment {
         }
     }
 
-    private static final double SALE_COMMISSION   = 0.03;   // 3% giá xe
-    private static final double RENTAL_COMMISSION = 0.15;   // 15% phí thuê
-    private static final long   POSTING_FEE       = 200_000; // 200K/bài đăng
-
     private void loadRevenue() {
-        db.collection("orders").whereEqualTo("status", "confirmed").get()
+        // Doanh thu = đơn đã chốt: gồm cả "confirmed" (đang thực hiện) lẫn "completed" (đã hoàn thành)
+        db.collection("orders").whereIn("status", Arrays.asList("confirmed", "completed")).get()
                 .addOnSuccessListener(orderSnap -> {
                     if (!isAdded()) return;
 
                     long commissionRevenue = 0;
-
                     for (QueryDocumentSnapshot doc : orderSnap) {
-                        String type        = doc.getString("type");
-                        long   pricePerUnit = parsePrice(doc.getString("carPrice"));
-                        long   commission;
-
-                        if ("Thuê xe".equals(type)) {
-                            long days = 1;
-                            String daysStr = doc.getString("days");
-                            if (daysStr != null && !daysStr.isEmpty()) {
-                                try {
-                                    long d = Long.parseLong(daysStr.replaceAll("[^0-9]", ""));
-                                    if (d > 0) days = d;
-                                } catch (NumberFormatException ignored) {}
-                            }
-                            commission = (long)(pricePerUnit * days * RENTAL_COMMISSION);
-                        } else {
-                            commission = (long)(pricePerUnit * SALE_COMMISSION);
-                        }
-
-                        commissionRevenue += commission;
+                        commissionRevenue += RevenueCalculator.commission(doc);
                     }
-
                     final long commissionFinal = commissionRevenue;
 
                     // Chain: lấy số bài đăng để tính phí
                     db.collection("cars").get().addOnSuccessListener(carSnap -> {
                         if (!isAdded()) return;
-                        int carCount = carSnap.size();
-                        long postingFee   = carCount * POSTING_FEE;
-                        long grandTotal   = commissionFinal + postingFee;
+                        // Chỉ thu phí đăng bài với xe không bị từ chối
+                        int carCount = 0;
+                        for (QueryDocumentSnapshot c : carSnap) {
+                            if (!"rejected".equals(c.getString("status"))) carCount++;
+                        }
+                        long postingFee = carCount * RevenueCalculator.POSTING_FEE;
+                        long grandTotal = commissionFinal + postingFee;
 
-                        tvTotalRevenue.setText(formatRevenue(grandTotal));
+                        tvTotalRevenue.setText(AdminFormat.money(grandTotal));
                     });
                 });
-    }
-
-    private long parsePrice(String priceStr) {
-        if (priceStr == null || priceStr.isEmpty()) return 0;
-        String digits = priceStr.replaceAll("[^0-9]", "");
-        if (digits.isEmpty()) return 0;
-        try {
-            return Long.parseLong(digits);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private String formatRevenue(long amount) {
-        if (amount == 0) return "0 VNĐ";
-        if (amount >= 1_000_000_000L) {
-            return String.format("%.1f tỷ", amount / 1_000_000_000.0);
-        } else if (amount >= 1_000_000L) {
-            return String.format("%.0f triệu", amount / 1_000_000.0);
-        } else {
-            return (amount / 1_000) + "K VNĐ";
-        }
     }
 
     private void setupChart() {
@@ -192,7 +154,7 @@ public class AdminOverviewFragment extends Fragment {
     }
 
     private void loadChartData() {
-        db.collection("orders").whereEqualTo("status", "confirmed").get()
+        db.collection("orders").whereIn("status", Arrays.asList("confirmed", "completed")).get()
                 .addOnSuccessListener(snapshots -> {
                     if (!isAdded()) return;
 
@@ -220,21 +182,7 @@ public class AdminOverviewFragment extends Fragment {
                             c.add(Calendar.MONTH, -i);
                             if (orderCal.get(Calendar.MONTH) == c.get(Calendar.MONTH)
                                     && orderCal.get(Calendar.YEAR) == c.get(Calendar.YEAR)) {
-
-                                String type = doc.getString("type");
-                                long price  = parsePrice(doc.getString("carPrice"));
-                                long commission;
-                                if ("Thuê xe".equals(type)) {
-                                    long days = 1;
-                                    try {
-                                        String d = doc.getString("days");
-                                        if (d != null) days = Math.max(1, Long.parseLong(d.replaceAll("[^0-9]","")));
-                                    } catch (Exception ignored) {}
-                                    commission = (long)(price * days * RENTAL_COMMISSION);
-                                } else {
-                                    commission = (long)(price * SALE_COMMISSION);
-                                }
-                                monthRevenue[5 - i] += commission;
+                                monthRevenue[5 - i] += RevenueCalculator.commission(doc);
                                 break;
                             }
                         }

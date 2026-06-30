@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.adapter.ReportAdminAdapter;
+import com.example.doanmb.ui.admin.util.AdminTab;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
@@ -64,17 +65,7 @@ public class AdminReportsFragment extends Fragment {
 
     private void switchTab(boolean pending) {
         showingPending = pending;
-        if (pending) {
-            btnTabPending.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFC62828));
-            btnTabPending.setTextColor(0xFFFFFFFF);
-            btnTabAll.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFFCDD2));
-            btnTabAll.setTextColor(0xFFC62828);
-        } else {
-            btnTabAll.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFC62828));
-            btnTabAll.setTextColor(0xFFFFFFFF);
-            btnTabPending.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFFCDD2));
-            btnTabPending.setTextColor(0xFFC62828);
-        }
+        AdminTab.select(pending ? btnTabPending : btnTabAll, btnTabPending, btnTabAll);
         loadReports();
     }
 

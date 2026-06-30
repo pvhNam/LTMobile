@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.adapter.OrderAdminAdapter;
+import com.example.doanmb.ui.admin.util.AdminTab;
 import com.example.doanmb.data.repository.WalletRepository;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -41,6 +42,8 @@ public class AdminOrdersFragment extends Fragment {
     private final List<String> orderIds = new ArrayList<>();
     private FirebaseFirestore db;
     private int currentTab = TAB_PENDING;
+    /** Chặn thao tác trùng (double-tap) khi một lệnh ghi/đụng-tiền đang chạy. */
+    private boolean processing = false;
 
     @Nullable
     @Override
@@ -79,22 +82,8 @@ public class AdminOrdersFragment extends Fragment {
     }
 
     private void applyTabStyle(int active) {
-        int activeColor  = 0xFFC62828;
-        int activeText   = 0xFFFFFFFF;
-        int inactiveColor= 0xFFFFCDD2;
-        int inactiveText = 0xFFC62828;
-
-        int[] colors = {inactiveColor, inactiveColor, inactiveColor};
-        int[] texts  = {inactiveText,  inactiveText,  inactiveText};
-        colors[active] = activeColor;
-        texts[active]  = activeText;
-
-        btnTabPending.setBackgroundTintList(android.content.res.ColorStateList.valueOf(colors[0]));
-        btnTabPending.setTextColor(texts[0]);
-        btnTabConfirmed.setBackgroundTintList(android.content.res.ColorStateList.valueOf(colors[1]));
-        btnTabConfirmed.setTextColor(texts[1]);
-        btnTabAll.setBackgroundTintList(android.content.res.ColorStateList.valueOf(colors[2]));
-        btnTabAll.setTextColor(texts[2]);
+        Button[] tabs = {btnTabPending, btnTabConfirmed, btnTabAll};
+        AdminTab.select(tabs[active], tabs);
     }
 
     private void loadOrders() {
@@ -123,15 +112,22 @@ public class AdminOrdersFragment extends Fragment {
     }
 
     private void confirmOrder(String orderId) {
+        if (processing) return;
+        processing = true;
         Map<String, Object> update = new HashMap<>();
         update.put("status", "confirmed");
         db.collection("orders").document(orderId).update(update)
                 .addOnSuccessListener(v -> {
+                    processing = false;
                     if (!isAdded()) return;
                     Toast.makeText(getContext(), "✅ Đã xác nhận đơn hàng", Toast.LENGTH_SHORT).show();
                     loadOrders();
                 })
-                .addOnFailureListener(e -> Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                .addOnFailureListener(e -> {
+                    processing = false;
+                    if (!isAdded()) return;
+                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void askCompleteOrder(String orderId) {
@@ -144,11 +140,22 @@ public class AdminOrdersFragment extends Fragment {
     }
 
     private void completeOrder(String orderId) {
+        if (processing) return;
+        processing = true;
         db.collection("orders").document(orderId).get().addOnSuccessListener(doc -> {
-            if (!isAdded() || !doc.exists()) return;
+            if (!isAdded() || !doc.exists()) { processing = false; return; }
             String depositStatus = doc.getString("depositStatus");
             String sellerId       = doc.getString("sellerId");
             Long   deposit        = doc.getLong("depositAmount");
+            String status         = doc.getString("status");
+
+            // Chặn chia tiền lặp: chỉ xử lý đơn đang "confirmed"
+            if (!"confirmed".equals(status)) {
+                processing = false;
+                if (isAdded()) Toast.makeText(getContext(), "Đơn không ở trạng thái chờ hoàn thành", Toast.LENGTH_SHORT).show();
+                loadOrders();
+                return;
+            }
 
             // Đơn không có cọc giữ qua ví -> chỉ đánh dấu hoàn thành
             if (!"held".equals(depositStatus) || sellerId == null || sellerId.isEmpty()
@@ -161,10 +168,14 @@ public class AdminOrdersFragment extends Fragment {
                     new WalletRepository.Callback() {
                         @Override public void onSuccess() { markCompleted(orderId, "settled"); }
                         @Override public void onError(String message) {
+                            processing = false;
                             if (!isAdded()) return;
                             Toast.makeText(getContext(), "Lỗi chia tiền: " + message, Toast.LENGTH_SHORT).show();
                         }
                     });
+        }).addOnFailureListener(e -> {
+            processing = false;
+            if (isAdded()) Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -174,9 +185,14 @@ public class AdminOrdersFragment extends Fragment {
         if (newDepositStatus != null) update.put("depositStatus", newDepositStatus);
         db.collection("orders").document(orderId).update(update)
                 .addOnSuccessListener(v -> {
+                    processing = false;
                     if (!isAdded()) return;
                     Toast.makeText(getContext(), "✅ Đơn đã hoàn thành & chia tiền", Toast.LENGTH_SHORT).show();
                     loadOrders();
+                })
+                .addOnFailureListener(e -> {
+                    processing = false;
+                    if (isAdded()) Toast.makeText(getContext(), "Lỗi cập nhật đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -190,13 +206,25 @@ public class AdminOrdersFragment extends Fragment {
     }
 
     private void cancelOrder(String orderId) {
+        if (processing) return;
+        processing = true;
         // Lấy carId trong đơn để reset trạng thái xe về active
         db.collection("orders").document(orderId).get()
                 .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) { processing = false; return; }
                     String carId          = doc.getString("carId");
                     String buyerId        = doc.getString("buyerId");
                     String depositStatus  = doc.getString("depositStatus");
+                    String status         = doc.getString("status");
                     Long   deposit        = doc.getLong("depositAmount");
+
+                    // Chỉ hủy được đơn đang chờ/đã xác nhận; chặn hoàn cọc lặp
+                    if (!"pending".equals(status) && !"confirmed".equals(status)) {
+                        processing = false;
+                        if (isAdded()) Toast.makeText(getContext(), "Đơn này không thể hủy", Toast.LENGTH_SHORT).show();
+                        loadOrders();
+                        return;
+                    }
 
                     Map<String, Object> orderUpdate = new HashMap<>();
                     orderUpdate.put("status", "cancelled");
@@ -208,17 +236,29 @@ public class AdminOrdersFragment extends Fragment {
                     }
 
                     // Còn giữ cọc -> hoàn lại 100% vào ví khách
-                    if ("held".equals(depositStatus) && buyerId != null && deposit != null && deposit > 0) {
+                    final boolean refunded = "held".equals(depositStatus)
+                            && buyerId != null && deposit != null && deposit > 0;
+                    if (refunded) {
                         orderUpdate.put("depositStatus", "refunded");
                         WalletRepository.refund(buyerId, deposit, orderId, null);
                     }
 
-                    db.collection("orders").document(orderId).update(orderUpdate);
-
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "Đã hủy đơn hàng" +
-                            ("held".equals(depositStatus) ? " & hoàn cọc cho khách" : ""), Toast.LENGTH_SHORT).show();
-                    loadOrders();
+                    db.collection("orders").document(orderId).update(orderUpdate)
+                            .addOnSuccessListener(v -> {
+                                processing = false;
+                                if (!isAdded()) return;
+                                Toast.makeText(getContext(), "Đã hủy đơn hàng"
+                                        + (refunded ? " & hoàn cọc cho khách" : ""), Toast.LENGTH_SHORT).show();
+                                loadOrders();
+                            })
+                            .addOnFailureListener(e -> {
+                                processing = false;
+                                if (isAdded()) Toast.makeText(getContext(), "Lỗi hủy đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    processing = false;
+                    if (isAdded()) Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 

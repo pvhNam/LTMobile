@@ -1,6 +1,5 @@
 package com.example.doanmb.ui.admin.view;
 
-import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -17,21 +16,23 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.adapter.RevenueItemAdapter;
+import com.example.doanmb.ui.admin.util.AdminFormat;
+import com.example.doanmb.ui.admin.util.AdminTab;
+import com.example.doanmb.ui.admin.util.RevenueCalculator;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
+import android.widget.Toast;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
 public class AdminRevenueDetailActivity extends AppCompatActivity {
-
-    private static final double SALE_COMMISSION   = 0.03;
-    private static final double RENTAL_COMMISSION = 0.15;
-    private static final long   POSTING_FEE       = 200_000L;
 
     private TextView tvGrandTotal, tvCommissionTotal, tvPostingTotal, tvEmpty, tvMonth, tvMonthReset;
     private ProgressBar progressBar;
@@ -314,19 +315,29 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
         tvEmpty.setVisibility(View.GONE);
         loadedCount = 0;
 
-        db.collection("orders").whereEqualTo("status", "confirmed").get()
+        // Doanh thu = đơn đã chốt: gồm cả "confirmed" lẫn "completed"
+        db.collection("orders").whereIn("status", Arrays.asList("confirmed", "completed")).get()
                 .addOnSuccessListener(snap -> {
                     orderDocs.clear();
                     for (QueryDocumentSnapshot doc : snap) orderDocs.add(doc);
                     onDatasetReady();
-                });
+                })
+                .addOnFailureListener(this::onLoadFailed);
 
         db.collection("cars").get()
                 .addOnSuccessListener(snap -> {
                     carDocs.clear();
                     for (QueryDocumentSnapshot doc : snap) carDocs.add(doc);
                     onDatasetReady();
-                });
+                })
+                .addOnFailureListener(this::onLoadFailed);
+    }
+
+    private void onLoadFailed(Exception e) {
+        progressBar.setVisibility(View.GONE);
+        tvEmpty.setVisibility(View.VISIBLE);
+        tvEmpty.setText("Lỗi tải dữ liệu doanh thu");
+        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
     }
 
     private void onDatasetReady() {
@@ -341,18 +352,19 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
     private void applyFilter() {
         long commissionTotal = 0;
         for (QueryDocumentSnapshot doc : orderDocs) {
-            if (inSelectedRange(doc)) commissionTotal += calcCommission(doc);
+            if (inSelectedRange(doc)) commissionTotal += RevenueCalculator.commission(doc);
         }
         long postingCount = 0;
         for (QueryDocumentSnapshot doc : carDocs) {
-            if (inSelectedRange(doc)) postingCount++;
+            // Xe bị từ chối không thu phí đăng bài
+            if (inSelectedRange(doc) && !"rejected".equals(doc.getString("status"))) postingCount++;
         }
-        long postingTotal = postingCount * POSTING_FEE;
+        long postingTotal = postingCount * RevenueCalculator.POSTING_FEE;
         long grandTotal   = commissionTotal + postingTotal;
 
-        tvGrandTotal.setText(fmt(grandTotal));
-        tvCommissionTotal.setText(fmt(commissionTotal));
-        tvPostingTotal.setText(fmt(postingTotal));
+        tvGrandTotal.setText(AdminFormat.money(grandTotal));
+        tvCommissionTotal.setText(AdminFormat.money(commissionTotal));
+        tvPostingTotal.setText(AdminFormat.money(postingTotal));
 
         renderTab();
     }
@@ -419,7 +431,7 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
             items.add(new RevenueItemAdapter.Entry(
                     carName != null ? carName : "Xe không tên",
                     (isRental ? "Người thuê: " : "Người mua: ") + buyer,
-                    fmt(calcCommission(doc)),
+                    AdminFormat.money(RevenueCalculator.commission(doc)),
                     dateStr,
                     isRental ? "Thuê" : "Mua",
                     isRental ? 1 : 0
@@ -434,7 +446,7 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
         // Lọc theo khoảng
         List<QueryDocumentSnapshot> filtered = new ArrayList<>();
         for (QueryDocumentSnapshot doc : carDocs) {
-            if (inSelectedRange(doc)) filtered.add(doc);
+            if (inSelectedRange(doc) && !"rejected".equals(doc.getString("status"))) filtered.add(doc);
         }
 
         List<Object> items = new ArrayList<>();
@@ -464,23 +476,6 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private long calcCommission(QueryDocumentSnapshot doc) {
-        String type  = doc.getString("type");
-        long   price = parsePrice(doc.getString("carPrice"));
-        if ("Thuê xe".equals(type)) {
-            long days = 1;
-            String daysStr = doc.getString("days");
-            if (daysStr != null) {
-                try {
-                    long d = Long.parseLong(daysStr.replaceAll("[^0-9]", ""));
-                    if (d > 0) days = d;
-                } catch (NumberFormatException ignored) {}
-            }
-            return (long)(price * days * RENTAL_COMMISSION);
-        }
-        return (long)(price * SALE_COMMISSION);
-    }
-
     private String statusLabel(String status) {
         if ("active".equals(status))   return "Đang bán";
         if ("sold".equals(status))     return "Đã bán";
@@ -489,33 +484,8 @@ public class AdminRevenueDetailActivity extends AppCompatActivity {
         return "Chờ duyệt";
     }
 
-    private long parsePrice(String s) {
-        if (s == null || s.isEmpty()) return 0;
-        String d = s.replaceAll("[^0-9]", "");
-        if (d.isEmpty()) return 0;
-        try { return Long.parseLong(d); } catch (NumberFormatException e) { return 0; }
-    }
-
-    private String fmt(long amount) {
-        if (amount == 0) return "0 VNĐ";
-        if (amount >= 1_000_000_000L) return String.format("%.1f tỷ", amount / 1_000_000_000.0);
-        if (amount >= 1_000_000L)     return String.format("%.0f triệu", amount / 1_000_000.0);
-        return (amount / 1_000) + "K VNĐ";
-    }
-
     private void applyTabStyle(int active) {
-        int on  = 0xFFC62828, onText  = 0xFFFFFFFF;
-        int off = 0xFFFFCDD2, offText = 0xFFC62828;
-        if (active == 0) {
-            btnTabCommission.setBackgroundTintList(ColorStateList.valueOf(on));
-            btnTabCommission.setTextColor(onText);
-            btnTabPosting.setBackgroundTintList(ColorStateList.valueOf(off));
-            btnTabPosting.setTextColor(offText);
-        } else {
-            btnTabPosting.setBackgroundTintList(ColorStateList.valueOf(on));
-            btnTabPosting.setTextColor(onText);
-            btnTabCommission.setBackgroundTintList(ColorStateList.valueOf(off));
-            btnTabCommission.setTextColor(offText);
-        }
+        AdminTab.select(active == 0 ? btnTabCommission : btnTabPosting,
+                btnTabCommission, btnTabPosting);
     }
 }

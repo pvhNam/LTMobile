@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.adapter.CarAdminAdapter;
+import com.example.doanmb.ui.admin.util.AdminTab;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -73,17 +74,7 @@ public class AdminCarsFragment extends Fragment {
     }
 
     private void applyTabStyle(boolean pendingActive) {
-        if (pendingActive) {
-            btnTabPending.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFC62828));
-            btnTabPending.setTextColor(0xFFFFFFFF);
-            btnTabAll.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFFCDD2));
-            btnTabAll.setTextColor(0xFFC62828);
-        } else {
-            btnTabAll.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFC62828));
-            btnTabAll.setTextColor(0xFFFFFFFF);
-            btnTabPending.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFFCDD2));
-            btnTabPending.setTextColor(0xFFC62828);
-        }
+        AdminTab.select(pendingActive ? btnTabPending : btnTabAll, btnTabPending, btnTabAll);
     }
 
     private void loadCars() {
@@ -173,6 +164,29 @@ public class AdminCarsFragment extends Fragment {
     }
 
     private void deleteCar(String carId) {
+        // Chặn xóa khi xe còn đơn đang xử lý -> tránh đơn mồ côi.
+        db.collection("orders").whereEqualTo("carId", carId).get()
+                .addOnSuccessListener(snap -> {
+                    if (!isAdded()) return;
+                    int active = 0;
+                    for (QueryDocumentSnapshot d : snap) {
+                        String st = d.getString("status");
+                        if ("pending".equals(st) || "confirmed".equals(st)) active++;
+                    }
+                    if (active > 0) {
+                        Toast.makeText(getContext(),
+                                "Không thể xóa: xe còn " + active + " đơn đang xử lý", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    doDeleteCar(carId);
+                })
+                .addOnFailureListener(e -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(getContext(), "Lỗi kiểm tra đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void doDeleteCar(String carId) {
         db.collection("cars").document(carId)
                 .delete()
                 .addOnSuccessListener(v -> {

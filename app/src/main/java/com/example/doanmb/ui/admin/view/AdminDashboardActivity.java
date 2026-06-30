@@ -93,11 +93,17 @@ public class AdminDashboardActivity extends AppCompatActivity implements AdminOv
             fragment = new AdminProfileFragment();
         } else if (itemId == R.id.nav_admin_driver_approval) {
             fragment = new AdminDriverApprovalFragment();
+        } else if (itemId == R.id.nav_admin_drivers) {
+            fragment = new AdminDriversFragment();
         } else {
             fragment = new AdminOverviewFragment();
         }
 
-        boolean addToBackStack = (itemId == R.id.nav_admin_driver_approval);
+        // Các màn mở từ nút ở Trang chủ (không phải tab) -> đưa vào back-stack để bấm back quay lại Trang chủ.
+        boolean addToBackStack = (itemId == R.id.nav_admin_driver_approval
+                || itemId == R.id.nav_admin_cars
+                || itemId == R.id.nav_admin_orders
+                || itemId == R.id.nav_admin_reports);
         androidx.fragment.app.FragmentTransaction tx = getSupportFragmentManager().beginTransaction()
                 .replace(R.id.admin_fragment_container, fragment);
         if (addToBackStack) tx.addToBackStack(null);

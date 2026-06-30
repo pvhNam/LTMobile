@@ -15,7 +15,6 @@ import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
 import com.example.doanmb.R;
-import com.example.doanmb.data.model.User;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -31,7 +30,6 @@ public class AdminDriverDetailFragment extends Fragment {
             new SimpleDateFormat("HH:mm  dd/MM/yyyy", Locale.getDefault());
 
     private String uid;
-    private User user;
     private FirebaseFirestore db;
 
     public static AdminDriverDetailFragment newInstance(String uid) {
@@ -93,10 +91,9 @@ public class AdminDriverDetailFragment extends Fragment {
         if (uid.isEmpty()) return;
         db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
             if (!isAdded() || !doc.exists()) return;
-            user = doc.toObject(User.class);
-            if (user == null) return;
-            user.setUid(doc.getId());
 
+            // Đọc field trực tiếp thay vì toObject(User.class) — tránh crash nếu
+            // một field bị lưu sai kiểu trong Firestore.
             TextView tvName     = view.findViewById(R.id.tv_dd_name);
             TextView tvPhone    = view.findViewById(R.id.tv_dd_phone);
             TextView tvApplied  = view.findViewById(R.id.tv_dd_applied_at);
@@ -106,17 +103,20 @@ public class AdminDriverDetailFragment extends Fragment {
             ImageView ivCccd    = view.findViewById(R.id.iv_dd_cccd);
             ImageView ivLicense = view.findViewById(R.id.iv_dd_license);
 
-            tvName.setText(safe(user.getName(), "--"));
-            tvPhone.setText("SĐT: " + safe(user.getPhone(), "--"));
-            tvApplied.setText(user.getAppliedAt() != null
-                    ? "Gửi lúc: " + SDF.format(user.getAppliedAt().toDate())
-                    : "Gửi lúc: --");
-            tvCccd.setText("Số CCCD: " + safe(user.getCccd(), "--"));
-            tvLicense.setText("Số bằng lái: " + safe(user.getLicenseNumber(), "--"));
-            tvCarType.setText("Loại xe: " + safe(user.getDriverCarType(), "--"));
+            Object appliedRaw = doc.get("appliedAt");
+            Timestamp applied = appliedRaw instanceof Timestamp ? (Timestamp) appliedRaw : null;
 
-            loadImg(ivCccd, user.getCccdImageUrl());
-            loadImg(ivLicense, user.getLicenseImageUrl());
+            tvName.setText(safe(getStr(doc, "name"), "--"));
+            tvPhone.setText("SĐT: " + safe(getStr(doc, "phone"), "--"));
+            tvApplied.setText(applied != null
+                    ? "Gửi lúc: " + SDF.format(applied.toDate())
+                    : "Gửi lúc: --");
+            tvCccd.setText("Số CCCD: " + safe(getStr(doc, "cccd"), "--"));
+            tvLicense.setText("Số bằng lái: " + safe(getStr(doc, "licenseNumber"), "--"));
+            tvCarType.setText("Loại xe: " + safe(getStr(doc, "driverCarType"), "--"));
+
+            loadImg(ivCccd, getStr(doc, "cccdImageUrl"));
+            loadImg(ivLicense, getStr(doc, "licenseImageUrl"));
         });
     }
 
@@ -186,5 +186,11 @@ public class AdminDriverDetailFragment extends Fragment {
 
     private String safe(String val, String def) {
         return val != null && !val.isEmpty() ? val : def;
+    }
+
+    /** Lấy field dạng String an toàn — trả null nếu thiếu hoặc sai kiểu, không ném exception. */
+    private String getStr(com.google.firebase.firestore.DocumentSnapshot doc, String key) {
+        Object v = doc.get(key);
+        return v instanceof String ? (String) v : null;
     }
 }
