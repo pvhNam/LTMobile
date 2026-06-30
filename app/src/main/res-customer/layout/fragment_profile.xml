@@ -637,36 +637,27 @@
                 android:id="@+id/top_bar_info"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
+                android:background="#FFFFFF"
                 android:paddingHorizontal="16dp">
 
-                <androidx.cardview.widget.CardView
+                <ImageView
                     android:id="@+id/btn_back_to_settings"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:layout_centerVertical="true"
-                    app:cardBackgroundColor="#F5F6F8"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="0dp"
-                    android:clickable="true"
-                    android:focusable="true">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="‹"
-                        android:textColor="@color/lg_accent"
-                        android:textSize="26sp"
-                        android:layout_gravity="center"
-                        android:layout_marginTop="-2dp"/>
-                </androidx.cardview.widget.CardView>
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:padding="8dp"
+                    android:src="@android:drawable/ic_menu_revert" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
                     android:text="Thông tin cá nhân"
                     android:textColor="#1A1A1A"
                     android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_centerInParent="true"/>
+                    android:textStyle="bold" />
+
             </RelativeLayout>
 
             <Button
@@ -689,6 +680,7 @@
                 android:layout_height="match_parent"
                 android:layout_below="@id/top_bar_info"
                 android:layout_above="@id/btn_save_personal_info"
+                android:layout_marginTop="10dp"
                 android:scrollbars="none">
 
                 <LinearLayout

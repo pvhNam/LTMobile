@@ -5,8 +5,10 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.doanmb.data.model.UserVoucher;
 import com.example.doanmb.data.repository.CarRepository;
 import com.example.doanmb.data.repository.OrderRepository;
+import com.example.doanmb.data.repository.VoucherRepository;
 import com.example.doanmb.data.repository.WalletRepository;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -14,6 +16,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -27,6 +30,7 @@ public class InvoiceViewModel extends ViewModel {
     public static class Invoice {
         public String carName, ownerName, reason, paymentMethod;
         public long rental, penalty, lateDays, invoiceTotal;
+        public long discount; // Số tiền đã giảm nhờ voucher (0 nếu không áp dụng)
         public boolean completed;
     }
 
@@ -35,18 +39,25 @@ public class InvoiceViewModel extends ViewModel {
     private final MutableLiveData<Boolean> payEnabled = new MutableLiveData<>(true);
     private final MutableLiveData<Boolean> finishEvent = new MutableLiveData<>();
     private final MutableLiveData<Long> launchVnpay = new MutableLiveData<>();
+    private final MutableLiveData<List<UserVoucher>> availableVouchers = new MutableLiveData<>();
+    private final MutableLiveData<UserVoucher> selectedVoucherLive = new MutableLiveData<>();
 
     private String orderId;
     private String sellerId;
     private String carId;
-    private long invoiceTotal;
+    private long rentalTotal;     // Tiền thuê + phạt, CHƯA trừ voucher
+    private long invoiceTotal;    // Số tiền thực phải trả, ĐÃ trừ voucher (nếu có)
     private String paymentMethod = "cash"; // cash | vnpay | wallet
+    private String myUid;
+    private UserVoucher selectedVoucher;
 
     public LiveData<Invoice> getInvoice() { return invoice; }
     public LiveData<String> getMessage() { return message; }
     public LiveData<Boolean> getPayEnabled() { return payEnabled; }
     public LiveData<Boolean> getFinishEvent() { return finishEvent; }
     public LiveData<Long> getLaunchVnpay() { return launchVnpay; }
+    public LiveData<List<UserVoucher>> getAvailableVouchers() { return availableVouchers; }
+    public LiveData<UserVoucher> getSelectedVoucher() { return selectedVoucherLive; }
 
     public void clearLaunchVnpay() { launchVnpay.setValue(null); }
 
@@ -65,6 +76,9 @@ public class InvoiceViewModel extends ViewModel {
     }
 
     private void loadInvoice() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        myUid = user != null ? user.getUid() : null;
+
         OrderRepository.loadOrder(orderId, new OrderRepository.OnOrderLoaded() {
             @Override public void onLoaded(DocumentSnapshot doc) {
                 if (doc == null || !doc.exists()) {
@@ -72,29 +86,35 @@ public class InvoiceViewModel extends ViewModel {
                     finishEvent.setValue(true);
                     return;
                 }
-                Invoice inv = new Invoice();
-                inv.carName   = doc.getString("carName");
-                inv.ownerName = doc.getString("sellerName");
+                String carName   = doc.getString("carName");
+                String ownerName = doc.getString("sellerName");
                 sellerId      = doc.getString("sellerId");
                 carId         = doc.getString("carId");
-                inv.rental    = getLong(doc.getLong("totalAmount"));
-                inv.penalty   = getLong(doc.getLong("penaltyAmount"));
-                inv.lateDays  = getLong(doc.getLong("lateDays"));
+                long rental   = getLong(doc.getLong("totalAmount"));
+                long penalty  = getLong(doc.getLong("penaltyAmount"));
+                long lateDays = getLong(doc.getLong("lateDays"));
                 Long total    = doc.getLong("invoiceTotal");
-                invoiceTotal  = total != null ? total : inv.rental + inv.penalty;
-                inv.invoiceTotal = invoiceTotal;
-                inv.reason    = doc.getString("invoiceReason");
-                inv.completed = "completed".equals(doc.getString("status"));
+                rentalTotal   = total != null ? total : rental + penalty;
+                invoiceTotal  = rentalTotal;
+                String reason = doc.getString("invoiceReason");
+                boolean completed = "completed".equals(doc.getString("status"));
                 String method = doc.getString("paymentMethod");
                 if (method != null && !method.isEmpty()) paymentMethod = method;
-                inv.paymentMethod = paymentMethod;
 
+                Invoice inv = new Invoice();
+                inv.carName = carName; inv.ownerName = ownerName;
+                inv.rental = rental; inv.penalty = penalty; inv.lateDays = lateDays;
+                inv.invoiceTotal = invoiceTotal; inv.discount = 0;
+                inv.reason = reason; inv.completed = completed; inv.paymentMethod = paymentMethod;
                 invoice.setValue(inv);
 
                 // Nếu đơn thiếu sellerId → lấy chủ xe từ document xe để tiền tới đúng người.
                 if ((sellerId == null || sellerId.isEmpty()) && carId != null && !carId.isEmpty()) {
                     CarRepository.loadOwner(carId, owner -> { if (owner != null) sellerId = owner; });
                 }
+
+                // Chỉ cần nạp voucher khả dụng khi hóa đơn còn chờ thanh toán.
+                if (!completed && myUid != null) loadAvailableVouchers();
             }
             @Override public void onError(String msg) {
                 message.setValue("Lỗi tải hóa đơn: " + msg);
@@ -103,20 +123,58 @@ public class InvoiceViewModel extends ViewModel {
         });
     }
 
+    /** Tải các voucher trong ví của khách còn dùng được, áp dụng được cho tổng tiền hóa đơn. */
+    private void loadAvailableVouchers() {
+        VoucherRepository.loadMyVouchers(myUid, new VoucherRepository.UserVoucherListCallback() {
+            @Override public void onLoaded(List<UserVoucher> list) {
+                List<UserVoucher> usable = new java.util.ArrayList<>();
+                for (UserVoucher uv : list) {
+                    if (uv.isAvailable() && uv.computeDiscount(rentalTotal) > 0) usable.add(uv);
+                }
+                availableVouchers.setValue(usable);
+            }
+            @Override public void onError(String msg) {
+                // Không chặn luồng thanh toán nếu lỗi tải voucher — chỉ đơn giản là không có voucher để chọn.
+                availableVouchers.setValue(new java.util.ArrayList<>());
+            }
+        });
+    }
+
+    /** Người dùng chọn 1 voucher để áp dụng giảm giá cho hóa đơn. */
+    public void selectVoucher(@Nullable UserVoucher voucher) {
+        selectedVoucher = voucher;
+        selectedVoucherLive.setValue(voucher);
+        recomputeTotal();
+    }
+
+    private void recomputeTotal() {
+        long discount = selectedVoucher != null ? selectedVoucher.computeDiscount(rentalTotal) : 0L;
+        invoiceTotal = Math.max(0, rentalTotal - discount);
+
+        Invoice cur = invoice.getValue();
+        if (cur != null) {
+            cur.invoiceTotal = invoiceTotal;
+            cur.discount = discount;
+            invoice.setValue(cur);
+        }
+    }
+
     /** Bấm nút thanh toán. */
     public void pay() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) { message.setValue("Vui lòng đăng nhập"); return; }
+        if (myUid == null) {
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            myUid = user != null ? user.getUid() : null;
+        }
+        if (myUid == null) { message.setValue("Vui lòng đăng nhập"); return; }
         payEnabled.setValue(false);
 
         // Tiền mặt: trả trực tiếp cho chủ xe, app không chuyển tiền → chỉ ghi nhận hoàn tất.
         if ("cash".equals(paymentMethod)) {
-            markCompleted(user.getUid(), "✅ Đã xác nhận thanh toán tiền mặt cho chủ xe.");
+            markCompleted("✅ Đã xác nhận thanh toán tiền mặt cho chủ xe.");
             return;
         }
         // VNPay / Ví cần uid chủ xe để chuyển tiền (lấy từ xe nếu đơn thiếu sellerId).
-        final String uid = user.getUid();
-        resolveOwnerThen(() -> doPay(uid));
+        resolveOwnerThen(this::doPay);
     }
 
     /** Bảo đảm có uid chủ xe rồi mới chạy {@code next} (tránh chuyển tiền sai người). */
@@ -136,16 +194,17 @@ public class InvoiceViewModel extends ViewModel {
         });
     }
 
-    private void doPay(String uid) {
+    private void doPay() {
         if ("vnpay".equals(paymentMethod)) {
-            launchVnpay.setValue(invoiceTotal); // View mở VnpayPaymentActivity
+            launchVnpay.setValue(invoiceTotal); // View mở VnpayPaymentActivity (đã áp voucher)
             return;
         }
         // Mặc định: thanh toán bằng ví → trừ ví khách, chia 85% chủ xe / 15% app.
-        WalletRepository.payInvoice(uid, sellerId, invoiceTotal, orderId,
+        // invoiceTotal ở đây đã trừ voucher (nếu có chọn).
+        WalletRepository.payInvoice(myUid, sellerId, invoiceTotal, orderId,
                 new WalletRepository.Callback() {
                     @Override public void onSuccess() {
-                        markCompleted(uid, "✅ Thanh toán thành công! Tiền đã chuyển cho chủ xe.");
+                        markCompleted("✅ Thanh toán thành công! Tiền đã chuyển cho chủ xe.");
                     }
                     @Override public void onError(String msg) {
                         payEnabled.setValue(true);
@@ -156,12 +215,10 @@ public class InvoiceViewModel extends ViewModel {
 
     /** VNPay báo trả thành công → chia 85% chủ xe / 15% app (tiền vào từ VNPay). */
     public void onVnpayPaid() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        final String myUid = user != null ? user.getUid() : "";
         WalletRepository.payInvoiceExternal(sellerId, invoiceTotal, orderId,
                 new WalletRepository.Callback() {
                     @Override public void onSuccess() {
-                        markCompleted(myUid, "✅ Thanh toán VNPay thành công! Tiền đã chuyển cho chủ xe.");
+                        markCompleted("✅ Thanh toán VNPay thành công! Tiền đã chuyển cho chủ xe.");
                     }
                     @Override public void onError(String msg) {
                         payEnabled.setValue(true);
@@ -176,13 +233,27 @@ public class InvoiceViewModel extends ViewModel {
     }
 
     /** Đánh dấu đơn đã hoàn tất, mở lại xe để cho thuê tiếp và báo chủ xe. */
-    private void markCompleted(String myUid, String successMessage) {
+    private void markCompleted(String successMessage) {
         Map<String, Object> up = new HashMap<>();
         up.put("status", "completed");
         up.put("invoiceStatus", "paid");
         up.put("paidAt", Timestamp.now());
+        if (selectedVoucher != null) {
+            up.put("voucherId", selectedVoucher.getId());
+            up.put("voucherDiscount", rentalTotal - invoiceTotal);
+        }
         OrderRepository.updateFields(orderId, up);
         if (carId != null && !carId.isEmpty()) CarRepository.setStatus(carId, "active", null);
+
+        // Đánh dấu voucher đã chọn là đã dùng cho đơn này (không chặn luồng nếu lỗi).
+        if (selectedVoucher != null && selectedVoucher.getId() != null) {
+            VoucherRepository.markUsed(selectedVoucher.getId(), orderId, null);
+        }
+        // Cộng điểm thưởng cho khách vì đã thanh toán xong đơn (không chặn luồng nếu lỗi).
+        if (myUid != null) {
+            VoucherRepository.addPoints(myUid, VoucherRepository.POINTS_PER_ORDER, null);
+        }
+
         // Báo cho chủ xe biết khách đã thanh toán.
         OrderRepository.writeNotification(sellerId, myUid, "invoice_paid",
                 "Khách đã thanh toán",

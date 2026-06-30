@@ -2,31 +2,40 @@ package com.example.doanmb.ui.car.view;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.doanmb.R;
 import com.example.doanmb.core.util.EdgeToEdgeUtil;
+import com.example.doanmb.data.model.UserVoucher;
 import com.example.doanmb.ui.car.viewmodel.InvoiceViewModel;
 import com.example.doanmb.ui.profile.view.VnpayPaymentActivity;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
-/** Màn hóa đơn thuê xe: hiện chi tiết (tiền thuê + phạt trễ + lý do) và cho khách thanh toán. */
+/** Màn hóa đơn thuê xe: hiện chi tiết (tiền thuê + phạt trễ + lý do), cho khách chọn voucher giảm giá và thanh toán. */
 public class InvoiceActivity extends AppCompatActivity {
 
     private TextView tvCar, tvOwner, tvRental, tvPenalty, tvTotal, tvReason, tvLateLabel;
+    private TextView tvDiscount, tvVoucherLabel;
+    private LinearLayout rowChooseVoucher, rowDiscount;
     private MaterialButton btnPay;
 
     private InvoiceViewModel viewModel;
+    private List<UserVoucher> currentVouchers = new ArrayList<>();
 
     // Nhận kết quả thanh toán VNPay
     private final ActivityResultLauncher<Intent> vnpayLauncher =
@@ -58,6 +67,14 @@ public class InvoiceActivity extends AppCompatActivity {
         tvReason   = findViewById(R.id.tv_invoice_reason);
         tvLateLabel= findViewById(R.id.tv_invoice_late_label);
         btnPay     = findViewById(R.id.btn_pay_invoice);
+        tvDiscount       = findViewById(R.id.tv_invoice_discount);
+        tvVoucherLabel   = findViewById(R.id.tv_invoice_voucher_label);
+        rowChooseVoucher = findViewById(R.id.row_choose_voucher);
+        rowDiscount      = findViewById(R.id.row_invoice_discount);
+
+        if (rowChooseVoucher != null) {
+            rowChooseVoucher.setOnClickListener(v -> showVoucherPicker());
+        }
 
         viewModel = new ViewModelProvider(this).get(InvoiceViewModel.class);
         observeViewModel();
@@ -82,6 +99,17 @@ public class InvoiceActivity extends AppCompatActivity {
             vnpayLauncher.launch(i);
             viewModel.clearLaunchVnpay();
         });
+        viewModel.getAvailableVouchers().observe(this, list -> {
+            currentVouchers = list != null ? list : new ArrayList<>();
+            if (rowChooseVoucher != null) {
+                rowChooseVoucher.setVisibility(currentVouchers.isEmpty() ? View.GONE : View.VISIBLE);
+            }
+        });
+        viewModel.getSelectedVoucher().observe(this, voucher -> {
+            if (tvVoucherLabel != null) {
+                tvVoucherLabel.setText(voucher != null ? voucher.shortLabel() + " ✓" : "Chọn voucher ›");
+            }
+        });
     }
 
     private void render(InvoiceViewModel.Invoice inv) {
@@ -95,13 +123,46 @@ public class InvoiceActivity extends AppCompatActivity {
         tvReason.setText(inv.reason != null && !inv.reason.isEmpty() ? inv.reason
                 : "Thanh toán tiền thuê xe khi kết thúc chuyến.");
 
+        if (rowDiscount != null) {
+            rowDiscount.setVisibility(inv.discount > 0 ? View.VISIBLE : View.GONE);
+        }
+        if (tvDiscount != null && inv.discount > 0) {
+            tvDiscount.setText("-" + money(inv.discount));
+        }
+
         if (inv.completed) {
             btnPay.setEnabled(false);
             btnPay.setText("Đã thanh toán ✓");
+            if (rowChooseVoucher != null) rowChooseVoucher.setVisibility(View.GONE);
         } else {
             btnPay.setText(payButtonLabel(inv));
             btnPay.setOnClickListener(v -> viewModel.pay());
         }
+    }
+
+    /** Mở hộp thoại chọn 1 voucher trong ví để áp dụng cho hóa đơn này (hoặc bỏ áp dụng). */
+    private void showVoucherPicker() {
+        if (currentVouchers.isEmpty()) return;
+
+        String[] labels = new String[currentVouchers.size() + 1];
+        labels[0] = "Không dùng voucher";
+        for (int i = 0; i < currentVouchers.size(); i++) {
+            UserVoucher uv = currentVouchers.get(i);
+            String title = uv.getTitle() != null ? uv.getTitle() : uv.shortLabel();
+            labels[i + 1] = title + " — " + uv.shortLabel();
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Chọn voucher giảm giá")
+                .setItems(labels, (dialog, which) -> {
+                    if (which == 0) {
+                        viewModel.selectVoucher(null);
+                    } else {
+                        viewModel.selectVoucher(currentVouchers.get(which - 1));
+                    }
+                })
+                .setNegativeButton("Đóng", null)
+                .show();
     }
 
     /** Nhãn nút thanh toán theo phương thức đã chọn lúc đặt thuê. */

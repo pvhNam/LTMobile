@@ -72,7 +72,7 @@ public class ProfileFragment extends Fragment {
     private ImageView btnBackToMain; // Đã đổi sang ImageView để tránh lỗi theme
 
     // Views màn 3
-    private CardView btnBackToSettings;
+    private ImageView btnBackToSettings;
     private EditText edtInfoName, edtInfoDob, edtInfoGender, edtInfoPhone;
     private Button btnSavePersonalInfo;
 

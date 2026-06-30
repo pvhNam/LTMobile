@@ -24,7 +24,7 @@ public class User {
 
     // ----- Ví trong app -----
     private double balance;        // Số dư ví (VNĐ). Mặc định 0 nếu Firestore thiếu field.
-
+    private long points;         // Điểm thưởng dùng để đổi quà tặng/voucher. Mặc định 0 nếu thiếu field.
     public User() {}
 
     public String getUid() { return uid; }
@@ -63,4 +63,6 @@ public class User {
 
     public double getBalance() { return balance; }
     public void setBalance(double balance) { this.balance = balance; }
+    public long getPoints() { return points; }
+    public void setPoints(long points) { this.points = points; }
 }

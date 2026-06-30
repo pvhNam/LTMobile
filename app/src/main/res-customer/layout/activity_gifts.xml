@@ -1,161 +1,215 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/scroll_root"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F6F8"
-    android:clipToPadding="false"
-    android:fillViewport="true">
+    android:background="@color/lg_bg_top"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
 
+    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="wrap_content"
+        android:background="@color/lg_glass_fill_strong"
+        android:elevation="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="6dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="10dp">
 
-        <RelativeLayout
-            android:id="@+id/header_bar"
-            android:layout_width="match_parent"
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Quay lại"
+            android:padding="9dp"
+            android:src="@drawable/ic_back"
+            app:tint="@color/lg_text" />
+
+        <TextView
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:gravity="center_vertical"
-            android:background="#FFFFFF"
-            android:elevation="3dp"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp">
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:text="Quà tặng"
+            android:textColor="@color/lg_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
-            <ImageView
-                android:id="@+id/btn_back"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_centerVertical="true"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Quay lại"
-                android:padding="8dp"
-                android:src="@android:drawable/ic_menu_revert" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="Quà tặng"
-                android:textColor="#1A1A1A"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-        </RelativeLayout>
+    <!-- Thẻ điểm thưởng -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="6dp"
+        app:cardBackgroundColor="@color/lg_glass_fill_strong"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="0dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_glass_circle"
+                android:gravity="center"
+                android:text="⭐"
+                android:textSize="24sp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Điểm thưởng của bạn"
+                    android:textColor="@color/lg_text_secondary"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tv_points_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="0 điểm"
+                    android:textColor="@color/lg_text"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Tab Đổi quà / Ví voucher -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_glass_card_soft"
+        android:orientation="horizontal"
+        android:padding="4dp">
+
+        <TextView
+            android:id="@+id/tab_catalog"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_glass_button"
+            android:gravity="center"
+            android:paddingVertical="10dp"
+            android:text="🎁 Đổi quà"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tab_my_vouchers"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:paddingVertical="10dp"
+            android:text="🎟️ Ví của tôi"
+            android:textColor="@color/lg_text_secondary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Nội dung: danh mục đổi quà -->
+    <FrameLayout
+        android:id="@+id/layout_catalog"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="visible">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_catalog"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="16dp" />
+
+        <LinearLayout
+            android:id="@+id/layout_catalog_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="🎁"
-                android:textSize="72sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Ưu đãi CARVIA"
-                android:textColor="#2A70DE"
-                android:textSize="25sp"
-                android:textStyle="bold" />
+                android:textSize="44sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Quà tặng và ưu đãi dành cho bạn"
-                android:textColor="#777777"
+                android:text="Hiện chưa có quà tặng nào để đổi"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="14sp" />
         </LinearLayout>
+    </FrameLayout>
+
+    <!-- Nội dung: ví voucher của tôi -->
+    <FrameLayout
+        android:id="@+id/layout_my_vouchers"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_my_vouchers"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="16dp" />
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/layout_my_vouchers_empty"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
+            android:layout_gravity="center"
+            android:gravity="center"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ví ưu đãi của bạn"
-                android:textColor="#2A70DE"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="Hiện tại bạn chưa có mã giảm giá hoặc phần quà nào trong ví ưu đãi."
-                android:textColor="#424242"
-                android:textSize="15sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
-            android:orientation="vertical"
-            android:padding="18dp">
+                android:text="🎟️"
+                android:textSize="44sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Cách nhận quà"
-                android:textColor="#2A70DE"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:lineSpacingExtra="5dp"
-                android:text="• Hoàn thành chuyến thuê xe đầu tiên&#10;• Đăng xe thành công trên hệ thống&#10;• Mời bạn bè sử dụng CARVIA&#10;• Tham gia các chương trình khuyến mãi"
-                android:textColor="#424242"
-                android:textSize="15sp" />
+                android:layout_marginTop="6dp"
+                android:text="Ví voucher của bạn hiện đang trống"
+                android:textColor="@color/lg_text_secondary"
+                android:textSize="14sp" />
         </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginBottom="16dp"
-            android:background="#2A70DE"
-            android:gravity="center"
-            android:paddingVertical="13dp"
-            android:text="Khám phá ưu đãi"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="28dp"
-            android:gravity="center"
-            android:text="© 2026 CARVIA Team&#10;Đồ án môn Lập trình Thiết bị Di động"
-            android:textColor="#777777"
-            android:textSize="13sp" />
-
-    </LinearLayout>
-</ScrollView>
+    </FrameLayout>
+</LinearLayout>
