@@ -14,6 +14,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.ImageLoader;
+import de.hdodenhof.circleimageview.CircleImageView;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -68,6 +70,7 @@ public class DriverHomeFragment extends Fragment {
         uid = user != null ? user.getUid() : "";
 
         // Bind views (null-safe — nếu layout chưa thêm view thì bỏ qua)
+        CircleImageView ivAvatar = v.findViewById(R.id.iv_home_avatar);
         switchAvailable  = v.findViewById(R.id.switch_available);
         tvAvailableLabel = v.findViewById(R.id.tv_available_label);
         tvLatestCarName  = v.findViewById(R.id.tv_latest_car_name);
@@ -103,6 +106,12 @@ public class DriverHomeFragment extends Fragment {
         db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
             if (!isAdded()) return;
             driverName = doc.getString("name");
+            // Load avatar thật của user
+            String avatarUrl = doc.getString("avatarUrl");
+            CircleImageView av = getView() != null ? getView().findViewById(R.id.iv_home_avatar) : null;
+            if (av != null && avatarUrl != null && !avatarUrl.isEmpty()) {
+                ImageLoader.loadAvatar(av, avatarUrl, R.drawable.ic_driver_avatar_placeholder);
+            }
         });
 
         db.collection(COL_DRIVERS).document(uid).get().addOnSuccessListener(doc -> {
