@@ -38,6 +38,11 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Trang Danh mục: trung tâm duyệt và tìm xe của khách hàng.
+ * Hỗ trợ 4 danh mục (mua / bán / thuê tự lái / có tài xế) cùng các bộ lọc theo
+ * hãng, khu vực (lấy từ API địa giới VN), khoảng thời gian thuê và sắp xếp theo giá.
+ */
 public class CategoryFragment extends Fragment implements PostCarFragment.OnPostCarSubmittedListener {
 
     private static final String CATEGORY_SALE = "sale";
@@ -189,6 +194,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         });
     }
 
+    /** Ẩn/hiện ô tìm kiếm và hàng chọn hãng kèm hiệu ứng; bỏ qua nếu trạng thái không đổi. */
     private void setFiltersCollapsed(boolean collapse) {
         if (filtersCollapsed == collapse) return;
         filtersCollapsed = collapse;
@@ -202,6 +208,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         if (tvBrandLabel != null) tvBrandLabel.setVisibility(visibility);
         if (scrollBrandFilters != null) scrollBrandFilters.setVisibility(visibility);
     }
+    /** Gắn sự kiện cho 4 thẻ danh mục: Mua / Bán / Thuê tự lái / Có tài xế. */
     private void setupCategoryActions() {
         cardBuyCar.setOnClickListener(v -> selectCategory(CATEGORY_SALE, "Xe đang bán"));
         cardSelfDrive.setOnClickListener(v -> selectCategory(CATEGORY_RENTAL, "Xe thuê tự lái"));
@@ -211,6 +218,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         updateSelectedCategory();
     }
 
+    /** Chọn một danh mục duyệt xe: cập nhật tiêu đề, hiện danh sách và lọc lại. */
     private void selectCategory(String category, String title) {
         currentCategory = category;
         currentTitle = title;
@@ -219,6 +227,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         applyFilter();
     }
 
+    /** Mở form đăng tin bán xe (PostCarFragment) ngay trong tab "Bán xe". */
     private void showPostCarForm() {
         currentCategory = CATEGORY_SELL;
         updateSelectedCategory();
@@ -233,16 +242,19 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         }
     }
 
+    /** Hiện khu vực duyệt xe và ẩn form đăng tin. */
     private void showBrowseContent() {
         layoutCategoryBrowseContent.setVisibility(View.VISIBLE);
         postCarFragmentContainer.setVisibility(View.GONE);
     }
 
+    /** Callback từ PostCarFragment: đăng tin xong thì nạp lại danh sách xe. */
     @Override
     public void onPostCarSubmitted() {
         loadCars();
     }
 
+    /** Tô sáng tab đang chọn, bỏ chọn các tab còn lại và cập nhật hiển thị ô thời gian. */
     private void updateSelectedCategory() {
         cardBuyCar.setCardBackgroundColor(Color.TRANSPARENT);
         cardSellCar.setCardBackgroundColor(Color.TRANSPARENT);
@@ -307,6 +319,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         dateDialog.show();
     }
 
+    /** Cập nhật nhãn ô thời gian: "ngày đón → ngày trả" hoặc "Chọn thời gian" khi chưa chọn. */
     private void updateTimeDisplay() {
         if (tvSearchTime == null) return;
         if (pickupTime == null) {
@@ -320,6 +333,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         tvSearchTime.setText(text);
     }
 
+    /** Đổi nền/màu chữ của một tab tuỳ trạng thái được chọn hay không. */
     private void setTabSelected(LinearLayout tabContent, TextView tabLabel, boolean selected) {
         if (selected) {
             tabContent.setBackgroundResource(R.drawable.bg_tab_active_pill);
@@ -330,6 +344,10 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         }
     }
 
+    /**
+     * Nạp danh sách xe từ Firestore (collection "cars"). Chỉ giữ xe có status
+     * "active" (đã duyệt) hoặc "holding" (đang đặt cọc); lỗi mạng thì dùng dữ liệu mẫu.
+     */
     private void loadCars() {
         tvEmptyCategory.setText("Đang tải danh sách...");
         tvEmptyCategory.setVisibility(View.VISIBLE);
@@ -356,7 +374,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                         String type = doc.getString("type");
                         String brand = doc.getString("brand");
                         String imageUrl = doc.getString("imageUrl");
-                        String sellerId = doc.getString("sellerId"); // ← thêm dòng này
+                        String sellerId = doc.getString("sellerId");
                         Car car = new Car(
                                 name,
                                 price != null ? price : "",
@@ -390,6 +408,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                 });
     }
 
+    /** Dữ liệu xe mẫu dùng khi không kết nối được Firestore, để UI không trống. */
     private void loadSampleCars() {
         allCars.add(new Car("Toyota Vios 2020", "450.000.000 VNĐ", "TP.HCM - 2020 - Tự động", "sale", "Toyota", android.R.drawable.ic_menu_gallery));
         allCars.add(new Car("Kia Morning 2021", "320.000.000 VNĐ", "Hà Nội - 2021 - Số sàn", "sale", "Kia", android.R.drawable.ic_menu_gallery));
@@ -515,6 +534,10 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                 .show();
     }
 
+    /**
+     * @return true nếu xe khớp khu vực đang chọn. Khớp cả chuỗi trước; nếu không, bỏ các từ
+     * chỉ đơn vị hành chính rồi khớp theo từng từ khoá còn lại. Chưa chọn khu vực thì luôn true.
+     */
     private boolean matchesSelectedLocation(Car car) {
         if (selectedLocation == null || selectedLocation.isEmpty()) return true;
         String haystack = normalizeText((car.getInfo() != null ? car.getInfo() : "")
@@ -549,6 +572,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
                 .show();
     }
 
+    /** Cập nhật nhãn nút sắp xếp theo chế độ đang chọn. */
     private void updateSortLabel() {
         if (tvSortPrice == null) return;
         switch (sortMode) {
@@ -575,6 +599,10 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         }
     }
 
+    /**
+     * Lọc {@link #allCars} theo danh mục + hãng + khu vực đang chọn, sắp xếp theo giá
+     * (nếu có), rồi cập nhật danh sách, tiêu đề, số tin phù hợp và trạng thái rỗng.
+     */
     private void applyFilter() {
         List<Car> filteredCars = new ArrayList<>();
 
@@ -617,6 +645,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         tvEmptyCategory.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
     }
 
+    /** Khởi tạo dải lọc hãng mặc định: "Tất cả" + danh sách hãng phổ biến. */
     private void setupDefaultBrandFilters() {
         brandFilters.clear();
         brandFilters.add(BRAND_ALL);
@@ -626,6 +655,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         renderBrandFilters();
     }
 
+    /** Dựng lại dải lọc hãng từ hãng mặc định cộng các hãng suy ra từ dữ liệu xe thực tế. */
     private void updateBrandFilters() {
         setupDefaultBrandFilters();
         for (Car car : allCars) {
@@ -638,6 +668,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         renderBrandFilters();
     }
 
+    /** Thêm một hãng vào dải lọc nếu chưa tồn tại (so sánh sau khi chuẩn hoá, tránh trùng). */
     private void addBrandFilter(String brand) {
         if (brand == null || brand.trim().isEmpty()) return;
 
@@ -649,6 +680,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         brandFilters.add(brand.trim());
     }
 
+    /** Vẽ lại các chip hãng theo {@link #brandFilters}; chip đang chọn được tô màu nổi bật. */
     private void renderBrandFilters() {
         if (layoutBrandFilters == null) return;
 
@@ -679,6 +711,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         }
     }
 
+    /** Tạo nền bo góc cho chip hãng (màu xanh khi được chọn, trắng viền xám khi không). */
     private GradientDrawable createChipBackground(boolean selected) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setShape(GradientDrawable.RECTANGLE);
@@ -688,12 +721,17 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         return drawable;
     }
 
+    /** @return true nếu xe khớp hãng đang chọn (hoặc đang chọn "Tất cả"). */
     private boolean matchesSelectedBrand(Car car) {
         if (selectedBrand.equals(BRAND_ALL)) return true;
         String carBrand = resolveBrand(car.getName(), car.getInfo(), car.getBrand());
         return normalizeText(carBrand).equals(normalizeText(selectedBrand));
     }
 
+    /**
+     * Xác định hãng xe: ưu tiên trường {@code brand}; nếu trống thì dò tên hãng trong
+     * tên/mô tả xe; không khớp hãng nào thì trả về "Khác".
+     */
     private String resolveBrand(String name, String info, String brand) {
         if (brand != null && !brand.trim().isEmpty()) {
             return brand.trim();
@@ -708,24 +746,29 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         return "Khác";
     }
 
+    /** @return true nếu chuỗi loại (đã chuẩn hoá) thuộc nhóm xe bán. */
     private boolean isSaleType(String type) {
         return type.contains("sale") || type.contains("ban") || type.contains("mua");
     }
 
+    /** @return true nếu chuỗi loại (đã chuẩn hoá) thuộc nhóm xe cho thuê. */
     private boolean isRentalType(String type) {
         return type.contains("rental") || type.contains("rent") || type.contains("thue") || type.contains("tu lai");
     }
 
+    /** @return true nếu chuỗi loại (đã chuẩn hoá) thuộc nhóm xe có tài xế. */
     private boolean isDriverType(String type) {
         return type.contains("driver") || type.contains("tai xe") || type.contains("co tai xe");
     }
 
+    /** Chuẩn hoá chuỗi để so khớp "mềm": bỏ dấu tiếng Việt, chuyển thường, cắt khoảng trắng thừa. */
     private String normalizeText(String value) {
         if (value == null) return "";
         String normalized = Normalizer.normalize(value, Normalizer.Form.NFD);
         return normalized.replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).trim();
     }
 
+    /** Đổi dp sang px theo mật độ màn hình hiện tại. */
     private int dp(int value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }

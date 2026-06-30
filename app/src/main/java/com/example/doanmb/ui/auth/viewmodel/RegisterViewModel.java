@@ -17,18 +17,31 @@ public class RegisterViewModel extends ViewModel {
     private final FirebaseAuth mAuth = FirebaseAuth.getInstance();
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+    // Thông báo dạng text để View hiển thị Toast.
     private final MutableLiveData<String> message = new MutableLiveData<>();
+    // Cờ báo đăng ký thành công để View đóng màn.
     private final MutableLiveData<Boolean> registerSuccess = new MutableLiveData<>();
 
+    /** LiveData thông báo (thành công / lỗi) để View quan sát và hiện Toast. */
     public LiveData<String> getMessage() {
         return message;
     }
 
-    /** Đóng màn sau khi đăng ký xog. */
+    /** LiveData báo đăng ký thành công; View quan sát để đóng màn. */
     public LiveData<Boolean> getRegisterSuccess() {
         return registerSuccess;
     }
 
+    /**
+     * Đăng ký tài khoản mới: validate dữ liệu, tạo tài khoản trên Firebase Auth,
+     * rồi ghi hồ sơ vào Firestore {@code users/{uid}} với vai trò mặc định "CUSTOMER".
+     *
+     * @param name     họ tên
+     * @param phone    số điện thoại
+     * @param email    email đăng nhập
+     * @param password mật khẩu
+     * @param confirm  nhập lại mật khẩu (phải khớp password)
+     */
     public void register(String name, String phone, String email, String password, String confirm) {
         name = name.trim();
         phone = phone.trim();
@@ -52,6 +65,7 @@ public class RegisterViewModel extends ViewModel {
             return;
         }
 
+        // Lambda yêu cầu biến effectively-final nên sao chép lại các giá trị đã trim.
         String finalName = name;
         String finalPhone = phone;
         String finalEmail = email;
@@ -63,6 +77,7 @@ public class RegisterViewModel extends ViewModel {
                     }
                     String uid = authResult.getUser().getUid();
 
+                    // Tạo hồ sơ người dùng lưu vào Firestore, gắn vai trò mặc định CUSTOMER.
                     Map<String, Object> user = new HashMap<>();
                     user.put("uid", uid);
                     user.put("name", finalName);

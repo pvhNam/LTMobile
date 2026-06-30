@@ -34,6 +34,7 @@ public class ForgotPassActivity extends AppCompatActivity {
         observeViewModel();
     }
 
+    /** observeViewModel: gắn lỗi email vào ô nhập, hiện Toast và đóng màn khi đã gửi mail. */
     private void observeViewModel() {
         viewModel.getEmailError().observe(this, error -> {
             if (error != null) etEmail.setError(error);

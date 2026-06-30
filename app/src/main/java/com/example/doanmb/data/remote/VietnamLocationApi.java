@@ -29,11 +29,13 @@ public final class VietnamLocationApi {
     }
     private static final VietnamLocationService SERVICE = build();
 
+    /** Callback trả về danh sách địa danh khi thành công, hoặc thông báo lỗi. */
     public interface Callback {
         void onResult(List<Place> places);
 
         void onError(String message);
     }
+    /** Dựng Retrofit service một lần (kèm log HTTP) trỏ tới base URL của API provinces. */
     private static VietnamLocationService build() {
         HttpLoggingInterceptor log = new HttpLoggingInterceptor();
         log.setLevel(HttpLoggingInterceptor.Level.BASIC); // dùng NONE cho bản release
@@ -89,6 +91,7 @@ public final class VietnamLocationApi {
         });
     }
 
+    /** Chuyển danh sách DTO từ API thành model {@link Place}, bỏ phần tử rỗng/không tên. */
     private static List<Place> mapList(List<PlaceDto> dtos) {
         List<Place> list = new ArrayList<>();
         for (PlaceDto d : dtos) {
@@ -99,6 +102,7 @@ public final class VietnamLocationApi {
         return list;
     }
 
+    /** Ghi log và đẩy lỗi về callback. */
     private static void postError(Callback cb, Throwable t) {
         Log.e(TAG, "fetch failed", t);
         String msg = (t.getMessage() != null) ? t.getMessage() : t.getClass().getSimpleName();

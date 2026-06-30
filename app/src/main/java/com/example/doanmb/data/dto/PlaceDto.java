@@ -11,6 +11,7 @@ public class PlaceDto {
     // chỉ có khi gọi ?depth=2
     @SerializedName("wards") public List<PlaceDto> wards;
 
+    /** Chuyển DTO sang model {@link Place} dùng trong UI (tên null → chuỗi rỗng). */
     public Place toPlace() {
         return new Place(name != null ? name : "", code);
     }

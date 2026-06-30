@@ -105,6 +105,7 @@ public class PostCarFragment extends Fragment {
         return view;
     }
 
+    /** observeViewModel: hiện Toast thông báo và xử lý kết quả lưu (thành công thì xoá form). */
     private void observeViewModel() {
         viewModel.getMessage().observe(getViewLifecycleOwner(), msg -> {
             if (msg != null && isViewReady()) Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
@@ -120,6 +121,7 @@ public class PostCarFragment extends Fragment {
         });
     }
 
+    /** Ánh xạ các view trong layout vào biến thành viên. */
     private void initViews(View view) {
         etCarName = view.findViewById(R.id.et_car_name);
         etCarPrice = view.findViewById(R.id.et_car_price);
@@ -161,6 +163,7 @@ public class PostCarFragment extends Fragment {
         });
     }
 
+    /** Gắn sự kiện cho nút chọn/xoá ảnh, nút gửi và ô "Khu vực" (mở bộ chọn địa chỉ). */
     private void setupActions() {
         btnPickImage.setOnClickListener(v -> pickImage());
         if (layoutUploadMedia != null) layoutUploadMedia.setOnClickListener(v -> pickImage());
@@ -219,6 +222,7 @@ public class PostCarFragment extends Fragment {
         });
     }
 
+    /** Hộp thoại danh sách địa danh chung dùng cho cả bước chọn tỉnh và chọn phường/xã. */
     private void showPickDialog(String title, List<Place> places, OnPlacePicked cb) {
         if (!isViewReady()) return;
         String[] items = new String[places.size()];
@@ -229,6 +233,7 @@ public class PostCarFragment extends Fragment {
                 .setNegativeButton("Huỷ", null)
                 .show();
     }
+    /** Lấy ảnh từ kết quả gallery (một hoặc nhiều ảnh), bỏ trùng rồi làm mới preview. */
     private void addImagesFromResult(Intent data) {
         ClipData clip = data.getClipData();
         if (clip != null) {
@@ -243,6 +248,7 @@ public class PostCarFragment extends Fragment {
         refreshImagePreview();
     }
 
+    /** Cập nhật khu vực ảnh: hiện ảnh đầu làm preview, số lượng ảnh và nút xoá; rỗng thì hiện gợi ý tải lên. */
     private void refreshImagePreview() {
         if (!isViewReady()) return;
         boolean hasImages = !selectedImageUris.isEmpty();
@@ -263,6 +269,7 @@ public class PostCarFragment extends Fragment {
         buildThumbnails();
     }
 
+    /** Dựng dải thumbnail cho các ảnh đã chọn, mỗi ảnh kèm nút "✕" để xoá riêng. */
     private void buildThumbnails() {
         layoutImageThumbs.removeAllViews();
         scrollImageThumbs.setVisibility(selectedImageUris.isEmpty() ? View.GONE : View.VISIBLE);
@@ -310,10 +317,12 @@ public class PostCarFragment extends Fragment {
         }
     }
 
+    /** Đổi dp sang px theo mật độ màn hình hiện tại. */
     private int dp(int value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
+    /** Nạp dữ liệu cho spinner hãng xe và loại tin (Cần Bán / Cho Thuê). */
     private void setupSpinners() {
         String[] brands = {"Toyota", "Honda", "Mazda", "Kia", "Ford", "Hyundai", "VinFast", "Mitsubishi", "Suzuki", "Nissan", "Mercedes", "BMW", "Audi", "Khác"};
         spinnerBrand.setAdapter(makeAdapter(brands));
@@ -323,12 +332,14 @@ public class PostCarFragment extends Fragment {
 
     }
 
+    /** Tạo ArrayAdapter chuẩn cho spinner từ mảng chuỗi. */
     private ArrayAdapter<String> makeAdapter(String[] items) {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, items);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         return adapter;
     }
 
+    /** Kiểm tra/ xin quyền đọc ảnh theo phiên bản Android rồi mở gallery. */
     private void pickImage() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED) {
@@ -345,6 +356,10 @@ public class PostCarFragment extends Fragment {
         }
     }
 
+    /**
+     * Thu thập dữ liệu form, validate (bắt buộc tên + giá, phải đăng nhập), ghép phần
+     * mô tả đầy đủ, upload ảnh lên Cloudinary (nếu có) rồi gọi ViewModel lưu xe.
+     */
     private void submitPost() {
         String name = etCarName.getText().toString().trim();
         String price = etCarPrice.getText().toString().trim();
@@ -401,6 +416,7 @@ public class PostCarFragment extends Fragment {
         }
     }
 
+    /** Xoá toàn bộ dữ liệu form sau khi đăng tin thành công. */
     private void clearForm() {
         etCarName.setText("");
         etCarPrice.setText("");
@@ -414,16 +430,19 @@ public class PostCarFragment extends Fragment {
         resetButton();
     }
 
+    /** Bỏ chọn toàn bộ ảnh và làm mới preview. */
     private void clearSelectedImage() {
         selectedImageUris.clear();
         refreshImagePreview();
     }
 
+    /** Khôi phục nút gửi về trạng thái bật và nhãn mặc định. */
     private void resetButton() {
         btnSubmitPost.setEnabled(true);
         btnSubmitPost.setText("Gửi yêu cầu đăng tin");
     }
 
+    /** Báo cho Fragment cha (Category) biết đã đăng tin xong để nạp lại danh sách. */
     private void notifyPostSubmitted() {
         Fragment parent = getParentFragment();
         if (parent instanceof OnPostCarSubmittedListener) {
@@ -431,16 +450,19 @@ public class PostCarFragment extends Fragment {
         }
     }
 
+    /** Mở gallery cho phép chọn nhiều ảnh. */
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         pickImageLauncher.launch(intent);
     }
 
+    /** @return true nếu Fragment còn gắn và view sẵn sàng — tránh thao tác UI sau khi thoát. */
     private boolean isViewReady() {
         return isAdded() && getView() != null && btnSubmitPost != null;
     }
 
+    /** Giải phóng tham chiếu view khi huỷ để tránh rò rỉ bộ nhớ. */
     @Override
     public void onDestroyView() {
         super.onDestroyView();

@@ -48,6 +48,7 @@ public class SplashActivity extends AppCompatActivity {
         }
     }
 
+    /** Mở màn tương ứng vai trò (Admin/Tài xế/Khách hàng) rồi đóng màn splash. */
     private void navigateTo(AuthDestination destination) {
         if (destination == null) return;
         Intent intent;

@@ -57,6 +57,7 @@ public class LoginActivity extends AppCompatActivity {
         observeViewModel();
     }
 
+    /** observeViewModel: hiện Toast thông báo và điều hướng khi đăng nhập thành công. */
     private void observeViewModel() {
         viewModel.getMessage().observe(this, msg -> {
             if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
@@ -64,6 +65,7 @@ public class LoginActivity extends AppCompatActivity {
         viewModel.getDestination().observe(this, this::navigateTo);
     }
 
+    /** Mở màn tương ứng vai trò (Admin/Tài xế/Khách hàng) rồi đóng màn đăng nhập. */
     private void navigateTo(AuthDestination destination) {
         if (destination == null) return;
         Intent intent;

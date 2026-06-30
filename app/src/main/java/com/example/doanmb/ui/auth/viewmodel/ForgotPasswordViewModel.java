@@ -12,23 +12,34 @@ public class ForgotPasswordViewModel extends ViewModel {
 
     private final FirebaseAuth mAuth = FirebaseAuth.getInstance();
 
+    // Thông báo chung để View hiển thị Toast.
     private final MutableLiveData<String> message = new MutableLiveData<>();
+    // Lỗi riêng cho ô nhập email (hiển thị ngay dưới EditText).
     private final MutableLiveData<String> emailError = new MutableLiveData<>();
+    // Cờ báo đã gửi email đặt lại mật khẩu để View đóng màn.
     private final MutableLiveData<Boolean> resetSent = new MutableLiveData<>();
 
+    /** LiveData thông báo kết quả gửi mail để View quan sát và hiện Toast. */
     public LiveData<String> getMessage() {
         return message;
     }
 
+    /** LiveData lỗi định dạng email để View gắn vào ô nhập. */
     public LiveData<String> getEmailError() {
         return emailError;
     }
 
-    /** Đóng màn sau khi gửi mail. */
+    /** LiveData báo đã gửi mail thành công; View quan sát để đóng màn. */
     public LiveData<Boolean> getResetSent() {
         return resetSent;
     }
 
+    /**
+     * Gửi email đặt lại mật khẩu qua Firebase Auth.
+     * Email sai định dạng → báo {@link #emailError}; gửi xong → phát {@link #resetSent}.
+     *
+     * @param email địa chỉ email đã đăng ký
+     */
     public void resetPassword(String email) {
         email = email.trim();
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {

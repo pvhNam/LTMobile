@@ -15,17 +15,30 @@ public class LoginViewModel extends ViewModel {
     private final FirebaseAuth mAuth = FirebaseAuth.getInstance();
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+    // Thông báo dạng text để View hiển thị Toast.
     private final MutableLiveData<String> message = new MutableLiveData<>();
+    // Đích điều hướng sau khi đăng nhập thành công (ADMIN / DRIVER / MAIN).
     private final MutableLiveData<AuthDestination> destination = new MutableLiveData<>();
 
+    /** LiveData thông báo (thành công / lỗi) để View quan sát và hiện Toast. */
     public LiveData<String> getMessage() {
         return message;
     }
 
+    /** LiveData đích điều hướng; View quan sát để mở đúng màn theo vai trò. */
     public LiveData<AuthDestination> getDestination() {
         return destination;
     }
 
+    /**
+     * Đăng nhập linh hoạt bằng email HOẶC số điện thoại.
+     * - Nếu chuỗi nhập chứa "@" → coi là email, kiểm tra định dạng rồi đăng nhập trực tiếp.
+     * - Nếu không có "@" → coi là SĐT, tra ngược email đã đăng ký trong Firestore rồi đăng nhập;
+     *   không tìm thấy thì dùng tạm "{sđt}@doanmb.com" để tương thích dữ liệu cũ.
+     *
+     * @param loginInput email hoặc số điện thoại người dùng nhập
+     * @param password   mật khẩu
+     */
     public void login(String loginInput, String password) {
         loginInput = loginInput.trim();
         password = password.trim();
@@ -65,6 +78,10 @@ public class LoginViewModel extends ViewModel {
                 .addOnFailureListener(e -> message.setValue("không tìm thấy tài khoản!"));
     }
 
+    /**
+     * Xác thực với Firebase Auth bằng email + mật khẩu; thành công thì đọc vai trò
+     * trong Firestore và phát đích điều hướng tương ứng. Sai thông tin → báo lỗi.
+     */
     private void signIn(String email, String password) {
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {

@@ -48,6 +48,7 @@ public class RegisterActivity extends AppCompatActivity {
         observeViewModel();
     }
 
+    /** observeViewModel: hiện Toast thông báo và đóng màn khi đăng ký thành công. */
     private void observeViewModel() {
         viewModel.getMessage().observe(this, msg -> {
             if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();

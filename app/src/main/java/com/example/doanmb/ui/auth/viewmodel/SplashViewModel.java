@@ -13,17 +13,23 @@ public class SplashViewModel extends ViewModel {
     private final FirebaseAuth mAuth = FirebaseAuth.getInstance();
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+    // Đích điều hướng sau màn splash (ADMIN / DRIVER / MAIN).
     private final MutableLiveData<AuthDestination> destination = new MutableLiveData<>();
 
+    /** LiveData đích điều hướng; View quan sát để mở đúng màn theo vai trò. */
     public LiveData<AuthDestination> getDestination() {
         return destination;
     }
 
+    /** @return true nếu đã có phiên đăng nhập (không cần đăng nhập lại). */
     public boolean isLoggedIn() {
         return mAuth.getCurrentUser() != null;
     }
 
-    /** lấy vai trò của user hiện tại và điều hướng. */
+    /**
+     * Đọc vai trò của người dùng hiện tại trong Firestore rồi phát đích điều hướng.
+     * Không có phiên đăng nhập thì bỏ qua; lỗi đọc dữ liệu thì mặc định về màn chính (MAIN).
+     */
     public void resolveDestination() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
