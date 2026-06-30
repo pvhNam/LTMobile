@@ -213,10 +213,11 @@ public class DriverEarningsFragment extends Fragment {
                     for (QueryDocumentSnapshot d : snap) {
                         Timestamp done = d.getTimestamp("completedAt");
                         if (done == null) continue;
-                        long price = parsePrice(d.getString("carPrice"));
-                        long days  = "Thuê xe".equals(d.getString("type"))
-                                ? parseDays(d.getString("days")) : 1;
-                        completed.add(new double[]{done.toDate().getTime(), price * days});
+                        // Dùng totalAmount (số) — KHÔNG parse carPrice vì bài tài xế lưu chuỗi
+                        // "X đ/ngày · Y đ/km" → parse sẽ dính 2 số thành số khổng lồ.
+                        Long ta = d.getLong("totalAmount");
+                        long amount = ta != null ? ta : 0L;
+                        completed.add(new double[]{done.toDate().getTime(), amount});
                     }
                     refreshPeriod();
                     refreshChart();

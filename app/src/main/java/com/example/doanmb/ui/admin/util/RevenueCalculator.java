@@ -29,19 +29,33 @@ public final class RevenueCalculator {
 
     /** Hoa hồng app thu được từ một đơn hàng. */
     public static long commission(DocumentSnapshot doc) {
-        String type  = doc.getString("type");
-        long   price = parsePrice(doc.getString("carPrice"));
-        if ("Thuê xe".equals(type)) {
-            long days = 1;
-            String daysStr = doc.getString("days");
-            if (daysStr != null && !daysStr.isEmpty()) {
-                try {
-                    long d = Long.parseLong(daysStr.replaceAll("[^0-9]", ""));
-                    if (d > 0) days = d;
-                } catch (NumberFormatException ignored) {}
-            }
-            return (long) (price * days * RENTAL_COMMISSION);
+        String type   = doc.getString("type");
+        long   amount = orderAmount(doc);
+        // Mua xe → 3% giá bán; còn lại (Thuê xe / Có tài xế) đều là cho thuê → 15%.
+        if ("Mua xe".equals(type)) {
+            return (long) (amount * SALE_COMMISSION);
         }
-        return (long) (price * SALE_COMMISSION);
+        return (long) (amount * RENTAL_COMMISSION);
+    }
+
+    /**
+     * Số tiền của đơn: ưu tiên totalAmount (số). Chỉ fallback parse carPrice cho đơn cũ
+     * thiếu totalAmount — và bỏ qua đơn "Có tài xế" vì carPrice lưu chuỗi gồm 2 số
+     * ("X đ/ngày · Y đ/km") sẽ parse sai thành số khổng lồ.
+     */
+    private static long orderAmount(DocumentSnapshot doc) {
+        Long ta = doc.getLong("totalAmount");
+        if (ta != null && ta > 0) return ta;
+        if ("Có tài xế".equals(doc.getString("type"))) return 0;
+        long price = parsePrice(doc.getString("carPrice"));
+        long days = 1;
+        String daysStr = doc.getString("days");
+        if (daysStr != null && !daysStr.isEmpty()) {
+            try {
+                long d = Long.parseLong(daysStr.replaceAll("[^0-9]", ""));
+                if (d > 0) days = d;
+            } catch (NumberFormatException ignored) {}
+        }
+        return price * days;
     }
 }

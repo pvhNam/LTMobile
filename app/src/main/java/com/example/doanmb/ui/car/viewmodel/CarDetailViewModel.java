@@ -481,7 +481,16 @@ public class CarDetailViewModel extends ViewModel {
             return;
         }
 
-        long pricePerDay = parseMoney(car != null ? car.getPrice() : null);
+        // Dùng giá/ngày đã load (Long) — KHÔNG parse chuỗi car.getPrice() vì bài tài xế lưu
+        // chuỗi gồm cả giá ngày lẫn giá km ("X đ/ngày · Y đ/km") → parse sẽ dính 2 số thành số khổng lồ.
+        long pricePerDay = detailPricePerDay();
+        if (pricePerDay <= 0 && !isDriverType(carType)) {
+            pricePerDay = parseMoney(car != null ? car.getPrice() : null);
+        }
+        if (pricePerDay <= 0) {
+            message.setValue("Không lấy được giá thuê theo ngày. Vui lòng thử lại.");
+            return;
+        }
         long total = pricePerDay * form.days;
         boolean needDeposit = WalletRepository.requiresDeposit(form.days);
         long deposit = needDeposit ? WalletRepository.deposit(total) : 0L;
@@ -604,6 +613,11 @@ public class CarDetailViewModel extends ViewModel {
     private long detailPricePerKm() {
         CarDetail d = detail.getValue();
         return d != null ? d.pricePerKm : 0L;
+    }
+
+    private long detailPricePerDay() {
+        CarDetail d = detail.getValue();
+        return d != null ? d.pricePerDay : 0L;
     }
 
     private void emitOrderSent(Kind kind, String orderId, String customerName,

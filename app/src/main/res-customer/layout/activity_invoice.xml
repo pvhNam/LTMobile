@@ -4,7 +4,7 @@
     android:id="@+id/scroll_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F6F8"
+    android:background="#EEF1F5"
     android:clipToPadding="false"
     android:fillViewport="true">
 
@@ -45,221 +45,276 @@
                 android:textStyle="bold" />
         </RelativeLayout>
 
-        <LinearLayout
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:padding="24dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🧾"
-                android:textSize="64sp" />
-
-            <TextView
-                android:id="@+id/tv_invoice_car"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Tên xe"
-                android:textColor="#2A70DE"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tv_invoice_owner"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Chủ xe: —"
-                android:textColor="#777777"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
-            android:orientation="vertical"
-            android:padding="18dp">
+            android:layout_margin="16dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="3dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
-                <TextView
-                    android:layout_width="0dp"
+                <!-- ===== Đầu phiếu: mã, ngày, trạng thái ===== -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Tiền thuê xe"
-                    android:textColor="#424242"
-                    android:textSize="15sp" />
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="20dp"
+                    android:paddingTop="22dp"
+                    android:paddingBottom="18dp">
 
-                <TextView
-                    android:id="@+id/tv_invoice_rental"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🧾"
+                        android:textSize="48sp" />
+
+                    <TextView
+                        android:id="@+id/tv_invoice_car"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center"
+                        android:text="Tên xe"
+                        android:textColor="#2A70DE"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_invoice_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="● CHƯA THANH TOÁN"
+                        android:textColor="#E67700"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_invoice_code"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="Mã hóa đơn: #------"
+                        android:textColor="#6B7280"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tv_invoice_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Ngày lập: —"
+                        android:textColor="#9AA0A6"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginHorizontal="18dp"
+                    android:background="#ECECEC" />
+
+                <!-- ===== Thông tin thuê ===== -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="0 đ"
-                    android:textColor="#1A1A1A"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="THÔNG TIN THUÊ"
+                        android:textColor="#9AA0A6"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.04" />
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Chủ xe" />
+                        <TextView android:id="@+id/tv_invoice_owner" style="@style/InvoiceRowValue" android:text="—" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Người thuê" />
+                        <TextView android:id="@+id/tv_invoice_payer" style="@style/InvoiceRowValue" android:text="—" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Số điện thoại" />
+                        <TextView android:id="@+id/tv_invoice_phone" style="@style/InvoiceRowValue" android:text="—" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Đơn giá" />
+                        <TextView android:id="@+id/tv_invoice_price_day" style="@style/InvoiceRowValue" android:text="—" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Thời gian thuê" />
+                        <TextView android:id="@+id/tv_invoice_period" style="@style/InvoiceRowValue" android:text="—" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginHorizontal="18dp"
+                    android:background="#ECECEC" />
+
+                <!-- ===== Chi tiết thanh toán ===== -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="4dp"
+                        android:text="CHI TIẾT THANH TOÁN"
+                        android:textColor="#9AA0A6"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.04" />
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Tiền thuê xe" />
+                        <TextView android:id="@+id/tv_invoice_rental" style="@style/InvoiceRowValue" android:text="0 đ" />
+                    </LinearLayout>
+
+                    <LinearLayout android:id="@+id/row_invoice_extend" style="@style/InvoiceRow"
+                        android:visibility="gone">
+                        <TextView android:id="@+id/tv_invoice_extend_label" style="@style/InvoiceRowLabel" android:text="Tiền gia hạn thêm" />
+                        <TextView android:id="@+id/tv_invoice_extend" style="@style/InvoiceRowValue" android:text="0 đ" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView android:id="@+id/tv_invoice_late_label" style="@style/InvoiceRowLabel" android:text="Phí phạt trễ" />
+                        <TextView android:id="@+id/tv_invoice_penalty" style="@style/InvoiceRowValue"
+                            android:textColor="#E53935" android:text="0 đ" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/row_choose_voucher"
+                        style="@style/InvoiceRow"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:visibility="gone">
+
+                        <TextView style="@style/InvoiceRowLabel" android:text="🎟️ Voucher giảm giá" />
+                        <TextView android:id="@+id/tv_invoice_voucher_label" style="@style/InvoiceRowValue"
+                            android:textColor="#2A70DE" android:text="Chọn voucher ›" />
+                    </LinearLayout>
+
+                    <LinearLayout android:id="@+id/row_invoice_discount" style="@style/InvoiceRow"
+                        android:visibility="gone">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Giảm giá voucher" />
+                        <TextView android:id="@+id/tv_invoice_discount" style="@style/InvoiceRowValue"
+                            android:textColor="#2E7D32" android:text="-0 đ" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="12dp"
+                        android:background="#ECECEC" />
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Tổng tiền thuê" />
+                        <TextView android:id="@+id/tv_invoice_total" style="@style/InvoiceRowValue" android:text="0 đ" />
+                    </LinearLayout>
+
+                    <LinearLayout android:id="@+id/row_invoice_prepaid" style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Đã trả trước (cọc 50%)" />
+                        <TextView android:id="@+id/tv_invoice_prepaid" style="@style/InvoiceRowValue"
+                            android:textColor="#2E7D32" android:text="-0 đ" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="12dp"
+                        android:background="#E0E0E0" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="CÒN LẠI PHẢI TRẢ"
+                            android:textColor="#1A1A1A"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_invoice_remaining"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0 đ"
+                            android:textColor="#2A70DE"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout style="@style/InvoiceRow">
+                        <TextView style="@style/InvoiceRowLabel" android:text="Phương thức" />
+                        <TextView android:id="@+id/tv_invoice_method" style="@style/InvoiceRowValue" android:text="—" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginHorizontal="18dp"
+                    android:background="#ECECEC" />
+
+                <!-- ===== Ghi chú / lý do ===== -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="GHI CHÚ"
+                        android:textColor="#9AA0A6"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.04" />
+
+                    <TextView
+                        android:id="@+id/tv_invoice_reason"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:lineSpacingExtra="4dp"
+                        android:text="—"
+                        android:textColor="#424242"
+                        android:textSize="14sp" />
+                </LinearLayout>
             </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tv_invoice_late_label"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Phí phạt trễ"
-                    android:textColor="#424242"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/tv_invoice_penalty"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0 đ"
-                    android:textColor="#E53935"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/row_choose_voucher"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:background="?android:attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:drawablePadding="8dp"
-                    android:gravity="center_vertical"
-                    android:text="🎟️ Voucher giảm giá"
-                    android:textColor="#424242"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/tv_invoice_voucher_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
-                    android:text="Chọn voucher ›"
-                    android:textColor="#2A70DE"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/row_invoice_discount"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="horizontal"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Giảm giá voucher"
-                    android:textColor="#424242"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/tv_invoice_discount"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="-0 đ"
-                    android:textColor="#2E7D32"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="14dp"
-                android:background="#E0E0E0" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Tổng cần thanh toán"
-                    android:textColor="#1A1A1A"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_invoice_total"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0 đ"
-                    android:textColor="#2A70DE"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
-            android:orientation="vertical"
-            android:padding="18dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Lý do"
-                android:textColor="#2A70DE"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tv_invoice_reason"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:lineSpacingExtra="4dp"
-                android:text="—"
-                android:textColor="#424242"
-                android:textSize="15sp" />
-        </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <View
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_height="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_pay_invoice"

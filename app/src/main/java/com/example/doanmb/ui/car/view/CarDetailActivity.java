@@ -720,7 +720,9 @@ public class CarDetailActivity extends AppCompatActivity {
 
     private void updateDepositInfo() {
         if (tvDepositInfo == null) return;
-        long pricePerDayLocal = parseMoney(car != null ? car.getPrice() : null);
+        // Dùng giá/ngày đã load (đúng cho cả xe thường lẫn tài xế). KHÔNG parse car.getPrice()
+        // vì bài tài xế lưu chuỗi gồm cả giá ngày + giá km → parse sẽ ra số khổng lồ.
+        long pricePerDayLocal = pricePerDay;
         int days = parseDays(etRentDays != null ? etRentDays.getText().toString() : "");
 
         if (pricePerDayLocal <= 0 || days <= 0) {
@@ -733,7 +735,9 @@ public class CarDetailActivity extends AppCompatActivity {
         sb.append("Tổng tiền thuê (").append(days).append(" ngày): ").append(money(total)).append(" đ\n");
         if (WalletRepository.requiresDeposit(days)) {
             long deposit = WalletRepository.deposit(total);
-            sb.append("Đặt cọc giữ xe (50%, trừ vào ví): ").append(money(deposit)).append(" đ\n");
+            long rest = total - deposit;
+            sb.append("Trả trước 50% khi đặt (trừ vào ví): ").append(money(deposit)).append(" đ\n");
+            sb.append("Còn lại trả khi trả xe: ").append(money(rest)).append(" đ\n");
             sb.append("Số dư ví hiện tại: ").append(money(walletBalance)).append(" đ");
             if (walletBalance < deposit) sb.append("\n⚠️ Số dư không đủ — vui lòng nhờ admin nạp tiền.");
         } else {
@@ -1012,7 +1016,7 @@ public class CarDetailActivity extends AppCompatActivity {
         btnCancel.setAlpha(0.5f);
         btnConfirm.setAlpha(0.5f);
 
-        final CountDownTimer timer = new CountDownTimer(10_000, 1_000) {
+        final CountDownTimer timer = new CountDownTimer(3_000, 1_000) {
             @Override public void onTick(long ms) {
                 tvCountdown.setText("⏳ Vui lòng đọc kỹ điều khoản… còn " + (ms / 1000 + 1) + " giây");
             }

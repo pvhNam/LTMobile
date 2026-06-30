@@ -29,9 +29,11 @@ import java.util.Locale;
 /** Màn hóa đơn thuê xe: hiện chi tiết (tiền thuê + phạt trễ + lý do), cho khách chọn voucher giảm giá và thanh toán. */
 public class InvoiceActivity extends AppCompatActivity {
 
-    private TextView tvCar, tvOwner, tvRental, tvPenalty, tvTotal, tvReason, tvLateLabel;
-    private TextView tvDiscount, tvVoucherLabel;
-    private LinearLayout rowChooseVoucher, rowDiscount;
+    private TextView tvCar, tvOwner, tvPayer, tvRental, tvPenalty, tvTotal, tvReason, tvLateLabel;
+    private TextView tvDiscount, tvVoucherLabel, tvPrepaid, tvRemaining;
+    private TextView tvCode, tvDate, tvStatus, tvPhone, tvPriceDay, tvPeriod, tvMethod;
+    private TextView tvExtend, tvExtendLabel;
+    private LinearLayout rowChooseVoucher, rowDiscount, rowPrepaid, rowExtend;
     private MaterialButton btnPay;
 
     private InvoiceViewModel viewModel;
@@ -61,6 +63,7 @@ public class InvoiceActivity extends AppCompatActivity {
 
         tvCar      = findViewById(R.id.tv_invoice_car);
         tvOwner    = findViewById(R.id.tv_invoice_owner);
+        tvPayer    = findViewById(R.id.tv_invoice_payer);
         tvRental   = findViewById(R.id.tv_invoice_rental);
         tvPenalty  = findViewById(R.id.tv_invoice_penalty);
         tvTotal    = findViewById(R.id.tv_invoice_total);
@@ -69,8 +72,21 @@ public class InvoiceActivity extends AppCompatActivity {
         btnPay     = findViewById(R.id.btn_pay_invoice);
         tvDiscount       = findViewById(R.id.tv_invoice_discount);
         tvVoucherLabel   = findViewById(R.id.tv_invoice_voucher_label);
+        tvPrepaid        = findViewById(R.id.tv_invoice_prepaid);
+        tvRemaining      = findViewById(R.id.tv_invoice_remaining);
+        tvCode           = findViewById(R.id.tv_invoice_code);
+        tvDate           = findViewById(R.id.tv_invoice_date);
+        tvStatus         = findViewById(R.id.tv_invoice_status);
+        tvPhone          = findViewById(R.id.tv_invoice_phone);
+        tvPriceDay       = findViewById(R.id.tv_invoice_price_day);
+        tvPeriod         = findViewById(R.id.tv_invoice_period);
+        tvMethod         = findViewById(R.id.tv_invoice_method);
+        tvExtend         = findViewById(R.id.tv_invoice_extend);
+        tvExtendLabel    = findViewById(R.id.tv_invoice_extend_label);
         rowChooseVoucher = findViewById(R.id.row_choose_voucher);
         rowDiscount      = findViewById(R.id.row_invoice_discount);
+        rowPrepaid       = findViewById(R.id.row_invoice_prepaid);
+        rowExtend        = findViewById(R.id.row_invoice_extend);
 
         if (rowChooseVoucher != null) {
             rowChooseVoucher.setOnClickListener(v -> showVoucherPicker());
@@ -115,8 +131,30 @@ public class InvoiceActivity extends AppCompatActivity {
     private void render(InvoiceViewModel.Invoice inv) {
         if (inv == null) return;
         tvCar.setText(inv.carName != null ? inv.carName : "Xe");
-        tvOwner.setText("Chủ xe: " + (inv.ownerName != null && !inv.ownerName.isEmpty() ? inv.ownerName : "—"));
+        tvOwner.setText(inv.ownerName != null && !inv.ownerName.isEmpty() ? inv.ownerName : "—");
+        if (tvPayer != null) tvPayer.setText(inv.payerName != null && !inv.payerName.isEmpty() ? inv.payerName : "—");
+        if (tvPhone != null) tvPhone.setText(inv.payerPhone != null && !inv.payerPhone.isEmpty() ? inv.payerPhone : "—");
+        if (tvCode != null) tvCode.setText("Mã hóa đơn: #" + (inv.code != null ? inv.code : "------"));
+        if (tvDate != null) tvDate.setText("Ngày lập: " + (inv.issuedAt != null ? inv.issuedAt : "—"));
+        if (tvPriceDay != null) tvPriceDay.setText(inv.pricePerDayText != null ? inv.pricePerDayText : "—");
+        if (tvPeriod != null) tvPeriod.setText(inv.periodText != null ? inv.periodText : "—");
+        if (tvMethod != null) tvMethod.setText(inv.methodLabel != null ? inv.methodLabel : "—");
+        if (tvStatus != null) {
+            if (inv.completed) {
+                tvStatus.setText("✓ ĐÃ THANH TOÁN");
+                tvStatus.setTextColor(0xFF2E7D32);
+            } else {
+                tvStatus.setText("● CHƯA THANH TOÁN");
+                tvStatus.setTextColor(0xFFE67700);
+            }
+        }
         tvRental.setText(money(inv.rental));
+        if (rowExtend != null) rowExtend.setVisibility(inv.extendAmount > 0 ? View.VISIBLE : View.GONE);
+        if (tvExtendLabel != null) {
+            tvExtendLabel.setText(inv.extendDays > 0
+                    ? "Tiền gia hạn thêm (" + inv.extendDays + " ngày)" : "Tiền gia hạn thêm");
+        }
+        if (tvExtend != null) tvExtend.setText(money(inv.extendAmount));
         tvLateLabel.setText(inv.lateDays > 0 ? "Phí phạt trễ (" + inv.lateDays + " ngày)" : "Phí phạt trễ");
         tvPenalty.setText(money(inv.penalty));
         tvTotal.setText(money(inv.invoiceTotal));
@@ -128,6 +166,17 @@ public class InvoiceActivity extends AppCompatActivity {
         }
         if (tvDiscount != null && inv.discount > 0) {
             tvDiscount.setText("-" + money(inv.discount));
+        }
+
+        // Tiền cọc đã trả trước (trừ vào tổng) → chỉ hiện khi đơn có cọc.
+        if (rowPrepaid != null) {
+            rowPrepaid.setVisibility(inv.prepaid > 0 ? View.VISIBLE : View.GONE);
+        }
+        if (tvPrepaid != null) {
+            tvPrepaid.setText("-" + money(inv.prepaid));
+        }
+        if (tvRemaining != null) {
+            tvRemaining.setText(money(inv.remaining));
         }
 
         if (inv.completed) {
@@ -165,12 +214,12 @@ public class InvoiceActivity extends AppCompatActivity {
                 .show();
     }
 
-    /** Nhãn nút thanh toán theo phương thức đã chọn lúc đặt thuê. */
+    /** Nhãn nút thanh toán theo phương thức đã chọn lúc đặt thuê — thu phần CÒN LẠI. */
     private String payButtonLabel(InvoiceViewModel.Invoice inv) {
         switch (inv.paymentMethod != null ? inv.paymentMethod : "cash") {
-            case "vnpay":  return "Chuyển khoản VNPay " + money(inv.invoiceTotal);
-            case "wallet": return "Thanh toán bằng ví " + money(inv.invoiceTotal);
-            default:        return "Xác nhận đã trả tiền mặt " + money(inv.invoiceTotal);
+            case "vnpay":  return "Chuyển khoản VNPay " + money(inv.remaining);
+            case "wallet": return "Thanh toán bằng ví " + money(inv.remaining);
+            default:        return "Xác nhận đã trả tiền mặt " + money(inv.remaining);
         }
     }
 

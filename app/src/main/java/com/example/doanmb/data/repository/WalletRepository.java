@@ -36,7 +36,7 @@ public final class WalletRepository {
 
     public static final double DEPOSIT_RATE    = 0.50; // % tổng đơn phải đặt cọc qua ví
     public static final double COMMISSION_RATE = 0.15; // % hoa hồng app lấy trên tiền cọc
-    public static final int    LONG_BOOKING_MIN_DAYS = 2; // thuê từ mấy ngày trở lên thì bắt buộc đặt cọc
+    public static final int    LONG_BOOKING_MIN_DAYS = 1; // mọi đơn thuê theo ngày đều phải đặt cọc trước
 
     private static final String COL_USERS        = "users";
     private static final String COL_TRANSACTIONS = "transactions";

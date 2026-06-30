@@ -116,6 +116,10 @@ public class ManageFragment extends Fragment {
         viewModel.getNotifyBuyerEvent().observe(getViewLifecycleOwner(), e -> {
             if (e != null) notifyBuyerOrderStatus(e.orderId, e.type);
         });
+
+        viewModel.getNotifySellerEvent().observe(getViewLifecycleOwner(), e -> {
+            if (e != null) notifySellerOrderStatus(e.orderId, e.type);
+        });
     }
 
     private void initViews(View view) {
@@ -168,7 +172,7 @@ public class ManageFragment extends Fragment {
                 new RequestAdapter.OnActionListener() {
             @Override
             public void onConfirm(String orderId, String carId, Map<String, Object> order) {
-                viewModel.confirmRequest(orderId, carId);
+                viewModel.confirmRequest(orderId, carId, order);
             }
             @Override
             public void onReject(String orderId, String carId) {
@@ -214,7 +218,10 @@ public class ManageFragment extends Fragment {
                 .setMessage((inv.lateDays > 0
                         ? "⚠️ Khách trả TRỄ " + inv.lateDays + " ngày.\nPhí phạt: " + money(inv.penalty) + "\n"
                         : "Khách trả đúng hạn.\n")
-                        + "Tiền thuê: " + money(inv.total) + "\nTổng hóa đơn: " + money(inv.invoiceTotal))
+                        + "Tiền thuê: " + money(inv.total) + "\n"
+                        + (inv.extendAmount > 0
+                            ? "Gia hạn thêm " + inv.extendDays + " ngày: " + money(inv.extendAmount) + "\n" : "")
+                        + "Tổng hóa đơn: " + money(inv.invoiceTotal))
                 .setPositiveButton("Gửi hóa đơn", (d, w) -> viewModel.sendInvoice(orderId, order, inv))
                 .setNegativeButton("Đóng", null)
                 .show();
@@ -273,6 +280,40 @@ public class ManageFragment extends Fragment {
                                         buyerId,
                                         myUid,
                                         sellerName,
+                                        carName != null ? carName : "",
+                                        carId   != null ? carId   : "",
+                                        type,
+                                        orderId
+                                );
+                            });
+                });
+    }
+
+    /** Khách (người thuê) gửi sự kiện tới chủ xe — vd yêu cầu gia hạn. Ghi notification + đẩy FCM. */
+    private void notifySellerOrderStatus(String orderId, String type) {
+        db.collection("orders").document(orderId).get()
+                .addOnSuccessListener(snap -> {
+                    if (snap == null || !snap.exists()) return;
+
+                    String sellerId = snap.getString("sellerId");
+                    String carName  = snap.getString("carName");
+                    String carId    = snap.getString("carId");
+                    if (sellerId == null || sellerId.isEmpty()) return;
+
+                    FirebaseUser me = FirebaseAuth.getInstance().getCurrentUser();
+                    String myUid = me != null ? me.getUid() : "";
+
+                    db.collection("users").document(myUid).get()
+                            .addOnSuccessListener(userSnap -> {
+                                if (getContext() == null) return;
+                                String senderName = userSnap.getString("name");
+                                if (senderName == null || senderName.isEmpty()) senderName = "Khách thuê";
+
+                                ChatNotificationHelper.sendOrderNotification(
+                                        requireContext(),
+                                        sellerId,
+                                        myUid,
+                                        senderName,
                                         carName != null ? carName : "",
                                         carId   != null ? carId   : "",
                                         type,

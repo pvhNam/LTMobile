@@ -39,6 +39,7 @@ public class ManageViewModel extends ViewModel {
     /** Kết quả tính hoá đơn khi khách trả xe (để View dựng hộp thoại xác nhận). */
     public static class ReturnInvoice {
         public long lateDays, penalty, total, invoiceTotal;
+        public long extendDays, extendAmount; // gia hạn thêm (ngày · tiền)
         public String reason;
     }
 
@@ -53,12 +54,14 @@ public class ManageViewModel extends ViewModel {
     private final MutableLiveData<String> message = new MutableLiveData<>();
     private final MutableLiveData<String> cancelReminderEvent = new MutableLiveData<>();
     private final MutableLiveData<NotifyEvent> notifyBuyerEvent = new MutableLiveData<>();
+    private final MutableLiveData<NotifyEvent> notifySellerEvent = new MutableLiveData<>();
 
     public LiveData<List<Car>> getMyPosts() { return myPosts; }
     public LiveData<List<OrderItem>> getRequests() { return requests; }
     public LiveData<String> getMessage() { return message; }
     public LiveData<String> getCancelReminderEvent() { return cancelReminderEvent; }
     public LiveData<NotifyEvent> getNotifyBuyerEvent() { return notifyBuyerEvent; }
+    public LiveData<NotifyEvent> getNotifySellerEvent() { return notifySellerEvent; }
 
     private final String currentUserId;
     private boolean started = false;
@@ -170,10 +173,12 @@ public class ManageViewModel extends ViewModel {
     // ── Nghiệp vụ chủ xe ───────────────────────────────────────────────────────
 
     /** Xác nhận yêu cầu → xe "sold", đơn "confirmed". */
-    public void confirmRequest(String orderId, String carId) {
+    public void confirmRequest(String orderId, String carId, Map<String, Object> order) {
         cancelReminderEvent.setValue(orderId);
         OrderRepository.updateStatus(orderId, "confirmed");
-        if (carId != null && !carId.isEmpty()) {
+        // Chuyến theo quãng đường (tài xế) KHÔNG khoá bài đăng — tài xế vẫn nhận chuyến khác.
+        boolean isTrip = order != null && "distance".equals(order.get("rentMode"));
+        if (!isTrip && carId != null && !carId.isEmpty()) {
             CarRepository.setStatus(carId, "sold", new CarRepository.OnResult() {
                 @Override public void onSuccess() {
                     message.setValue("✅ Đã xác nhận! Xe sẽ được ẩn khỏi danh sách.");
@@ -209,6 +214,8 @@ public class ManageViewModel extends ViewModel {
     public ReturnInvoice computeReturnInvoice(Map<String, Object> order) {
         long days        = parseIntSafe((String) order.get("days"));
         long total       = toLong(order.get("totalAmount"));
+        long extendDays   = toLong(order.get("extendDays"));
+        long extendAmount = toLong(order.get("extendAmount"));
         long pricePerDay = days > 0 ? total / days : total;
         long lateDays    = computeLateDays(order);
         long penalty     = 0;
@@ -219,20 +226,33 @@ public class ManageViewModel extends ViewModel {
         inv.lateDays = lateDays;
         inv.penalty = penalty;
         inv.total = total;
-        inv.invoiceTotal = total + penalty;
-        inv.reason = lateDays > 0
-                ? "Trả xe trễ " + lateDays + " ngày. Hóa đơn gồm tiền thuê và phí phạt (150% ngày đầu, 200% các ngày sau)."
-                : "Thanh toán tiền thuê xe khi kết thúc chuyến.";
+        inv.extendDays = extendDays;
+        inv.extendAmount = extendAmount;
+        inv.invoiceTotal = total + extendAmount + penalty;
+        inv.reason = (lateDays > 0
+                ? "Trả xe trễ " + lateDays + " ngày. Hóa đơn gồm tiền thuê"
+                : "Thanh toán tiền thuê xe khi kết thúc chuyến")
+                + (extendDays > 0 ? ", có gia hạn thêm " + extendDays + " ngày" : "")
+                + (lateDays > 0 ? " và phí phạt (150% ngày đầu, 200% các ngày sau)." : ".");
         return inv;
     }
 
     /** Chủ xe gửi hoá đơn cho khách (sau khi xác nhận trong hộp thoại). */
     public void sendInvoice(String orderId, Map<String, Object> order, ReturnInvoice inv) {
+        // Chỉ xuất hoá đơn cho đơn đang "confirmed" → tránh xuất lại cho đơn đã hoàn tất /
+        // đang chờ thanh toán (gây thu tiền chủ xe 2 lần).
+        String st = (String) order.get("status");
+        if (st != null && !"confirmed".equals(st)) {
+            message.setValue("Đơn không ở trạng thái có thể xuất hoá đơn.");
+            return;
+        }
         Map<String, Object> up = new HashMap<>();
         up.put("status", "awaiting_payment");
         up.put("returnedAt", Timestamp.now());
         up.put("lateDays", inv.lateDays);
         up.put("penaltyAmount", inv.penalty);
+        up.put("extendDays", inv.extendDays);
+        up.put("extendAmount", inv.extendAmount);
         up.put("invoiceTotal", inv.invoiceTotal);
         up.put("invoiceStatus", "unpaid");
         up.put("invoiceReason", inv.reason);
@@ -273,27 +293,32 @@ public class ManageViewModel extends ViewModel {
 
     public void extendOrder(String orderId, Map<String, Object> order, int extra) {
         if (extra <= 0) { message.setValue("Số ngày không hợp lệ"); return; }
-        int oldDays = parseIntSafe((String) order.get("days"));
-        int newDays = oldDays + extra;
+
+        // KHÔNG đổi "days"/"totalAmount" gốc (để giữ đúng giá/ngày = totalAmount/days).
+        // Tiền gia hạn được cộng dồn riêng vào extendDays/extendAmount → hiện thành dòng
+        // "Tiền gia hạn thêm" trong hóa đơn khi trả xe.
+        int  origDays     = parseIntSafe((String) order.get("days"));
+        long total        = toLong(order.get("totalAmount"));
+        long pricePerDay  = origDays > 0 ? total / origDays : total;
+        long addAmount    = pricePerDay * extra;
+
         Map<String, Object> up = new HashMap<>();
-        up.put("days", String.valueOf(newDays));
+        up.put("extendDays",   toLong(order.get("extendDays")) + extra);
+        up.put("extendAmount", toLong(order.get("extendAmount")) + addAmount);
         up.put("extendRequested", true);
         OrderRepository.updateFields(orderId, up);
 
-        String sellerId = (String) order.get("sellerId");
-        Object carName = order.get("carName");
-        OrderRepository.writeNotification(sellerId, currentUserId, "order_sent", "Yêu cầu gia hạn",
-                "Khách xin gia hạn thêm " + extra + " ngày (tổng " + newDays + " ngày) cho "
-                        + (carName != null ? carName : "xe"), orderId);
-        message.setValue("✅ Đã gửi yêu cầu gia hạn cho chủ xe.");
+        // Báo cho chủ xe (ghi notification + đẩy FCM qua View).
+        notifySellerEvent.setValue(new NotifyEvent(orderId, "order_extend"));
+        message.setValue("✅ Đã gửi yêu cầu gia hạn thêm " + extra + " ngày (+" + money(addAmount) + ") cho chủ xe.");
     }
 
     // ── Helpers (logic tính toán) ─────────────────────────────────────────────────
 
-    /** Số ngày trễ = (hôm nay) - (ngày bắt đầu + số ngày thuê), làm tròn lên; 0 nếu chưa trễ. */
+    /** Số ngày trễ = (hôm nay) - (ngày bắt đầu + số ngày thuê + ngày gia hạn), làm tròn lên; 0 nếu chưa trễ. */
     private long computeLateDays(Map<String, Object> order) {
-        int days = parseIntSafe((String) order.get("days"));
-        long dueMillis = parseStartMillis(order) + (long) days * 86_400_000L;
+        long totalDays = parseIntSafe((String) order.get("days")) + toLong(order.get("extendDays"));
+        long dueMillis = parseStartMillis(order) + totalDays * 86_400_000L;
         long now = System.currentTimeMillis();
         if (now <= dueMillis) return 0;
         return (now - dueMillis + 86_400_000L - 1) / 86_400_000L;

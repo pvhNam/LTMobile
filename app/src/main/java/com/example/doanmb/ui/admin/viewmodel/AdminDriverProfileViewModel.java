@@ -87,6 +87,8 @@ public class AdminDriverProfileViewModel extends ViewModel {
     private long orderAmount(DocumentSnapshot o) {
         Object total = o.get("totalAmount");
         if (total instanceof Number) return ((Number) total).longValue();
+        // Đơn "Có tài xế" lưu carPrice dạng "X đ/ngày · Y đ/km" → parse sẽ ra số khổng lồ, bỏ qua.
+        if ("Có tài xế".equals(o.getString("type"))) return 0;
         String cp = o.getString("carPrice");
         if (cp != null) {
             String d = cp.replaceAll("[^0-9]", "");

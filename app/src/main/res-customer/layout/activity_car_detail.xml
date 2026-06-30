@@ -542,36 +542,55 @@
                     android:id="@+id/toggle_payment_method"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="6dp"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="8dp"
                     app:selectionRequired="true"
                     app:singleSelection="true">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_pay_cash"
                         style="?attr/materialButtonOutlinedStyle"
-                        android:layout_width="0dp"
-                        android:layout_height="46dp"
-                        android:layout_weight="1"
-                        android:textSize="12sp"
-                        android:text="Tiền mặt" />
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:gravity="center_vertical|start"
+                        android:textAlignment="textStart"
+                        android:textAllCaps="false"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
+                        android:textSize="14sp"
+                        android:text="💵    Tiền mặt khi nhận xe" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_pay_vnpay"
                         style="?attr/materialButtonOutlinedStyle"
-                        android:layout_width="0dp"
-                        android:layout_height="46dp"
-                        android:layout_weight="1"
-                        android:textSize="12sp"
-                        android:text="Chuyển khoản" />
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:gravity="center_vertical|start"
+                        android:textAlignment="textStart"
+                        android:textAllCaps="false"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
+                        android:textSize="14sp"
+                        android:text="🏦    Chuyển khoản qua VNPay" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_pay_wallet"
                         style="?attr/materialButtonOutlinedStyle"
-                        android:layout_width="0dp"
-                        android:layout_height="46dp"
-                        android:layout_weight="1"
-                        android:textSize="12sp"
-                        android:text="Ví" />
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:gravity="center_vertical|start"
+                        android:textAlignment="textStart"
+                        android:textAllCaps="false"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
+                        android:textSize="14sp"
+                        android:text="👛    Ví CarVIA" />
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
                 <TextView android:id="@+id/tv_payment_method_hint"

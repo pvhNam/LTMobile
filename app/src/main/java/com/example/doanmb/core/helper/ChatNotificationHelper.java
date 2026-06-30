@@ -200,6 +200,10 @@ public final class ChatNotificationHelper {
                 title = "❌ Yêu cầu bị từ chối";
                 body  = "Đơn của bạn cho xe \"" + safe(carName) + "\" đã bị từ chối.";
                 break;
+            case "order_extend":
+                title = "⏳ Yêu cầu gia hạn thuê";
+                body  = safe(senderName) + " muốn gia hạn thuê xe \"" + safe(carName) + "\".";
+                break;
             default: // order_sent
                 title = "📋 Yêu cầu mới từ " + safe(senderName);
                 body  = safe(senderName) + " muốn đặt xe \"" + safe(carName) + "\" của bạn.";
