@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:maxHeight="460dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <EditText
+            android:id="@+id/et_voucher_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Tên voucher (vd: Giảm 10% tối đa 50k)"
+            android:inputType="text"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/et_voucher_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Mô tả ngắn"
+            android:inputType="text"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Loại giảm giá"
+            android:textColor="#757575"
+            android:textSize="12sp"
+            android:layout_marginTop="12dp" />
+
+        <RadioGroup
+            android:id="@+id/rg_voucher_type"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rb_voucher_percent"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Phần trăm (%)"
+                android:textSize="13sp" />
+
+            <RadioButton
+                android:id="@+id/rb_voucher_fixed"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Số tiền (VNĐ)"
+                android:textSize="13sp" />
+        </RadioGroup>
+
+        <EditText
+            android:id="@+id/et_voucher_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Giá trị giảm (% hoặc VNĐ)"
+            android:inputType="numberDecimal"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/et_voucher_max_discount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Giảm tối đa VNĐ (0 = không giới hạn, chỉ cho %)"
+            android:inputType="number"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/et_voucher_min_order"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Đơn tối thiểu VNĐ (0 = mọi đơn)"
+            android:inputType="number"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/et_voucher_points"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Số điểm cần để đổi"
+            android:inputType="number"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/et_voucher_quantity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Số lượng kho (để trống = không giới hạn)"
+            android:inputType="number"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/et_voucher_valid_days"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Số ngày hiệu lực sau khi đổi (0 = không hết hạn)"
+            android:inputType="number"
+            android:textSize="14sp" />
+
+        <CheckBox
+            android:id="@+id/cb_voucher_active"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mở cho khách đổi"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+</ScrollView>

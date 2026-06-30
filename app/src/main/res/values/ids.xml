@@ -7,4 +7,5 @@
     <item name="nav_admin_cars" type="id" />
     <item name="nav_admin_orders" type="id" />
     <item name="nav_admin_reports" type="id" />
+    <item name="nav_admin_vouchers" type="id" />
 </resources>

@@ -5,36 +5,39 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.adapter.UserAdminAdapter;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.example.doanmb.ui.admin.viewmodel.AdminDocList;
+import com.example.doanmb.ui.admin.viewmodel.AdminUsersViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/** Danh sách toàn bộ người dùng; bấm vào item để xem chi tiết. Dữ liệu từ {@link AdminUsersViewModel}. */
 public class AdminUsersFragment extends Fragment {
 
     private RecyclerView rvUsers;
     private TextView tvUserCount, tvEmpty;
     private UserAdminAdapter adapter;
-    private List<Map<String, Object>> userList = new ArrayList<>();
-    private List<String> userIds = new ArrayList<>();
-    private FirebaseFirestore db;
+    private final List<Map<String, Object>> userList = new ArrayList<>();
+    private final List<String> userIds = new ArrayList<>();
+    private AdminUsersViewModel viewModel;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_admin_users, container, false);
-        db = FirebaseFirestore.getInstance();
+        viewModel = new ViewModelProvider(this).get(AdminUsersViewModel.class);
 
         rvUsers = view.findViewById(R.id.rv_users);
         tvUserCount = view.findViewById(R.id.tv_user_count);
@@ -44,29 +47,27 @@ public class AdminUsersFragment extends Fragment {
         rvUsers.setLayoutManager(new LinearLayoutManager(getContext()));
         rvUsers.setAdapter(adapter);
 
-        loadUsers();
+        viewModel.getUsers().observe(getViewLifecycleOwner(), this::render);
+        viewModel.getError().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null) Toast.makeText(getContext(), "Lỗi tải người dùng: " + msg, Toast.LENGTH_SHORT).show();
+        });
+
+        viewModel.load();
         return view;
     }
 
-    private void loadUsers() {
-        db.collection("users").get().addOnSuccessListener(snapshots -> {
-            if (!isAdded()) return;
-            userList.clear();
-            userIds.clear();
-            for (QueryDocumentSnapshot doc : snapshots) {
-                userList.add(doc.getData());
-                userIds.add(doc.getId());
-            }
-            adapter.updateList(userList, userIds);
-            tvUserCount.setText(userList.size() + " người dùng");
-            tvEmpty.setVisibility(userList.isEmpty() ? View.VISIBLE : View.GONE);
-            rvUsers.setVisibility(userList.isEmpty() ? View.GONE : View.VISIBLE);
-        });
+    private void render(AdminDocList list) {
+        userList.clear(); userList.addAll(list.data);
+        userIds.clear(); userIds.addAll(list.ids);
+        adapter.updateList(userList, userIds);
+        tvUserCount.setText(list.size() + " người dùng");
+        tvEmpty.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
+        rvUsers.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        loadUsers();
+        viewModel.load();
     }
 }

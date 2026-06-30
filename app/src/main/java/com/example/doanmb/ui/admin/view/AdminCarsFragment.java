@@ -11,21 +11,21 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.ui.admin.adapter.CarAdminAdapter;
 import com.example.doanmb.ui.admin.util.AdminTab;
-import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
+import com.example.doanmb.ui.admin.viewmodel.AdminCarsViewModel;
+import com.example.doanmb.ui.admin.viewmodel.AdminDocList;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/** Quản lý tin đăng xe: lọc theo tab (chờ duyệt / tất cả), duyệt – từ chối – xoá qua {@link AdminCarsViewModel}. */
 public class AdminCarsFragment extends Fragment {
 
     private RecyclerView rvCars;
@@ -34,14 +34,13 @@ public class AdminCarsFragment extends Fragment {
     private CarAdminAdapter adapter;
     private final List<Map<String, Object>> carList = new ArrayList<>();
     private final List<String> carIds = new ArrayList<>();
-    private FirebaseFirestore db;
-    private boolean showingPending = true;
+    private AdminCarsViewModel viewModel;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_admin_cars, container, false);
-        db = FirebaseFirestore.getInstance();
+        viewModel = new ViewModelProvider(this).get(AdminCarsViewModel.class);
 
         view.findViewById(R.id.btn_cars_back).setOnClickListener(v -> {
             if (getParentFragmentManager().getBackStackEntryCount() > 0)
@@ -56,158 +55,49 @@ public class AdminCarsFragment extends Fragment {
 
         // Adapter dùng chung cho cả 2 tab — nút chỉ hiện khi xe ở trạng thái pending
         adapter = new CarAdminAdapter(carList, carIds, new CarAdminAdapter.OnCarActionListener() {
-            @Override public void onApprove(String carId) { approveCar(carId); }
-            @Override public void onReject(String carId)  { rejectCar(carId); }
-            @Override public void onDelete(String carId)  { deleteCar(carId); }
+            @Override public void onApprove(String carId) { viewModel.approveCar(carId); }
+            @Override public void onReject(String carId)  { viewModel.rejectCar(carId); }
+            @Override public void onDelete(String carId)  { viewModel.deleteCar(carId); }
             @Override public void onOpenDetail(String carId) { openDetail(carId); }
         });
         rvCars.setLayoutManager(new LinearLayoutManager(getContext()));
         rvCars.setAdapter(adapter);
 
-        btnTabPending.setOnClickListener(v -> switchTab(true));
-        btnTabAll.setOnClickListener(v -> switchTab(false));
+        btnTabPending.setOnClickListener(v -> viewModel.setTab(true));
+        btnTabAll.setOnClickListener(v -> viewModel.setTab(false));
 
-        applyTabStyle(true);
-        loadCars();
+        viewModel.getCars().observe(getViewLifecycleOwner(), this::render);
+        viewModel.getMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null) Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+        });
+
+        viewModel.load();
         return view;
     }
 
-    private void switchTab(boolean pending) {
-        showingPending = pending;
-        applyTabStyle(pending);
-        loadCars();
-    }
+    private void render(AdminDocList list) {
+        boolean pending = viewModel.isShowingPending();
+        AdminTab.select(pending ? btnTabPending : btnTabAll, btnTabPending, btnTabAll);
 
-    private void applyTabStyle(boolean pendingActive) {
-        AdminTab.select(pendingActive ? btnTabPending : btnTabAll, btnTabPending, btnTabAll);
-    }
-
-    private void loadCars() {
-        // Load tất cả xe rồi lọc client-side
-        // → bắt được cả xe cũ không có field "status" (null = chưa duyệt)
-        db.collection("cars").get().addOnSuccessListener(this::processDocs);
-    }
-
-    private void processDocs(QuerySnapshot snapshots) {
-        if (!isAdded()) return;
-        carList.clear();
-        carIds.clear();
-
-        // Lọc trước, rồi sắp xếp mới nhất lên đầu theo createdAt
-        List<QueryDocumentSnapshot> docs = new ArrayList<>();
-        for (QueryDocumentSnapshot doc : snapshots) {
-            String status = doc.getString("status");
-            if (showingPending) {
-                // Chờ duyệt: status == "pending" HOẶC chưa có field status
-                if (status == null || "pending".equals(status)) docs.add(doc);
-            } else {
-                docs.add(doc); // Tất cả xe
-            }
-        }
-
-        docs.sort((a, b) -> {
-            Timestamp ta = a.getTimestamp("createdAt");
-            Timestamp tb = b.getTimestamp("createdAt");
-            if (ta == null && tb == null) return 0;
-            if (ta == null) return 1;   // thiếu ngày -> xuống cuối
-            if (tb == null) return -1;
-            return tb.compareTo(ta);    // giảm dần: mới nhất trước
-        });
-
-        for (QueryDocumentSnapshot doc : docs) {
-            carList.add(doc.getData());
-            carIds.add(doc.getId());
-        }
-
+        carList.clear(); carList.addAll(list.data);
+        carIds.clear(); carIds.addAll(list.ids);
         adapter.updateList(carList, carIds);
 
-        String label = showingPending
-                ? carList.size() + " xe chờ duyệt"
-                : carList.size() + " xe";
-        tvCarCount.setText(label);
-
-        String emptyMsg = showingPending ? "Không có xe nào chờ duyệt ✓" : "Không có xe nào";
-        tvEmpty.setText(emptyMsg);
-        tvEmpty.setVisibility(carList.isEmpty() ? View.VISIBLE : View.GONE);
-        rvCars.setVisibility(carList.isEmpty() ? View.GONE : View.VISIBLE);
+        tvCarCount.setText(pending ? list.size() + " xe chờ duyệt" : list.size() + " xe");
+        tvEmpty.setText(pending ? "Không có xe nào chờ duyệt ✓" : "Không có xe nào");
+        tvEmpty.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
+        rvCars.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     private void openDetail(String carId) {
-        android.content.Intent intent =
-                new android.content.Intent(getContext(),
-                        AdminCarDetailActivity.class);
+        android.content.Intent intent = new android.content.Intent(getContext(), AdminCarDetailActivity.class);
         intent.putExtra(AdminCarDetailActivity.EXTRA_CAR_ID, carId);
         startActivity(intent);
-    }
-
-    private void approveCar(String carId) {
-        db.collection("cars").document(carId)
-                .update("status", "active")
-                .addOnSuccessListener(v -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "✅ Đã duyệt xe", Toast.LENGTH_SHORT).show();
-                    loadCars();
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
-    private void rejectCar(String carId) {
-        db.collection("cars").document(carId)
-                .update("status", "rejected")
-                .addOnSuccessListener(v -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "❌ Đã từ chối xe", Toast.LENGTH_SHORT).show();
-                    loadCars();
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
-    private void deleteCar(String carId) {
-        // Chặn xóa khi xe còn đơn đang xử lý -> tránh đơn mồ côi.
-        db.collection("orders").whereEqualTo("carId", carId).get()
-                .addOnSuccessListener(snap -> {
-                    if (!isAdded()) return;
-                    int active = 0;
-                    for (QueryDocumentSnapshot d : snap) {
-                        String st = d.getString("status");
-                        if ("pending".equals(st) || "confirmed".equals(st)) active++;
-                    }
-                    if (active > 0) {
-                        Toast.makeText(getContext(),
-                                "Không thể xóa: xe còn " + active + " đơn đang xử lý", Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    doDeleteCar(carId);
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "Lỗi kiểm tra đơn: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
-    private void doDeleteCar(String carId) {
-        db.collection("cars").document(carId)
-                .delete()
-                .addOnSuccessListener(v -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "🗑️ Đã xóa xe khỏi hệ thống", Toast.LENGTH_SHORT).show();
-                    loadCars();
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        loadCars();
+        viewModel.load();
     }
 }

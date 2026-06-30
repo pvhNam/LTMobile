@@ -202,7 +202,7 @@ public class DriverPostFragment extends Fragment {
                     post.put("type", withCar ? "driver" : "driver_only");
                     post.put("brand", "");
                     post.put("location", location);
-                    post.put("status", "pending");
+                    post.put("status", "active");
                     post.put("imageUrl", coverUrl);
                     post.put("imageUrls", imageUrls);
                     post.put("userId", uid);

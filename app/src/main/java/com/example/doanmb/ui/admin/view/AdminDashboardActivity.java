@@ -8,15 +8,19 @@ import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.doanmb.R;
+import com.example.doanmb.ui.admin.viewmodel.AdminDashboardViewModel;
 import com.example.doanmb.ui.auth.view.LoginActivity;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * Khung trang quản trị: thanh điều hướng dưới + chứa các fragment admin, và điều
+ * hướng nhanh từ Trang chủ. Tên admin ở header lấy qua {@link AdminDashboardViewModel}.
+ */
 public class AdminDashboardActivity extends AppCompatActivity implements AdminOverviewFragment.OnQuickNavListener {
 
     private BottomNavigationView bottomNav;
@@ -33,7 +37,11 @@ public class AdminDashboardActivity extends AppCompatActivity implements AdminOv
         bottomNav = findViewById(R.id.admin_bottom_nav);
         Button btnLogout = findViewById(R.id.btn_admin_logout);
 
-        loadAdminName();
+        AdminDashboardViewModel viewModel = new ViewModelProvider(this).get(AdminDashboardViewModel.class);
+        viewModel.getAdminName().observe(this, name -> {
+            if (name != null) tvAdminName.setText(name);
+        });
+        viewModel.loadAdminName();
 
         btnLogout.setOnClickListener(v -> logout());
 
@@ -67,18 +75,6 @@ public class AdminDashboardActivity extends AppCompatActivity implements AdminOv
         });
     }
 
-    private void loadAdminName() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return;
-        FirebaseFirestore.getInstance().collection("users").document(user.getUid())
-                .get()
-                .addOnSuccessListener(doc -> {
-                    if (doc != null && doc.getString("name") != null) {
-                        tvAdminName.setText(doc.getString("name"));
-                    }
-                });
-    }
-
     private void switchFragment(int itemId) {
         Fragment fragment;
         if (itemId == R.id.nav_admin_users) {
@@ -89,6 +85,8 @@ public class AdminDashboardActivity extends AppCompatActivity implements AdminOv
             fragment = new AdminOrdersFragment();
         } else if (itemId == R.id.nav_admin_reports) {
             fragment = new AdminReportsFragment();
+        } else if (itemId == R.id.nav_admin_vouchers) {
+            fragment = new AdminVouchersFragment();
         } else if (itemId == R.id.nav_admin_profile) {
             fragment = new AdminProfileFragment();
         } else if (itemId == R.id.nav_admin_driver_approval) {
@@ -103,7 +101,8 @@ public class AdminDashboardActivity extends AppCompatActivity implements AdminOv
         boolean addToBackStack = (itemId == R.id.nav_admin_driver_approval
                 || itemId == R.id.nav_admin_cars
                 || itemId == R.id.nav_admin_orders
-                || itemId == R.id.nav_admin_reports);
+                || itemId == R.id.nav_admin_reports
+                || itemId == R.id.nav_admin_vouchers);
         androidx.fragment.app.FragmentTransaction tx = getSupportFragmentManager().beginTransaction()
                 .replace(R.id.admin_fragment_container, fragment);
         if (addToBackStack) tx.addToBackStack(null);

@@ -9,12 +9,12 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.doanmb.R;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.example.doanmb.ui.admin.viewmodel.AdminProfileViewModel;
 
+/** Trang hồ sơ admin: hiển thị tên + email lấy qua {@link AdminProfileViewModel}. */
 public class AdminProfileFragment extends Fragment {
 
     @Nullable
@@ -26,38 +26,21 @@ public class AdminProfileFragment extends Fragment {
         TextView tvEmail = view.findViewById(R.id.tv_admin_profile_email);
         TextView tvInfoName = view.findViewById(R.id.tv_info_name);
         TextView tvInfoEmail = view.findViewById(R.id.tv_info_email);
-        TextView tvAppWallet = view.findViewById(R.id.tv_app_wallet_balance);
 
-        FirebaseFirestore.getInstance().collection("app_wallet").document("main")
-                .get()
-                .addOnSuccessListener(doc -> {
-                    if (!isAdded() || tvAppWallet == null) return;
-                    Double bal = doc.getDouble("balance");
-                    long b = bal != null ? Math.round(bal) : 0L;
-                    tvAppWallet.setText(
-                            java.text.NumberFormat.getInstance(new java.util.Locale("vi", "VN")).format(b) + " đ");
-                });
+        AdminProfileViewModel viewModel = new ViewModelProvider(this).get(AdminProfileViewModel.class);
 
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user != null) {
-            String email = user.getEmail();
-            if (email != null) {
-                tvEmail.setText(email);
-                tvInfoEmail.setText(email);
-            }
+        viewModel.getName().observe(getViewLifecycleOwner(), name -> {
+            if (name == null) return;
+            tvName.setText(name);
+            tvInfoName.setText(name);
+        });
+        viewModel.getEmail().observe(getViewLifecycleOwner(), email -> {
+            if (email == null) return;
+            tvEmail.setText(email);
+            tvInfoEmail.setText(email);
+        });
 
-            FirebaseFirestore.getInstance().collection("users").document(user.getUid())
-                    .get()
-                    .addOnSuccessListener(doc -> {
-                        if (!isAdded() || doc == null) return;
-                        String name = doc.getString("name");
-                        if (name != null && !name.isEmpty()) {
-                            tvName.setText(name);
-                            tvInfoName.setText(name);
-                        }
-                    });
-        }
-
+        viewModel.load();
         return view;
     }
 }

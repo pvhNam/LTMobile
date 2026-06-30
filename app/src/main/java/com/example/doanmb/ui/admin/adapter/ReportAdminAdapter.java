@@ -22,6 +22,8 @@ public class ReportAdminAdapter extends RecyclerView.Adapter<ReportAdminAdapter.
     public interface OnReportActionListener {
         void onResolve(String reportId);
         void onDismiss(String reportId);
+        /** Admin chọn xóa hẳn bài đăng bị báo cáo (targetId = carId). */
+        void onDeletePost(String reportId, String targetId);
     }
 
     private List<Map<String, Object>> reports;
@@ -80,9 +82,16 @@ public class ReportAdminAdapter extends RecyclerView.Adapter<ReportAdminAdapter.
         boolean isActionable = "pending".equals(status);
         holder.layoutActions.setVisibility(isActionable ? View.VISIBLE : View.GONE);
 
+        // Nút "Xóa bài đăng" chỉ áp dụng cho report tin đăng xe (targetType == "car")
+        String targetType = getStr(report, "targetType", "");
+        String targetId   = getStr(report, "targetId", "");
+        boolean canDeletePost = isActionable && "car".equals(targetType) && !targetId.isEmpty();
+        holder.btnDeletePost.setVisibility(canDeletePost ? View.VISIBLE : View.GONE);
+
         if (isActionable) {
             holder.btnResolve.setOnClickListener(v -> { if (listener != null) listener.onResolve(reportId); });
             holder.btnDismiss.setOnClickListener(v -> { if (listener != null) listener.onDismiss(reportId); });
+            holder.btnDeletePost.setOnClickListener(v -> { if (listener != null) listener.onDeletePost(reportId, targetId); });
         }
     }
 
@@ -158,7 +167,7 @@ public class ReportAdminAdapter extends RecyclerView.Adapter<ReportAdminAdapter.
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvCarName, tvReason, tvDescription, tvReportBy, tvStatus;
         LinearLayout layoutActions;
-        Button btnResolve, btnDismiss;
+        Button btnResolve, btnDismiss, btnDeletePost;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -170,6 +179,7 @@ public class ReportAdminAdapter extends RecyclerView.Adapter<ReportAdminAdapter.
             layoutActions = itemView.findViewById(R.id.layout_report_actions);
             btnResolve = itemView.findViewById(R.id.btn_resolve_report);
             btnDismiss = itemView.findViewById(R.id.btn_dismiss_report);
+            btnDeletePost = itemView.findViewById(R.id.btn_delete_post_report);
         }
     }
 }

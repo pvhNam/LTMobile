@@ -64,7 +64,7 @@ public class PostCarViewModel extends ViewModel {
         car.put("year", year);
         car.put("km", km);
         car.put("location", location);
-        car.put("status", "pending");
+        car.put("status", "active");
         car.put("imageUrl", imageUrls.isEmpty() ? "" : imageUrls.get(0));
         car.put("imageUrls", imageUrls);
         car.put("userId", uid);
@@ -75,7 +75,7 @@ public class PostCarViewModel extends ViewModel {
 
         CarRepository.addCar(car, new CarRepository.OnCreated() {
             @Override public void onCreated(String carId) {
-                message.setValue("Đăng tin thành công! Tin đang chờ admin duyệt.");
+                message.setValue("Đăng tin thành công! Tin đã hiển thị tới người dùng.");
                 saveResult.setValue(true);
             }
             @Override public void onError(String msg) {

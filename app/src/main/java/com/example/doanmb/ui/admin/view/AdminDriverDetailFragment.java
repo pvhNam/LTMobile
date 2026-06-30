@@ -12,16 +12,16 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
 import com.example.doanmb.R;
+import com.example.doanmb.ui.admin.viewmodel.AdminDriverDetailViewModel;
 import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.DocumentSnapshot;
 
 import java.text.SimpleDateFormat;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 public class AdminDriverDetailFragment extends Fragment {
 
@@ -30,7 +30,9 @@ public class AdminDriverDetailFragment extends Fragment {
             new SimpleDateFormat("HH:mm  dd/MM/yyyy", Locale.getDefault());
 
     private String uid;
-    private FirebaseFirestore db;
+    private View rootView;
+    private Button btnApprove, btnReject;
+    private AdminDriverDetailViewModel viewModel;
 
     public static AdminDriverDetailFragment newInstance(String uid) {
         AdminDriverDetailFragment f = new AdminDriverDetailFragment();
@@ -49,25 +51,38 @@ public class AdminDriverDetailFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_admin_driver_detail, container, false);
-        db = FirebaseFirestore.getInstance();
+        rootView = inflater.inflate(R.layout.fragment_admin_driver_detail, container, false);
+        viewModel = new ViewModelProvider(this).get(AdminDriverDetailViewModel.class);
 
         // Ẩn header "ADMIN" + thanh nav của dashboard để màn chi tiết hiển thị toàn phần
         setAdminChrome(false);
 
-        view.findViewById(R.id.btn_dd_back).setOnClickListener(v -> {
+        rootView.findViewById(R.id.btn_dd_back).setOnClickListener(v -> {
             if (getParentFragmentManager().getBackStackEntryCount() > 0) {
                 getParentFragmentManager().popBackStack();
             }
         });
 
-        Button btnApprove = view.findViewById(R.id.btn_dd_approve);
-        Button btnReject  = view.findViewById(R.id.btn_dd_reject);
-        btnApprove.setOnClickListener(v -> approveDriver(btnApprove, btnReject));
-        btnReject.setOnClickListener(v -> rejectDriver(btnApprove, btnReject));
+        btnApprove = rootView.findViewById(R.id.btn_dd_approve);
+        btnReject  = rootView.findViewById(R.id.btn_dd_reject);
+        btnApprove.setOnClickListener(v -> { setButtonsEnabled(false); viewModel.approve(); });
+        btnReject.setOnClickListener(v -> { setButtonsEnabled(false); viewModel.reject(); });
 
-        loadUser(view);
-        return view;
+        viewModel.getUser().observe(getViewLifecycleOwner(), this::bindUser);
+        viewModel.getMessage().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null) Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+        });
+        viewModel.getActionFailed().observe(getViewLifecycleOwner(), failed -> {
+            if (Boolean.TRUE.equals(failed)) setButtonsEnabled(true);
+        });
+        viewModel.getDone().observe(getViewLifecycleOwner(), done -> {
+            if (Boolean.TRUE.equals(done) && getParentFragmentManager().getBackStackEntryCount() > 0) {
+                getParentFragmentManager().popBackStack();
+            }
+        });
+
+        viewModel.start(uid);
+        return rootView;
     }
 
     @Override
@@ -75,6 +90,11 @@ public class AdminDriverDetailFragment extends Fragment {
         super.onDestroyView();
         // Trả lại header + thanh nav khi rời màn chi tiết
         setAdminChrome(true);
+    }
+
+    private void setButtonsEnabled(boolean enabled) {
+        if (btnApprove != null) btnApprove.setEnabled(enabled);
+        if (btnReject != null) btnReject.setEnabled(enabled);
     }
 
     /** Ẩn/hiện header "ADMIN" và thanh điều hướng dưới của AdminDashboard. */
@@ -87,95 +107,32 @@ public class AdminDriverDetailFragment extends Fragment {
         if (nav != null) nav.setVisibility(vis);
     }
 
-    private void loadUser(View view) {
-        if (uid.isEmpty()) return;
-        db.collection("users").document(uid).get().addOnSuccessListener(doc -> {
-            if (!isAdded() || !doc.exists()) return;
+    // Đọc field trực tiếp thay vì toObject(User.class) — tránh crash nếu một field
+    // bị lưu sai kiểu trong Firestore.
+    private void bindUser(DocumentSnapshot doc) {
+        if (doc == null) return;
 
-            // Đọc field trực tiếp thay vì toObject(User.class) — tránh crash nếu
-            // một field bị lưu sai kiểu trong Firestore.
-            TextView tvName     = view.findViewById(R.id.tv_dd_name);
-            TextView tvPhone    = view.findViewById(R.id.tv_dd_phone);
-            TextView tvApplied  = view.findViewById(R.id.tv_dd_applied_at);
-            TextView tvCccd     = view.findViewById(R.id.tv_dd_cccd);
-            TextView tvLicense  = view.findViewById(R.id.tv_dd_license);
-            TextView tvCarType  = view.findViewById(R.id.tv_dd_cartype);
-            ImageView ivCccd    = view.findViewById(R.id.iv_dd_cccd);
-            ImageView ivLicense = view.findViewById(R.id.iv_dd_license);
+        TextView tvName     = rootView.findViewById(R.id.tv_dd_name);
+        TextView tvPhone    = rootView.findViewById(R.id.tv_dd_phone);
+        TextView tvApplied  = rootView.findViewById(R.id.tv_dd_applied_at);
+        TextView tvCccd     = rootView.findViewById(R.id.tv_dd_cccd);
+        TextView tvLicense  = rootView.findViewById(R.id.tv_dd_license);
+        TextView tvCarType  = rootView.findViewById(R.id.tv_dd_cartype);
+        ImageView ivCccd    = rootView.findViewById(R.id.iv_dd_cccd);
+        ImageView ivLicense = rootView.findViewById(R.id.iv_dd_license);
 
-            Object appliedRaw = doc.get("appliedAt");
-            Timestamp applied = appliedRaw instanceof Timestamp ? (Timestamp) appliedRaw : null;
+        Object appliedRaw = doc.get("appliedAt");
+        Timestamp applied = appliedRaw instanceof Timestamp ? (Timestamp) appliedRaw : null;
 
-            tvName.setText(safe(getStr(doc, "name"), "--"));
-            tvPhone.setText("SĐT: " + safe(getStr(doc, "phone"), "--"));
-            tvApplied.setText(applied != null
-                    ? "Gửi lúc: " + SDF.format(applied.toDate())
-                    : "Gửi lúc: --");
-            tvCccd.setText("Số CCCD: " + safe(getStr(doc, "cccd"), "--"));
-            tvLicense.setText("Số bằng lái: " + safe(getStr(doc, "licenseNumber"), "--"));
-            tvCarType.setText("Loại xe: " + safe(getStr(doc, "driverCarType"), "--"));
+        tvName.setText(safe(getStr(doc, "name"), "--"));
+        tvPhone.setText("SĐT: " + safe(getStr(doc, "phone"), "--"));
+        tvApplied.setText(applied != null ? "Gửi lúc: " + SDF.format(applied.toDate()) : "Gửi lúc: --");
+        tvCccd.setText("Số CCCD: " + safe(getStr(doc, "cccd"), "--"));
+        tvLicense.setText("Số bằng lái: " + safe(getStr(doc, "licenseNumber"), "--"));
+        tvCarType.setText("Loại xe: " + safe(getStr(doc, "driverCarType"), "--"));
 
-            loadImg(ivCccd, getStr(doc, "cccdImageUrl"));
-            loadImg(ivLicense, getStr(doc, "licenseImageUrl"));
-        });
-    }
-
-    private void approveDriver(Button btnApprove, Button btnReject) {
-        if (uid.isEmpty()) return;
-        btnApprove.setEnabled(false);
-        btnReject.setEnabled(false);
-        db.collection("users").document(uid)
-                .update("driverStatus", "approved", "isDriver", true)
-                .addOnSuccessListener(v -> {
-                    if (!isAdded()) return;
-                    sendNotification(uid,
-                            "Đăng ký tài xế được duyệt ✅",
-                            "Hồ sơ của bạn đã được Admin duyệt. Đăng xuất và đăng nhập lại để vào giao diện tài xế.");
-                    Toast.makeText(getContext(), "Đã duyệt tài xế!", Toast.LENGTH_SHORT).show();
-                    if (getParentFragmentManager().getBackStackEntryCount() > 0) {
-                        getParentFragmentManager().popBackStack();
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    btnApprove.setEnabled(true);
-                    btnReject.setEnabled(true);
-                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
-    private void rejectDriver(Button btnApprove, Button btnReject) {
-        if (uid.isEmpty()) return;
-        btnApprove.setEnabled(false);
-        btnReject.setEnabled(false);
-        db.collection("users").document(uid)
-                .update("driverStatus", "rejected", "isDriver", false)
-                .addOnSuccessListener(v -> {
-                    if (!isAdded()) return;
-                    sendNotification(uid,
-                            "Đăng ký tài xế bị từ chối ❌",
-                            "Hồ sơ của bạn chưa đáp ứng yêu cầu. Vui lòng cập nhật và gửi lại.");
-                    Toast.makeText(getContext(), "Đã từ chối hồ sơ.", Toast.LENGTH_SHORT).show();
-                    if (getParentFragmentManager().getBackStackEntryCount() > 0) {
-                        getParentFragmentManager().popBackStack();
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    btnApprove.setEnabled(true);
-                    btnReject.setEnabled(true);
-                    Toast.makeText(getContext(), "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
-    private void sendNotification(String userId, String title, String body) {
-        Map<String, Object> notif = new HashMap<>();
-        notif.put("userId", userId);
-        notif.put("title", title);
-        notif.put("body", body);
-        notif.put("createdAt", Timestamp.now());
-        notif.put("read", false);
-        db.collection("notifications").add(notif);
+        loadImg(ivCccd, getStr(doc, "cccdImageUrl"));
+        loadImg(ivLicense, getStr(doc, "licenseImageUrl"));
     }
 
     private void loadImg(ImageView iv, String url) {
@@ -189,7 +146,7 @@ public class AdminDriverDetailFragment extends Fragment {
     }
 
     /** Lấy field dạng String an toàn — trả null nếu thiếu hoặc sai kiểu, không ném exception. */
-    private String getStr(com.google.firebase.firestore.DocumentSnapshot doc, String key) {
+    private String getStr(DocumentSnapshot doc, String key) {
         Object v = doc.get(key);
         return v instanceof String ? (String) v : null;
     }

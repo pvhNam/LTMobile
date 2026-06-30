@@ -127,7 +127,7 @@ public class CarDetailActivity extends AppCompatActivity {
 
     private NestedScrollView detailScroll;
     private View imageHero, headerDetail, btnBackFloat, floatTopBar;
-    private ImageView btnFavoriteFloat, ivFavoriteDetail, btnMenuFloat;
+    private ImageView btnFavoriteFloat, ivFavoriteDetail, btnMenuFloat, btnReportFloat;
     private boolean isFav = false;
     private boolean statusBarDarkIcons = true;
 
@@ -491,6 +491,7 @@ public class CarDetailActivity extends AppCompatActivity {
         btnBackFloat     = findViewById(R.id.btn_back_float);
         floatTopBar      = findViewById(R.id.float_top_bar);
         btnFavoriteFloat = findViewById(R.id.btn_favorite_float);
+        btnReportFloat   = findViewById(R.id.btn_report_float);
         btnMenuFloat     = findViewById(R.id.btn_menu_float);
         ivFavoriteDetail = findViewById(R.id.iv_favorite_detail);
         tvDetailTitle    = findViewById(R.id.tv_detail_title);
@@ -821,6 +822,7 @@ public class CarDetailActivity extends AppCompatActivity {
             if (layoutRentContact != null) layoutRentContact.setVisibility(View.GONE);
             closeRentSheet();
             if (tvReportCar != null) tvReportCar.setVisibility(View.GONE);
+            if (btnReportFloat != null) btnReportFloat.setVisibility(View.GONE);
             applyTypeBadge(driver, rental);
             if (tvOwnerNote != null) tvOwnerNote.setVisibility(View.VISIBLE);
             if (btnMenuDetail != null) {
@@ -837,9 +839,11 @@ public class CarDetailActivity extends AppCompatActivity {
         if (btnMenuDetail != null) btnMenuDetail.setVisibility(View.GONE);
         if (btnMenuFloat != null) btnMenuFloat.setVisibility(View.GONE);
         if (tvOwnerNote != null) tvOwnerNote.setVisibility(View.GONE);
-        if (tvReportCar != null) {
-            tvReportCar.setVisibility(View.VISIBLE);
-            tvReportCar.setOnClickListener(v -> showReportDialog());
+        // Báo cáo tin: dùng icon tròn nổi trên ảnh (bên trái icon yêu thích)
+        if (tvReportCar != null) tvReportCar.setVisibility(View.GONE);
+        if (btnReportFloat != null) {
+            btnReportFloat.setVisibility(View.VISIBLE);
+            btnReportFloat.setOnClickListener(v -> showReportDialog());
         }
 
         applyTypeBadge(driver, rental);

@@ -11,13 +11,13 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.doanmb.R;
+import com.example.doanmb.ui.admin.viewmodel.AdminUserDetailViewModel;
 import com.example.doanmb.ui.media.view.FullscreenImageActivity;
 import com.example.doanmb.core.util.ImageLoader;
-import com.example.doanmb.data.repository.WalletRepository;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -36,11 +36,7 @@ public class AdminUserDetailActivity extends AppCompatActivity {
     private View cardDriver;
     private Button btnTopUp, btnRole;
 
-    private FirebaseFirestore db;
-    private String userId;
-    private String userName = "";
-    private String currentRole = "CUSTOMER";
-    private long balance = 0L;
+    private AdminUserDetailViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,8 +44,8 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_admin_user_detail);
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        db = FirebaseFirestore.getInstance();
-        userId = getIntent().getStringExtra(EXTRA_USER_ID);
+        viewModel = new ViewModelProvider(this).get(AdminUserDetailViewModel.class);
+        String userId = getIntent().getStringExtra(EXTRA_USER_ID);
 
         ivAvatar      = findViewById(R.id.iv_admin_user_avatar);
         ivCccd        = findViewById(R.id.iv_admin_user_cccd);
@@ -86,29 +82,26 @@ public class AdminUserDetailActivity extends AppCompatActivity {
 
         tvId.setText("🆔  Mã: " + userId);
 
-        loadUser();
-        loadStats();
-    }
+        viewModel.getUser().observe(this, this::bindUser);
+        viewModel.getCarsCount().observe(this, c -> tvCarsCount.setText(String.valueOf(c)));
+        viewModel.getBuyCount().observe(this, c -> tvBuyCount.setText(String.valueOf(c)));
+        viewModel.getSellCount().observe(this, c -> tvSellCount.setText(String.valueOf(c)));
+        viewModel.getMessage().observe(this, msg -> {
+            if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        });
+        viewModel.getFinishEvent().observe(this, f -> {
+            if (Boolean.TRUE.equals(f)) finish();
+        });
 
-    private void loadUser() {
-        db.collection("users").document(userId).get()
-                .addOnSuccessListener(this::bindUser)
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Lỗi tải người dùng: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    finish();
-                });
+        viewModel.start(userId);
     }
 
     private void bindUser(DocumentSnapshot doc) {
-        if (!doc.exists()) {
-            Toast.makeText(this, "Người dùng không còn tồn tại", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
+        if (doc == null) return;
 
-        userName = str(doc.getString("name"), "Không có tên");
-        currentRole = str(doc.getString("role"), "CUSTOMER");
-        balance = getLong(doc, "balance");
+        String name = str(doc.getString("name"), "Không có tên");
+        String role = str(doc.getString("role"), "CUSTOMER");
+        long balance = getLong(doc, "balance");
 
         String email = doc.getString("email");
         String phone = doc.getString("phone");
@@ -117,7 +110,7 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         boolean isDriver = Boolean.TRUE.equals(doc.getBoolean("isDriver"));
         boolean driverOnline = Boolean.TRUE.equals(doc.getBoolean("driverOnline"));
 
-        tvName.setText(userName);
+        tvName.setText(name);
         tvEmail.setText("✉️  " + (email == null || email.isEmpty() ? "Chưa có email" : email));
         tvPhone.setText("📞  " + (phone == null || phone.isEmpty() ? "Chưa có SĐT" : phone));
         tvBalance.setText(MONEY.format(balance) + " đ");
@@ -128,8 +121,8 @@ public class AdminUserDetailActivity extends AppCompatActivity {
             tvStatus.setText("👤  Tài khoản người dùng");
         }
 
-        tvRole.setText(currentRole);
-        applyRoleStyle(currentRole);
+        tvRole.setText(role);
+        applyRoleStyle(role);
         tvDriverBadge.setVisibility(isDriver ? View.VISIBLE : View.GONE);
 
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
@@ -159,19 +152,6 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         } else {
             cardDriver.setVisibility(View.GONE);
         }
-    }
-
-    /** Đếm số xe đã đăng, số đơn đã mua / đã bán của user. */
-    private void loadStats() {
-        db.collection("cars").whereEqualTo("sellerId", userId).get()
-                .addOnSuccessListener(s -> tvCarsCount.setText(String.valueOf(s.size())))
-                .addOnFailureListener(e -> tvCarsCount.setText("0"));
-        db.collection("orders").whereEqualTo("buyerId", userId).get()
-                .addOnSuccessListener(s -> tvBuyCount.setText(String.valueOf(s.size())))
-                .addOnFailureListener(e -> tvBuyCount.setText("0"));
-        db.collection("orders").whereEqualTo("sellerId", userId).get()
-                .addOnSuccessListener(s -> tvSellCount.setText(String.valueOf(s.size())))
-                .addOnFailureListener(e -> tvSellCount.setText("0"));
     }
 
     /** Mở ảnh giấy tờ toàn màn hình khi bấm. */
@@ -223,8 +203,8 @@ public class AdminUserDetailActivity extends AppCompatActivity {
         input.setPadding(pad, pad, pad, pad);
 
         new AlertDialog.Builder(this)
-                .setTitle("Nạp tiền cho " + userName)
-                .setMessage("Số dư hiện tại: " + MONEY.format(balance) + " đ")
+                .setTitle("Nạp tiền cho " + viewModel.getUserName())
+                .setMessage("Số dư hiện tại: " + MONEY.format(viewModel.getBalance()) + " đ")
                 .setView(input)
                 .setPositiveButton("Nạp", (dialog, which) -> {
                     String raw = input.getText().toString().trim().replaceAll("[^0-9]", "");
@@ -237,53 +217,26 @@ public class AdminUserDetailActivity extends AppCompatActivity {
                         Toast.makeText(this, "Số tiền phải lớn hơn 0", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    topUp(amount);
+                    viewModel.topUp(amount);
                 })
                 .setNegativeButton("Hủy", null)
                 .show();
-    }
-
-    private void topUp(long amount) {
-        WalletRepository.topUp(userId, amount, new WalletRepository.Callback() {
-            @Override
-            public void onSuccess() {
-                Toast.makeText(AdminUserDetailActivity.this,
-                        "✅ Đã nạp " + MONEY.format(amount) + " đ cho " + userName, Toast.LENGTH_SHORT).show();
-                loadUser();
-            }
-            @Override
-            public void onError(String message) {
-                Toast.makeText(AdminUserDetailActivity.this,
-                        "Lỗi nạp tiền: " + message, Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     private void showRoleDialog() {
         String[] roles = {"ADMIN", "CUSTOMER"};
         int currentIndex = 0;
         for (int i = 0; i < roles.length; i++) {
-            if (roles[i].equals(currentRole)) { currentIndex = i; break; }
+            if (roles[i].equals(viewModel.getCurrentRole())) { currentIndex = i; break; }
         }
         final int[] selected = {currentIndex};
 
         new AlertDialog.Builder(this)
                 .setTitle("Đổi quyền người dùng")
                 .setSingleChoiceItems(roles, currentIndex, (dialog, which) -> selected[0] = which)
-                .setPositiveButton("Lưu", (dialog, which) -> changeRole(roles[selected[0]]))
+                .setPositiveButton("Lưu", (dialog, which) -> viewModel.changeRole(roles[selected[0]]))
                 .setNegativeButton("Hủy", null)
                 .show();
-    }
-
-    private void changeRole(String newRole) {
-        db.collection("users").document(userId)
-                .update("role", newRole)
-                .addOnSuccessListener(v -> {
-                    Toast.makeText(this, "Đã đổi quyền thành " + newRole, Toast.LENGTH_SHORT).show();
-                    loadUser();
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private void applyRoleStyle(String role) {
