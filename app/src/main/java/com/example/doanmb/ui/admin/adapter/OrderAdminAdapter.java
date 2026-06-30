@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.example.doanmb.ui.admin.view.AdminOrderDetailActivity;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
@@ -65,8 +66,8 @@ public class OrderAdminAdapter extends RecyclerView.Adapter<OrderAdminAdapter.Vi
 
         holder.itemView.setOnClickListener(v -> {
             android.content.Intent i = new android.content.Intent(ctx,
-                    com.example.doanmb.ui.activity.AdminOrderDetailActivity.class);
-            i.putExtra(com.example.doanmb.ui.activity.AdminOrderDetailActivity.EXTRA_ORDER_ID, orderId);
+                    AdminOrderDetailActivity.class);
+            i.putExtra(AdminOrderDetailActivity.EXTRA_ORDER_ID, orderId);
             ctx.startActivity(i);
         });
 

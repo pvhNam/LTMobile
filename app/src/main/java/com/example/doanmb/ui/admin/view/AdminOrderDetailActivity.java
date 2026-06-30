@@ -1,4 +1,4 @@
-package com.example.doanmb.ui.activity;
+package com.example.doanmb.ui.admin.view;
 
 import android.os.Bundle;
 import android.view.View;
