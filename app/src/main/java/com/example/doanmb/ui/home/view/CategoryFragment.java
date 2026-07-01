@@ -38,11 +38,6 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Trang Danh mục: trung tâm duyệt và tìm xe của khách hàng.
- * Hỗ trợ 4 danh mục (mua / bán / thuê tự lái / có tài xế) cùng các bộ lọc theo
- * hãng, khu vực (lấy từ API địa giới VN), khoảng thời gian thuê và sắp xếp theo giá.
- */
 public class CategoryFragment extends Fragment implements PostCarFragment.OnPostCarSubmittedListener {
 
     private static final String CATEGORY_SALE = "sale";
@@ -190,7 +185,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         });
     }
 
-    /** Ẩn/hiện ô tìm kiếm và hàng chọn hãng kèm hiệu ứng; bỏ qua nếu trạng thái không đổi. */
     private void setFiltersCollapsed(boolean collapse) {
         if (filtersCollapsed == collapse) return;
         filtersCollapsed = collapse;
@@ -204,7 +198,7 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         if (tvBrandLabel != null) tvBrandLabel.setVisibility(visibility);
         if (scrollBrandFilters != null) scrollBrandFilters.setVisibility(visibility);
     }
-    /** Gắn sự kiện cho 4 thẻ danh mục: Mua / Bán / Thuê tự lái / Có tài xế. */
+
     private void setupCategoryActions() {
         cardBuyCar.setOnClickListener(v -> selectCategory(CATEGORY_SALE, "Xe đang bán"));
         cardSelfDrive.setOnClickListener(v -> selectCategory(CATEGORY_RENTAL, "Xe thuê tự lái"));
@@ -214,7 +208,6 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         updateSelectedCategory();
     }
 
-    /** Chọn một danh mục duyệt xe: cập nhật tiêu đề, hiện danh sách và lọc lại. */
     private void selectCategory(String category, String title) {
         currentCategory = category;
         currentTitle = title;
