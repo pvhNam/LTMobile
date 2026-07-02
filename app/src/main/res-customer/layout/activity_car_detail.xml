@@ -259,6 +259,39 @@
                     android:orientation="vertical" android:visibility="gone">
 
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Thông tin người mua" android:textColor="@color/color_on_surface" android:textSize="15sp"
+                        android:textStyle="bold" android:layout_marginBottom="4dp"/>
+
+                    <!-- Gợi ý: thông tin lấy từ hồ sơ, có thể sửa trực tiếp -->
+                    <TextView android:id="@+id/tv_buy_autofill_hint"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="✓ Đã tự điền từ hồ sơ của bạn — kiểm tra và sửa nếu chưa đúng"
+                        android:textColor="@color/lg_accent_text" android:textSize="12sp"
+                        android:layout_marginBottom="8dp" android:visibility="gone"/>
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Họ và tên *" android:textColor="@color/color_on_surface_secondary" android:textSize="13sp" android:layout_marginBottom="4dp"/>
+                    <EditText android:id="@+id/etBuyerName"
+                        android:layout_width="match_parent" android:layout_height="50dp"
+                        android:layout_marginBottom="12dp" android:background="@drawable/bg_search"
+                        android:padding="10dp" android:hint="Nhập họ và tên đầy đủ" android:inputType="textPersonName"/>
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Số điện thoại *" android:textColor="@color/color_on_surface_secondary" android:textSize="13sp" android:layout_marginBottom="4dp"/>
+                    <EditText android:id="@+id/etBuyerPhone"
+                        android:layout_width="match_parent" android:layout_height="50dp"
+                        android:layout_marginBottom="12dp" android:background="@drawable/bg_search"
+                        android:padding="10dp" android:hint="Nhập số điện thoại" android:inputType="phone"/>
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Số CCCD/CMND" android:textColor="@color/color_on_surface_secondary" android:textSize="13sp" android:layout_marginBottom="4dp"/>
+                    <EditText android:id="@+id/etBuyerCCCD"
+                        android:layout_width="match_parent" android:layout_height="50dp"
+                        android:layout_marginBottom="12dp" android:background="@drawable/bg_search"
+                        android:padding="10dp" android:hint="Nhập số CCCD 12 số"
+                        android:inputType="number" android:maxLength="12"/>
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:text="Ghi chú / Câu hỏi" android:textColor="@color/color_on_surface" android:textSize="15sp"
                         android:textStyle="bold" android:layout_marginBottom="8dp"/>
 
@@ -448,7 +481,14 @@
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="Thông tin người thuê" android:textColor="@color/color_on_surface" android:textSize="15sp"
-                    android:textStyle="bold" android:layout_marginBottom="12dp"/>
+                    android:textStyle="bold" android:layout_marginBottom="4dp"/>
+
+                <!-- Gợi ý: thông tin lấy từ hồ sơ, có thể sửa trực tiếp -->
+                <TextView android:id="@+id/tv_rent_autofill_hint"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="✓ Đã tự điền từ hồ sơ của bạn — kiểm tra và sửa nếu chưa đúng"
+                    android:textColor="@color/lg_accent_text" android:textSize="12sp"
+                    android:layout_marginBottom="8dp" android:visibility="gone"/>
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="Họ và tên *" android:textColor="@color/color_on_surface_secondary" android:textSize="13sp" android:layout_marginBottom="4dp"/>

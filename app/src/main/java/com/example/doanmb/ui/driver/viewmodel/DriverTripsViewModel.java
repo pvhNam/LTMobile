@@ -25,6 +25,10 @@ public class DriverTripsViewModel extends ViewModel {
         public String orderId, status, carName, carPrice,
                 renterName, renterPhone, note, type, carId, buyerId;
         public Timestamp createdAt;
+        // Chuyến "theo quãng đường" (đặt qua MapPickerActivity) — rỗng/0 với đơn thuê thường.
+        public String pickup, destination;
+        public double distanceKm;
+        public double pickupLat, pickupLng, destLat, destLng;
 
         static OrderItem from(QueryDocumentSnapshot d) {
             OrderItem o  = new OrderItem();
@@ -39,7 +43,18 @@ public class DriverTripsViewModel extends ViewModel {
             o.carId      = d.getString("carId");
             o.buyerId    = d.getString("buyerId");
             o.createdAt  = d.getTimestamp("createdAt");
+            o.pickup      = d.getString("pickup");
+            o.destination = d.getString("destination");
+            o.distanceKm  = numberOrZero(d.get("distanceKm"));
+            o.pickupLat   = numberOrZero(d.get("pickupLat"));
+            o.pickupLng   = numberOrZero(d.get("pickupLng"));
+            o.destLat     = numberOrZero(d.get("destLat"));
+            o.destLng     = numberOrZero(d.get("destLng"));
             return o;
+        }
+
+        private static double numberOrZero(Object v) {
+            return v instanceof Number ? ((Number) v).doubleValue() : 0d;
         }
     }
 

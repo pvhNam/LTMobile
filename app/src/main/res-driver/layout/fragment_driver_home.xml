@@ -135,20 +135,48 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- BẢN ĐỒ -->
-            <androidx.cardview.widget.CardView
+            <!-- BẢN ĐỒ: xem trước bằng bản đồ thật (osmdroid), bấm để mở tab "Bản đồ" đầy đủ -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="180dp"
                 android:layout_marginTop="14dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/driver_stroke"
+                app:strokeWidth="1dp">
 
-                <ImageView
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/bg_map_stub" />
-            </androidx.cardview.widget.CardView>
+                    android:layout_height="match_parent">
+
+                    <org.osmdroid.views.MapView
+                        android:id="@+id/map_view_home_preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <View
+                        android:id="@+id/overlay_map_preview_click"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|end"
+                        android:layout_margin="10dp"
+                        android:background="@drawable/bg_pill_round"
+                        android:backgroundTint="@color/driver_primary"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="6dp"
+                        android:text="Xem bản đồ ›"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- CHUYẾN GẦN NHẤT -->
             <RelativeLayout
@@ -184,7 +212,7 @@
                 android:visibility="gone"
                 app:cardCornerRadius="20dp"
                 app:cardElevation="6dp"
-                app:cardBackgroundColor="#FFFFFF">
+                app:cardBackgroundColor="@color/driver_surface">
 
                 <LinearLayout
                     android:layout_width="match_parent"

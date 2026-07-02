@@ -75,6 +75,11 @@ public class DriverDashboardActivity extends AppCompatActivity {
         if (bottomNav != null) bottomNav.setSelectedItemId(R.id.nav_driver_account);
     }
 
+    /** Chuyển sang tab Bản đồ (bấm bản đồ xem trước ở trang chủ). */
+    public void openMapTab() {
+        if (bottomNav != null) bottomNav.setSelectedItemId(R.id.nav_driver_map);
+    }
+
     /** Mở form "Đăng kí cho thuê xe" từ trang Cá nhân (driver5). */
     public void openPostForm() {
         getSupportFragmentManager().beginTransaction()

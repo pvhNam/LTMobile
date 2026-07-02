@@ -4,7 +4,7 @@
     android:id="@+id/scroll_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#EEF1F5"
+    android:background="@drawable/bg_liquid_glass"
     android:clipToPadding="false"
     android:fillViewport="true">
 
@@ -19,8 +19,8 @@
             android:layout_height="wrap_content"
             android:minHeight="56dp"
             android:gravity="center_vertical"
-            android:background="#FFFFFF"
-            android:elevation="3dp"
+            android:background="@color/lg_glass_fill_strong"
+            android:elevation="4dp"
             android:paddingHorizontal="16dp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp">
@@ -33,14 +33,15 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Quay lại"
                 android:padding="8dp"
-                android:src="@android:drawable/ic_menu_revert" />
+                android:tint="@color/lg_text"
+                android:src="@drawable/ic_back" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
                 android:text="Hóa đơn thuê xe"
-                android:textColor="#1A1A1A"
+                android:textColor="@color/lg_text"
                 android:textSize="20sp"
                 android:textStyle="bold" />
         </RelativeLayout>
@@ -49,9 +50,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
-            app:cardBackgroundColor="#FFFFFF"
+            app:cardBackgroundColor="@color/lg_glass_fill_strong"
             app:cardCornerRadius="18dp"
-            app:cardElevation="3dp">
+            app:cardElevation="0dp"
+            app:strokeColor="@color/lg_glass_stroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -81,7 +84,7 @@
                         android:layout_marginTop="6dp"
                         android:gravity="center"
                         android:text="Tên xe"
-                        android:textColor="#2A70DE"
+                        android:textColor="@color/lg_accent"
                         android:textSize="20sp"
                         android:textStyle="bold" />
 
@@ -101,7 +104,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
                         android:text="Mã hóa đơn: #------"
-                        android:textColor="#6B7280"
+                        android:textColor="@color/lg_text_secondary"
                         android:textSize="13sp" />
 
                     <TextView
@@ -110,7 +113,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="Ngày lập: —"
-                        android:textColor="#9AA0A6"
+                        android:textColor="@color/lg_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -118,7 +121,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginHorizontal="18dp"
-                    android:background="#ECECEC" />
+                    android:background="@color/lg_glass_stroke_dim" />
 
                 <!-- ===== Thông tin thuê ===== -->
                 <LinearLayout
@@ -131,7 +134,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="THÔNG TIN THUÊ"
-                        android:textColor="#9AA0A6"
+                        android:textColor="@color/lg_text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold"
                         android:letterSpacing="0.04" />
@@ -166,7 +169,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginHorizontal="18dp"
-                    android:background="#ECECEC" />
+                    android:background="@color/lg_glass_stroke_dim" />
 
                 <!-- ===== Chi tiết thanh toán ===== -->
                 <LinearLayout
@@ -180,7 +183,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="4dp"
                         android:text="CHI TIẾT THANH TOÁN"
-                        android:textColor="#9AA0A6"
+                        android:textColor="@color/lg_text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold"
                         android:letterSpacing="0.04" />
@@ -212,7 +215,7 @@
 
                         <TextView style="@style/InvoiceRowLabel" android:text="🎟️ Voucher giảm giá" />
                         <TextView android:id="@+id/tv_invoice_voucher_label" style="@style/InvoiceRowValue"
-                            android:textColor="#2A70DE" android:text="Chọn voucher ›" />
+                            android:textColor="@color/lg_accent" android:text="Chọn voucher ›" />
                     </LinearLayout>
 
                     <LinearLayout android:id="@+id/row_invoice_discount" style="@style/InvoiceRow"
@@ -226,7 +229,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginTop="12dp"
-                        android:background="#ECECEC" />
+                        android:background="@color/lg_glass_stroke_dim" />
 
                     <LinearLayout style="@style/InvoiceRow">
                         <TextView style="@style/InvoiceRowLabel" android:text="Tổng tiền thuê" />
@@ -243,7 +246,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginTop="12dp"
-                        android:background="#E0E0E0" />
+                        android:background="@color/lg_glass_stroke_dim" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -257,7 +260,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="CÒN LẠI PHẢI TRẢ"
-                            android:textColor="#1A1A1A"
+                            android:textColor="@color/lg_text"
                             android:textSize="16sp"
                             android:textStyle="bold" />
 
@@ -266,7 +269,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="0 đ"
-                            android:textColor="#2A70DE"
+                            android:textColor="@color/lg_accent"
                             android:textSize="22sp"
                             android:textStyle="bold" />
                     </LinearLayout>
@@ -281,7 +284,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginHorizontal="18dp"
-                    android:background="#ECECEC" />
+                    android:background="@color/lg_glass_stroke_dim" />
 
                 <!-- ===== Ghi chú / lý do ===== -->
                 <LinearLayout
@@ -294,7 +297,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="GHI CHÚ"
-                        android:textColor="#9AA0A6"
+                        android:textColor="@color/lg_text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold"
                         android:letterSpacing="0.04" />
@@ -306,7 +309,7 @@
                         android:layout_marginTop="6dp"
                         android:lineSpacingExtra="4dp"
                         android:text="—"
-                        android:textColor="#424242"
+                        android:textColor="@color/lg_text"
                         android:textSize="14sp" />
                 </LinearLayout>
             </LinearLayout>

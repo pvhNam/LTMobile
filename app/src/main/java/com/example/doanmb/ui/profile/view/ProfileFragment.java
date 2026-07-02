@@ -26,6 +26,7 @@ import com.example.doanmb.ui.car.view.ReviewActivity;
 import com.example.doanmb.ui.driver.view.DriverDashboardActivity;
 import com.example.doanmb.ui.driver.view.DriverRegisterActivity;
 import com.example.doanmb.ui.profile.view.ChangePasswordActivity;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.core.util.ImageLoader;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.car.view.FavoriteCarsActivity;
@@ -73,7 +74,7 @@ public class ProfileFragment extends Fragment {
 
     // Views màn 3
     private ImageView btnBackToSettings;
-    private EditText edtInfoName, edtInfoDob, edtInfoGender, edtInfoPhone;
+    private EditText edtInfoName, edtInfoDob, edtInfoGender, edtInfoPhone, edtInfoCccd;
     private Button btnSavePersonalInfo;
 
     private FirebaseFirestore db;
@@ -124,11 +125,22 @@ public class ProfileFragment extends Fragment {
         // phần đổi mật khẩu
         menuSecurity = view.findViewById(R.id.menu_security);
 
+        // Header "Thông tin cá nhân" nằm dưới thanh trạng thái trên mọi máy
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, view.findViewById(R.id.top_bar_info));
+        // Nút back màn "Cài đặt tài khoản" (nổi trên banner) cũng đẩy xuống dưới thanh trạng thái
+        if (btnBackToMain != null) {
+            android.view.ViewGroup.MarginLayoutParams lp =
+                    (android.view.ViewGroup.MarginLayoutParams) btnBackToMain.getLayoutParams();
+            lp.topMargin += EdgeToEdgeUtil.statusBarHeight(view.getContext());
+            btnBackToMain.setLayoutParams(lp);
+        }
+
         btnBackToSettings = view.findViewById(R.id.btn_back_to_settings);
         edtInfoName = view.findViewById(R.id.edt_info_name);
         edtInfoDob = view.findViewById(R.id.edt_info_dob);
         edtInfoGender = view.findViewById(R.id.edt_info_gender);
         edtInfoPhone = view.findViewById(R.id.edt_info_phone);
+        edtInfoCccd = view.findViewById(R.id.edt_info_cccd);
         btnSavePersonalInfo = view.findViewById(R.id.btn_save_personal_info);
         ivVerifiedIcon = view.findViewById(R.id.iv_verified_icon);
         // phần tĩnh của trang profile
@@ -292,6 +304,7 @@ public class ProfileFragment extends Fragment {
 
                     String name = doc.getString("name");
                     String phone = doc.getString("phone");
+                    String cccd = doc.getString("cccd");
                     String dob = doc.getString("dob");
                     String gender = doc.getString("gender");
                     String avatarUrl = doc.getString("avatarUrl");
@@ -350,6 +363,7 @@ public class ProfileFragment extends Fragment {
 
                     edtInfoName.setText(name != null ? name : "");
                     edtInfoPhone.setText(phone != null ? phone : "");
+                    if (edtInfoCccd != null) edtInfoCccd.setText(cccd != null ? cccd : "");
                     edtInfoDob.setText(dob != null ? dob : "");
                     edtInfoGender.setText(gender != null ? gender : "Nam");
 
@@ -400,6 +414,7 @@ public class ProfileFragment extends Fragment {
         String updatedDob = edtInfoDob.getText().toString().trim();
         String updatedGender = edtInfoGender.getText().toString().trim();
         String updatedPhone = edtInfoPhone.getText().toString().trim();
+        String updatedCccd = edtInfoCccd != null ? edtInfoCccd.getText().toString().trim() : "";
 
         if (updatedName.isEmpty()) {
             Toast.makeText(getContext(), "Họ và tên không được để trống", Toast.LENGTH_SHORT).show();
@@ -417,11 +432,18 @@ public class ProfileFragment extends Fragment {
             Toast.makeText(getContext(), "Số điện thoại không hợp lệ! Vui lòng nhập đủ 10 chữ số bắt đầu bằng số 0", Toast.LENGTH_LONG).show();
             return;
         }
+
+        // CCCD không bắt buộc, nhưng nếu nhập thì phải là 9 số (CMND) hoặc 12 số (CCCD)
+        if (!updatedCccd.isEmpty() && !updatedCccd.matches("^[0-9]{9}$|^[0-9]{12}$")) {
+            Toast.makeText(getContext(), "Số CCCD/CMND không hợp lệ! Cần 9 hoặc 12 chữ số", Toast.LENGTH_LONG).show();
+            return;
+        }
         Map<String, Object> updateData = new HashMap<>();
         updateData.put("name", updatedName);
         updateData.put("dob", updatedDob);
         updateData.put("gender", updatedGender);
         updateData.put("phone", updatedPhone);
+        updateData.put("cccd", updatedCccd);
 
         Toast.makeText(getContext(), "Đang lưu thay đổi...", Toast.LENGTH_SHORT).show();
 

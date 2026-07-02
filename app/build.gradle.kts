@@ -1,16 +1,7 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     id("com.google.gms.google-services")
 }
-
-// Đọc Google Maps API key từ local.properties (KHÔNG commit lên git).
-// Thêm dòng:  MAPS_API_KEY=AIza...your_key...  vào file local.properties.
-val mapsApiKey: String = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
-}.getProperty("MAPS_API_KEY", "")
 
 android {
     namespace = "com.example.doanmb"
@@ -25,9 +16,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Đưa key vào AndroidManifest qua ${MAPS_API_KEY}
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     // Gom layout theo vai trò vào các thư mục res riêng. Tất cả vẫn dùng chung 1
@@ -98,9 +86,11 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    // Google Maps + định vị (chọn điểm đón/đến để tính quãng đường)
-    implementation("com.google.android.gms:play-services-maps:19.0.0")
-    implementation("com.google.android.gms:play-services-location:21.3.0")
+    // Bản đồ (chọn điểm đón/đến để tính quãng đường): OpenStreetMap qua osmdroid —
+    // miễn phí, KHÔNG cần API key/billing như Google Maps. Vị trí "của tôi" (chấm xanh)
+    // dùng GPS/Network Provider của chính osmdroid nên không cần Play Services Location.
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
+    implementation("androidx.preference:preference:1.2.1")
     implementation ("com.google.firebase:firebase-messaging")
     // viewmodel
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.8.7")

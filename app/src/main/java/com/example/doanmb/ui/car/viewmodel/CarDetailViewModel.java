@@ -75,7 +75,17 @@ public class CarDetailViewModel extends ViewModel {
         public boolean tripMode;
         public String pickup, dest;
         public double distanceKm;
+        public double pickupLat, pickupLng, destLat, destLng;
         public String paymentMethod = "cash";
+    }
+
+    public static class BuyForm {
+        public String buyerName = "", buyerPhone = "", buyerCccd = "", note = "";
+    }
+
+    /** Hồ sơ người dùng hiện tại (tên/SĐT/CCCD) — dùng để tự điền form thuê/mua. */
+    public static class UserProfile {
+        public String name = "", phone = "", cccd = "";
     }
 
     private final MutableLiveData<CarDetail> detail = new MutableLiveData<>();
@@ -92,6 +102,7 @@ public class CarDetailViewModel extends ViewModel {
     private final MutableLiveData<List<Review>> reviews = new MutableLiveData<>();
     private final MutableLiveData<String> ratingText = new MutableLiveData<>();
     private final MutableLiveData<Boolean> showReviews = new MutableLiveData<>(false);
+    private final MutableLiveData<UserProfile> userProfile = new MutableLiveData<>();
 
     public LiveData<CarDetail> getDetail() { return detail; }
     public LiveData<Contact> getContact() { return contact; }
@@ -107,6 +118,7 @@ public class CarDetailViewModel extends ViewModel {
     public LiveData<List<Review>> getReviews() { return reviews; }
     public LiveData<String> getRatingText() { return ratingText; }
     public LiveData<Boolean> getShowReviews() { return showReviews; }
+    public LiveData<UserProfile> getUserProfile() { return userProfile; }
 
     private Car car;
     private String carId, sellerId, sellerName = "", carType;
@@ -147,6 +159,40 @@ public class CarDetailViewModel extends ViewModel {
 
         loadWalletBalance();
         loadFavorite();
+        loadUserProfile();
+    }
+
+    /** Tải hồ sơ người dùng để tự điền thông tin người thuê/mua. */
+    private void loadUserProfile() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+        CarRepository.loadUserProfile(user.getUid(), (name, phone, cccd) -> {
+            UserProfile p = new UserProfile();
+            p.name  = name  != null ? name  : "";
+            p.phone = phone != null ? phone : "";
+            p.cccd  = cccd  != null ? cccd  : "";
+            userProfile.setValue(p);
+        });
+    }
+
+    /**
+     * Người dùng sửa thông tin ngay trong form → lưu lại hồ sơ (merge) để lần sau
+     * tự điền đúng. Chỉ ghi khi có thay đổi so với hồ sơ đã tải.
+     */
+    private void persistContactInfo(FirebaseUser user, String name, String phone, String cccd) {
+        UserProfile p = userProfile.getValue();
+        String newCccd = cccd != null ? cccd : "";
+        boolean changed = p == null
+                || !name.equals(p.name)
+                || !phone.equals(p.phone)
+                || (!newCccd.isEmpty() && !newCccd.equals(p.cccd));
+        if (!changed) return;
+        CarRepository.saveUserContactInfo(user.getUid(), name, phone, newCccd);
+        UserProfile np = new UserProfile();
+        np.name  = name;
+        np.phone = phone;
+        np.cccd  = !newCccd.isEmpty() ? newCccd : (p != null ? p.cccd : "");
+        userProfile.setValue(np);
     }
 
     private void loadDriverReviewsAndRating() {
@@ -373,7 +419,7 @@ public class CarDetailViewModel extends ViewModel {
         isFavorite.setValue(fav);
     }
 
-    public void sendBuyRequest(String note) {
+    public void sendBuyRequest(BuyForm form) {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) { needLogin.setValue(true); return; }
 
@@ -382,11 +428,16 @@ public class CarDetailViewModel extends ViewModel {
                 message.setValue("⏳ Đã gửi yêu cầu. Vui lòng chờ người bán phản hồi.");
                 return;
             }
-            doSendBuyRequest(user, note);
+            doSendBuyRequest(user, form);
         });
     }
 
-    private void doSendBuyRequest(FirebaseUser user, String note) {
+    private void doSendBuyRequest(FirebaseUser user, BuyForm form) {
+        if (form.buyerName.isEmpty() || form.buyerPhone.isEmpty()) {
+            message.setValue("Vui lòng nhập họ tên và số điện thoại người mua");
+            return;
+        }
+
         long total   = parseMoney(car != null ? car.getPrice() : null);
         long deposit = WalletRepository.deposit(total); // cọc 50% giá xe
 
@@ -397,15 +448,22 @@ public class CarDetailViewModel extends ViewModel {
             return;
         }
 
+        // Người dùng đã xác nhận/sửa thông tin trong form → cập nhật lại hồ sơ
+        persistContactInfo(user, form.buyerName, form.buyerPhone, form.buyerCccd);
+
         Map<String, Object> order = new HashMap<>();
         order.put("buyerId",  user.getUid());
+        // Dùng chung key renter* để chủ xe/admin xem được thông tin người gửi như đơn thuê
+        order.put("renterName",  form.buyerName);
+        order.put("renterPhone", form.buyerPhone);
+        order.put("renterCccd",  form.buyerCccd != null ? form.buyerCccd : "");
         order.put("sellerId", sellerId != null ? sellerId : "");
         order.put("sellerName", sellerName);
         order.put("carId",    carId != null ? carId : "");
         order.put("carName",  car != null ? car.getName() : "");
         order.put("carPrice", car != null ? car.getPrice() : "");
         order.put("type",     "Mua xe");
-        order.put("note",     note != null ? note.trim() : "");
+        order.put("note",     form.note != null ? form.note.trim() : "");
         order.put("totalAmount",   total);
         order.put("depositAmount", deposit);
         order.put("paymentMethod", "cash");
@@ -422,9 +480,7 @@ public class CarDetailViewModel extends ViewModel {
                             @Override public void onSuccess() {
                                 walletBalance.setValue(currentWalletBalance() - deposit);
                                 sendEnabled.setValue(true);
-                                String buyerName = user.getDisplayName();
-                                if (buyerName == null || buyerName.isEmpty()) buyerName = "Khách hàng";
-                                emitOrderSent(Kind.BUY, orderId, buyerName, true,
+                                emitOrderSent(Kind.BUY, orderId, form.buyerName, true,
                                         "✅ Đã gửi yêu cầu mua! Giữ cọc " + money(deposit) + " đ.");
                             }
                             @Override public void onError(String msg) {
@@ -501,6 +557,9 @@ public class CarDetailViewModel extends ViewModel {
             return;
         }
 
+        // Người dùng đã xác nhận/sửa thông tin trong form → cập nhật lại hồ sơ
+        persistContactInfo(user, form.renterName, form.renterPhone, form.renterCccd);
+
         Map<String, Object> order = new HashMap<>();
         order.put("buyerId",      user.getUid());
         order.put("renterName",   form.renterName);
@@ -569,6 +628,9 @@ public class CarDetailViewModel extends ViewModel {
             return;
         }
 
+        // Người dùng đã xác nhận/sửa thông tin trong form → cập nhật lại hồ sơ
+        persistContactInfo(user, form.renterName, form.renterPhone, form.renterCccd);
+
         long total = Math.round(form.distanceKm * pricePerKm);
         String tripNote = "Chuyến: " + form.pickup + " → " + form.dest
                 + " (" + form.distanceKm + " km). Tổng: " + money(total) + " đ."
@@ -588,6 +650,10 @@ public class CarDetailViewModel extends ViewModel {
         order.put("pickup",       form.pickup);
         order.put("destination",  form.dest);
         order.put("distanceKm",   form.distanceKm);
+        order.put("pickupLat",    form.pickupLat);
+        order.put("pickupLng",    form.pickupLng);
+        order.put("destLat",      form.destLat);
+        order.put("destLng",      form.destLng);
         order.put("note",         tripNote);
         order.put("totalAmount",  total);
         order.put("depositAmount", 0L);

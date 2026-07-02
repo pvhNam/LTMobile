@@ -3,7 +3,7 @@
     android:id="@+id/privacy_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F6F8"
+    android:background="@drawable/bg_liquid_glass"
     android:clipToPadding="false"
     android:fillViewport="true">
 
@@ -18,8 +18,8 @@
             android:layout_height="wrap_content"
             android:minHeight="56dp"
             android:gravity="center_vertical"
-            android:background="#FFFFFF"
-            android:elevation="3dp"
+            android:background="@color/lg_glass_fill_strong"
+            android:elevation="4dp"
             android:paddingHorizontal="16dp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp">
@@ -32,14 +32,15 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Quay lại"
                 android:padding="8dp"
-                android:src="@android:drawable/ic_menu_revert" />
+                android:tint="@color/lg_text"
+                android:src="@drawable/ic_back" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
                 android:text="Chính sách bảo mật"
-                android:textColor="#1A1A1A"
+                android:textColor="@color/lg_text"
                 android:textSize="20sp"
                 android:textStyle="bold" />
         </RelativeLayout>
@@ -62,7 +63,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Bảo mật cùng CARVIA"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:textSize="24sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -72,8 +73,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -81,7 +81,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Cam kết bảo mật"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -91,7 +91,7 @@
                 android:layout_marginTop="10dp"
                 android:lineSpacingExtra="5dp"
                 android:text="CARVIA tôn trọng quyền riêng tư của người dùng. Thông tin cá nhân được sử dụng để hỗ trợ đăng ký tài khoản, đăng tin xe, thuê xe, liên hệ tài xế và cải thiện chất lượng dịch vụ."
-                android:textColor="#424242"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp" />
         </LinearLayout>
 
@@ -100,8 +100,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -109,7 +108,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Thông tin được bảo vệ"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -119,7 +118,7 @@
                 android:layout_marginTop="10dp"
                 android:lineSpacingExtra="5dp"
                 android:text="• Thông tin tài khoản và hồ sơ cá nhân&#10;• Thông tin phương tiện và giao dịch&#10;• Số điện thoại liên hệ&#10;• Nội dung trao đổi trong hệ thống"
-                android:textColor="#424242"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp" />
         </LinearLayout>
 
@@ -128,8 +127,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -137,7 +135,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Lưu ý"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -146,7 +144,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="CARVIA không chia sẻ thông tin cá nhân của người dùng cho bên thứ ba vì mục đích thương mại khi chưa có sự đồng ý."
-                android:textColor="#424242"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp" />
         </LinearLayout>
 
@@ -161,7 +159,7 @@
             android:layout_marginBottom="28dp"
             android:gravity="center"
             android:text="© 2026 CARVIA Team&#10;Đồ án môn Lập trình Thiết bị Di động"
-            android:textColor="#777777"
+            android:textColor="@color/lg_text_secondary"
             android:textSize="13sp" />
 
     </LinearLayout>

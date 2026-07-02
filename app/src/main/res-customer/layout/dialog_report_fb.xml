@@ -4,7 +4,7 @@
     android:layout_height="wrap_content"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
-    android:background="#2C2C2C">
+    android:background="@android:color/transparent">
 
     <!-- Header -->
     <LinearLayout
@@ -27,7 +27,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Chọn vấn đề bạn muốn báo cáo"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/lg_text"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
@@ -37,9 +37,9 @@
                 android:layout_height="32dp"
                 android:gravity="center"
                 android:text="✕"
-                android:textColor="#AAAAAA"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="16sp"
-                android:background="#3D3D3D"
+                android:background="@drawable/bg_glass_circle"
                 android:clickable="true"
                 android:focusable="true" />
         </LinearLayout>
@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="Chúng tôi sẽ không cho người đó biết bạn đã báo cáo họ."
-            android:textColor="#AAAAAA"
+            android:textColor="@color/lg_text_secondary"
             android:textSize="13sp" />
 
         <!-- Warning box -->
@@ -57,7 +57,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:background="#3A3A3A"
+            android:background="@drawable/bg_glass_card_soft"
             android:orientation="horizontal"
             android:padding="12dp">
 
@@ -73,7 +73,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Nếu ai đó đang gặp nguy hiểm, đừng chần chừ mà hãy báo ngay cho dịch vụ khẩn cấp tại địa phương."
-                android:textColor="#CCCCCC"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
@@ -82,7 +82,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#3D3D3D" />
+        android:background="@color/color_divider" />
 
     <!-- Option 1: Giả mạo người khác -->
     <LinearLayout
@@ -102,7 +102,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Giả mạo người khác"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/lg_text"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -110,7 +110,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="›"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/lg_text_secondary"
             android:textSize="22sp" />
     </LinearLayout>
 
@@ -118,7 +118,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#3D3D3D"
+        android:background="@color/color_divider"
         android:layout_marginStart="20dp"/>
 
     <!-- Option 2: Lừa đảo hoặc gian lận -->
@@ -139,7 +139,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Lừa đảo hoặc gian lận"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/lg_text"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -147,7 +147,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="›"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/lg_text_secondary"
             android:textSize="22sp" />
     </LinearLayout>
 

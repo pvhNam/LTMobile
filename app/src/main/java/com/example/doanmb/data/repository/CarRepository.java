@@ -35,6 +35,8 @@ public final class CarRepository {
 
     public interface OnContact { void onLoaded(String name, String phone); void onError(String message); }
 
+    public interface OnProfile { void onLoaded(String name, String phone, String cccd); }
+
     public interface OnResult { void onSuccess(); void onError(String message); }
 
     public interface OnCreated { void onCreated(String carId); void onError(String message); }
@@ -72,6 +74,28 @@ public final class CarRepository {
                     cb.onLoaded(doc.getString("name"), doc.getString("phone"));
                 })
                 .addOnFailureListener(e -> cb.onError(e.getMessage()));
+    }
+
+    /** Hồ sơ (tên/SĐT/CCCD) của người dùng hiện tại — dùng tự điền form thuê/mua xe. */
+    public static void loadUserProfile(@Nullable String uid, @NonNull OnProfile cb) {
+        if (uid == null || uid.isEmpty()) return;
+        db().collection(COL_USERS).document(uid).get()
+                .addOnSuccessListener(doc -> {
+                    if (doc == null || !doc.exists()) return;
+                    cb.onLoaded(doc.getString("name"), doc.getString("phone"), doc.getString("cccd"));
+                });
+    }
+
+    /** Lưu lại thông tin khách sửa trong form đặt xe để lần sau tự điền đúng. Chỉ ghi field có giá trị. */
+    public static void saveUserContactInfo(@Nullable String uid, String name, String phone, String cccd) {
+        if (uid == null || uid.isEmpty()) return;
+        Map<String, Object> data = new java.util.HashMap<>();
+        if (name  != null && !name.isEmpty())  data.put("name", name);
+        if (phone != null && !phone.isEmpty()) data.put("phone", phone);
+        if (cccd  != null && !cccd.isEmpty())  data.put("cccd", cccd);
+        if (data.isEmpty()) return;
+        db().collection(COL_USERS).document(uid)
+                .set(data, com.google.firebase.firestore.SetOptions.merge());
     }
 
     public static void loadMyPosts(@Nullable String userId, @NonNull OnCars cb) {

@@ -62,7 +62,7 @@
 
     <style name="ReportBottomSheetStyle" parent="Widget.Design.BottomSheet.Modal">
         <item name="android:background">@android:color/transparent</item>
-        <item name="backgroundTint">#2C2C2C</item>
+        <item name="backgroundTint">@color/lg_surface</item>
         <item name="shapeAppearance">@style/ReportBottomSheetShapeAppearance</item>
     </style>
 

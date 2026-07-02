@@ -65,19 +65,23 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
 
             boolean isAccepted   = "accepted".equals(o.status);
             boolean isInProgress = "in_progress".equals(o.status);
+            boolean hasRoute = o.distanceKm > 0 && (o.pickupLat != 0 || o.pickupLng != 0)
+                    && (o.destLat != 0 || o.destLng != 0);
 
             setVisible(h.btnStart,    isAccepted);
             setVisible(h.btnComplete, isInProgress);
+            setVisible(h.btnRoute,    hasRoute);
 
             if (h.btnStart    != null) h.btnStart.setOnClickListener(v    -> viewModel.startOrder(o));
             if (h.btnComplete != null) h.btnComplete.setOnClickListener(v -> viewModel.completeOrder(o));
+            if (h.btnRoute    != null) h.btnRoute.setOnClickListener(v -> openRoute(o));
         }
 
         @Override public int getItemCount() { return list.size(); }
 
         class VH extends RecyclerView.ViewHolder {
             TextView tvCarName, tvRenter, tvPrice, tvNote, tvDate, tvStatus;
-            Button   btnStart, btnComplete;
+            Button   btnStart, btnComplete, btnRoute;
             VH(@NonNull View v) {
                 super(v);
                 tvCarName   = v.findViewById(R.id.tv_do_car_name);
@@ -88,8 +92,24 @@ public class DriverTripsFragment extends Fragment implements TripAdapter.OnTripA
                 tvStatus    = v.findViewById(R.id.tv_do_status);
                 btnStart    = v.findViewById(R.id.btn_do_start);
                 btnComplete = v.findViewById(R.id.btn_do_complete);
+                btnRoute    = v.findViewById(R.id.btn_do_route);
             }
         }
+    }
+
+    /** Mở MapPickerActivity ở chế độ chỉ xem để tài xế xem lại lộ trình đón/đến đã chốt. */
+    private void openRoute(OrderItem o) {
+        android.content.Intent i = new android.content.Intent(getContext(),
+                com.example.doanmb.ui.car.view.MapPickerActivity.class);
+        i.putExtra(com.example.doanmb.ui.car.view.MapPickerActivity.EXTRA_VIEW_ONLY, true);
+        i.putExtra(com.example.doanmb.ui.car.view.MapPickerActivity.EXTRA_PICKUP_LAT, o.pickupLat);
+        i.putExtra(com.example.doanmb.ui.car.view.MapPickerActivity.EXTRA_PICKUP_LNG, o.pickupLng);
+        i.putExtra(com.example.doanmb.ui.car.view.MapPickerActivity.EXTRA_DEST_LAT, o.destLat);
+        i.putExtra(com.example.doanmb.ui.car.view.MapPickerActivity.EXTRA_DEST_LNG, o.destLng);
+        i.putExtra(com.example.doanmb.ui.car.view.MapPickerActivity.EXTRA_PICKUP_NAME, o.pickup);
+        i.putExtra(com.example.doanmb.ui.car.view.MapPickerActivity.EXTRA_DEST_NAME, o.destination);
+        i.putExtra(com.example.doanmb.ui.car.view.MapPickerActivity.EXTRA_DISTANCE_KM, o.distanceKm);
+        startActivity(i);
     }
 
     private TextView     tvName, tvSectionTitle, tvCountdown, tvEmpty;

@@ -217,10 +217,7 @@ Toàn bộ thao tác tiền được gom vào **`WalletRepository`** và chạy 
 
 2. **Firebase:** tải `google-services.json` của project Firebase và đặt vào thư mục `app/`. Bật **Authentication (Email/Password)**, **Cloud Firestore**, **Storage**, **Cloud Messaging**.
 
-3. **Google Maps key:** thêm vào `local.properties` (file này **không** commit lên git):
-   ```properties
-   MAPS_API_KEY=AIza...your_key...
-   ```
+3. **Bản đồ:** tính năng chọn điểm đón/đến dùng OpenStreetMap qua `osmdroid` — không cần API key, không cần cấu hình gì thêm.
 
 4. **Build & chạy:**
    ```bash

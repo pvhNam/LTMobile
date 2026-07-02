@@ -3,7 +3,7 @@
     android:id="@+id/scroll_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F6F8"
+    android:background="@drawable/bg_liquid_glass"
     android:clipToPadding="false"
     android:fillViewport="true">
 
@@ -18,8 +18,8 @@
             android:layout_height="wrap_content"
             android:minHeight="56dp"
             android:gravity="center_vertical"
-            android:background="#FFFFFF"
-            android:elevation="3dp"
+            android:background="@color/lg_glass_fill_strong"
+            android:elevation="4dp"
             android:paddingHorizontal="16dp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp">
@@ -32,14 +32,15 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Quay lại"
                 android:padding="8dp"
-                android:src="@android:drawable/ic_menu_revert" />
+                android:tint="@color/lg_text"
+                android:src="@drawable/ic_back" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
                 android:text="Trung tâm hỗ trợ"
-                android:textColor="#1A1A1A"
+                android:textColor="@color/lg_text"
                 android:textSize="20sp"
                 android:textStyle="bold" />
         </RelativeLayout>
@@ -62,7 +63,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="CARVIA luôn sẵn sàng hỗ trợ"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:textSize="23sp"
                 android:textStyle="bold" />
 
@@ -71,7 +72,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:text="Giải đáp vấn đề về xe, tài xế và giao dịch"
-                android:textColor="#777777"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="14sp" />
         </LinearLayout>
 
@@ -80,8 +81,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -89,7 +89,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Liên hệ nhanh"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -99,7 +99,7 @@
                 android:layout_marginTop="10dp"
                 android:lineSpacingExtra="6dp"
                 android:text="Hotline: 0862210723&#10;Email: 23130365@st.hcmuaf.edu.vn&#10;Thời gian hỗ trợ: 24/7"
-                android:textColor="#424242"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp" />
         </LinearLayout>
 
@@ -108,8 +108,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
-            android:elevation="2dp"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -117,7 +116,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Các vấn đề thường gặp"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -127,7 +126,7 @@
                 android:layout_marginTop="10dp"
                 android:lineSpacingExtra="6dp"
                 android:text="• Không thể đăng nhập tài khoản&#10;• Cách đăng bán hoặc cho thuê xe&#10;• Cách đăng ký trở thành tài xế&#10;• Vấn đề về thanh toán hoặc giao dịch&#10;• Báo cáo tài khoản hoặc nội dung không phù hợp"
-                android:textColor="#424242"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp" />
         </LinearLayout>
 
@@ -136,7 +135,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            android:background="#2A70DE"
+            android:background="@drawable/bg_glass_button"
             android:gravity="center"
             android:paddingVertical="13dp"
             android:text="Gửi yêu cầu hỗ trợ"
@@ -155,7 +154,7 @@
             android:layout_marginBottom="28dp"
             android:gravity="center"
             android:text="© 2026 CARVIA Team&#10;Đồ án môn Lập trình Thiết bị Di động"
-            android:textColor="#777777"
+            android:textColor="@color/lg_text_secondary"
             android:textSize="13sp" />
 
     </LinearLayout>

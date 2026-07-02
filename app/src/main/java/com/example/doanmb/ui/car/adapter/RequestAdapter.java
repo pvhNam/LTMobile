@@ -176,7 +176,7 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
         } else {
             // ===== ĐƠN NHẬN ĐƯỢC (mình là chủ xe) =====
             if (renterName != null && !renterName.isEmpty()) {
-                holder.tvBuyerInfo.setText("👤  Người thuê: " + renterName);
+                holder.tvBuyerInfo.setText((isRental ? "👤  Người thuê: " : "👤  Người mua: ") + renterName);
                 holder.tvBuyerPhone.setText("📞  " + (renterPhone != null ? renterPhone : ""));
             } else {
                 holder.tvBuyerInfo.setText("👤  Người mua: " + (buyerId != null && buyerId.length() >= 8 ? buyerId.substring(0, 8) + "..." : "Không rõ"));
@@ -239,12 +239,12 @@ public class RequestAdapter extends RecyclerView.Adapter<RequestAdapter.RequestV
             }
         }
 
-        // CCCD + ngày thuê (chỉ hiện khi thuê xe, và chỉ với đơn nhận được)
-        if (isRental && !isMine) {
-            if (cccd != null && !cccd.isEmpty()) {
-                holder.tvBuyerCCCD.setVisibility(View.VISIBLE);
-                holder.tvBuyerCCCD.setText("🪪  CCCD: " + cccd);
-            }
+        // CCCD (hiện với mọi đơn nhận được nếu khách có nhập) + ngày thuê
+        if (!isMine && cccd != null && !cccd.isEmpty()) {
+            holder.tvBuyerCCCD.setVisibility(View.VISIBLE);
+            holder.tvBuyerCCCD.setText("🪪  CCCD: " + cccd);
+        } else {
+            holder.tvBuyerCCCD.setVisibility(View.GONE);
         }
         if (isRental && startDate != null && !startDate.isEmpty()) {
             holder.tvRentInfo.setVisibility(View.VISIBLE);

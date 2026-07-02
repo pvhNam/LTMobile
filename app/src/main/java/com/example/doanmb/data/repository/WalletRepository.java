@@ -18,8 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Gom toàn bộ thao tác tiền của app vào một chỗ để dễ kiểm soát và đối soát.
- *
+
  * Mô hình tiền:
  *  - Mỗi user có field "balance" (VNĐ) trong collection "users".
  *  - Hoa hồng của app cộng dồn vào doc "app_wallet/main".balance.

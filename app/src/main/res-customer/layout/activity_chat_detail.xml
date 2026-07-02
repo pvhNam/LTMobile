@@ -256,7 +256,7 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:background="#F5F5F5"
+            android:background="@color/lg_glass_fill_soft"
             android:paddingStart="8dp"
             android:paddingEnd="8dp">
 

@@ -4,7 +4,7 @@
     android:id="@+id/scroll_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F6F8"
+    android:background="@drawable/bg_liquid_glass"
     android:clipToPadding="false"
     android:fillViewport="true">
 
@@ -19,8 +19,8 @@
             android:layout_height="wrap_content"
             android:minHeight="56dp"
             android:gravity="center_vertical"
-            android:background="#FFFFFF"
-            android:elevation="3dp"
+            android:background="@color/lg_glass_fill_strong"
+            android:elevation="4dp"
             android:paddingHorizontal="16dp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp">
@@ -33,14 +33,15 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Quay lại"
             android:padding="8dp"
-            android:src="@android:drawable/ic_menu_revert" />
+            android:tint="@color/lg_text"
+            android:src="@drawable/ic_back" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="Bài đánh giá"
-            android:textColor="#1A1A1A"
+            android:textColor="@color/lg_text"
             android:textSize="20sp"
             android:textStyle="bold" />
     </RelativeLayout>
@@ -52,9 +53,11 @@
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="8dp"
-        app:cardBackgroundColor="#FFFFFF"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp">
+        app:cardBackgroundColor="@color/lg_glass_fill_strong"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/lg_glass_stroke"
+        app:strokeWidth="1dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -92,7 +95,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:text="(0 đánh giá)"
-                android:textColor="#777777"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="14sp" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
@@ -116,7 +119,7 @@
         android:gravity="center"
         android:padding="32dp"
         android:text="Chưa có đánh giá nào"
-        android:textColor="#AAAAAA"
+        android:textColor="@color/lg_text_secondary"
         android:textSize="15sp"
         android:visibility="gone" />
 

@@ -2,14 +2,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/bg_liquid_glass"
     android:fitsSystemWindows="true"
     android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
-        android:elevation="3dp"
+        android:background="@color/lg_glass_fill_strong"
+        android:elevation="4dp"
         android:paddingHorizontal="12dp"
         android:paddingTop="10dp"
         android:paddingBottom="10dp">
@@ -22,6 +23,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Huỷ"
             android:padding="9dp"
+            android:tint="@color/lg_text"
             android:src="@drawable/ic_back" />
 
         <TextView
@@ -29,8 +31,8 @@
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="Thanh toán VNPay"
-            android:textColor="#1A1A1A"
-            android:textSize="18sp"
+            android:textColor="@color/lg_text"
+            android:textSize="20sp"
             android:textStyle="bold" />
     </RelativeLayout>
 

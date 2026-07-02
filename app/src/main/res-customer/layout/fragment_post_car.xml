@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/transparent"
@@ -22,7 +23,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Đăng tin xe"
-            android:textColor="@color/color_on_background"
+            android:textColor="@color/lg_text"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -31,7 +32,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="Nhập thông tin chính để gửi admin duyệt."
-            android:textColor="@color/color_on_surface_secondary"
+            android:textColor="@color/lg_text_secondary"
             android:textSize="13sp" />
 
         <TextView
@@ -39,7 +40,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:text="Ảnh xe"
-            android:textColor="@color/color_on_surface"
+            android:textColor="@color/lg_text"
             android:textSize="14sp"
             android:textStyle="bold" />
 
@@ -69,7 +70,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Thêm ảnh xe"
-                    android:textColor="@color/color_on_surface"
+                    android:textColor="@color/lg_text"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -78,7 +79,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="Có thể chọn nhiều ảnh cùng lúc"
-                    android:textColor="@color/color_on_surface_secondary"
+                    android:textColor="@color/lg_text_secondary"
                     android:textSize="12sp" />
 
                 <Button
@@ -86,7 +87,10 @@
                     android:layout_width="136dp"
                     android:layout_height="42dp"
                     android:layout_marginTop="12dp"
-                    android:backgroundTint="#2F7BD7"
+                    android:backgroundTint="@color/lg_accent"
+                    app:cornerRadius="21dp"
+                    app:strokeColor="@color/lg_glass_stroke"
+                    app:strokeWidth="1dp"
                     android:text="Chọn ảnh"
                     android:textAllCaps="false"
                     android:textColor="@android:color/white"
@@ -121,7 +125,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/color_on_surface_secondary"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="12sp"
                 android:visibility="gone" />
 
@@ -129,7 +133,9 @@
                 android:id="@+id/btn_remove_image"
                 android:layout_width="wrap_content"
                 android:layout_height="38dp"
-                android:backgroundTint="#E53935"
+                android:backgroundTint="#E5484D"
+                app:cornerRadius="19dp"
+                android:paddingHorizontal="16dp"
                 android:text="Xóa tất cả"
                 android:textAllCaps="false"
                 android:textColor="@android:color/white"
@@ -142,7 +148,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:text="Thông tin xe"
-            android:textColor="@color/color_on_background"
+            android:textColor="@color/lg_text"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -151,7 +157,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="Tên xe *"
-            android:textColor="@color/color_on_surface"
+            android:textColor="@color/lg_text"
             android:textStyle="bold" />
 
         <EditText
@@ -159,12 +165,12 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_marginTop="6dp"
-            android:background="@drawable/bg_search"
+            android:background="@drawable/bg_glass_input"
             android:hint="Toyota Vios 2020"
             android:inputType="textCapWords"
             android:padding="12dp"
-            android:textColor="@color/color_on_surface"
-            android:textColorHint="@color/color_on_surface_tertiary" />
+            android:textColor="@color/lg_text"
+            android:textColorHint="@color/lg_text_secondary" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -184,7 +190,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Hãng xe *"
-                    android:textColor="@color/color_on_surface"
+                    android:textColor="@color/lg_text"
                     android:textStyle="bold" />
 
                 <Spinner
@@ -192,7 +198,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
                     android:layout_marginTop="6dp"
-                    android:background="@drawable/bg_search" />
+                    android:background="@drawable/bg_glass_input" />
             </LinearLayout>
 
             <LinearLayout
@@ -206,7 +212,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Loại tin *"
-                    android:textColor="@color/color_on_surface"
+                    android:textColor="@color/lg_text"
                     android:textStyle="bold" />
 
                 <Spinner
@@ -214,7 +220,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
                     android:layout_marginTop="6dp"
-                    android:background="@drawable/bg_search" />
+                    android:background="@drawable/bg_glass_input" />
             </LinearLayout>
         </LinearLayout>
 
@@ -223,7 +229,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="Mức giá *"
-            android:textColor="@color/color_on_surface"
+            android:textColor="@color/lg_text"
             android:textStyle="bold" />
 
         <EditText
@@ -231,12 +237,12 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_marginTop="6dp"
-            android:background="@drawable/bg_search"
+            android:background="@drawable/bg_glass_input"
             android:hint="450000000"
             android:inputType="number"
             android:padding="12dp"
-            android:textColor="@color/color_on_surface"
-            android:textColorHint="@color/color_on_surface_tertiary" />
+            android:textColor="@color/lg_text"
+            android:textColorHint="@color/lg_text_secondary" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -256,7 +262,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Năm sản xuất"
-                    android:textColor="@color/color_on_surface"
+                    android:textColor="@color/lg_text"
                     android:textStyle="bold" />
 
                 <EditText
@@ -264,12 +270,12 @@
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
                     android:layout_marginTop="6dp"
-                    android:background="@drawable/bg_search"
+                    android:background="@drawable/bg_glass_input"
                     android:hint="2020"
                     android:inputType="number"
                     android:padding="12dp"
-                    android:textColor="@color/color_on_surface"
-                    android:textColorHint="@color/color_on_surface_tertiary" />
+                    android:textColor="@color/lg_text"
+                    android:textColorHint="@color/lg_text_secondary" />
             </LinearLayout>
 
             <LinearLayout
@@ -283,7 +289,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Số km"
-                    android:textColor="@color/color_on_surface"
+                    android:textColor="@color/lg_text"
                     android:textStyle="bold" />
 
                 <EditText
@@ -291,12 +297,12 @@
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
                     android:layout_marginTop="6dp"
-                    android:background="@drawable/bg_search"
+                    android:background="@drawable/bg_glass_input"
                     android:hint="50000"
                     android:inputType="number"
                     android:padding="12dp"
-                    android:textColor="@color/color_on_surface"
-                    android:textColorHint="@color/color_on_surface_tertiary" />
+                    android:textColor="@color/lg_text"
+                    android:textColorHint="@color/lg_text_secondary" />
             </LinearLayout>
         </LinearLayout>
 
@@ -305,7 +311,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="Khu vực"
-            android:textColor="@color/color_on_surface"
+            android:textColor="@color/lg_text"
             android:textStyle="bold" />
 
         <EditText
@@ -313,19 +319,19 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_marginTop="6dp"
-            android:background="@drawable/bg_search"
+            android:background="@drawable/bg_glass_input"
             android:hint="Quận 1, TP.HCM"
             android:inputType="textCapWords"
             android:padding="12dp"
-            android:textColor="@color/color_on_surface"
-            android:textColorHint="@color/color_on_surface_tertiary" />
+            android:textColor="@color/lg_text"
+            android:textColorHint="@color/lg_text_secondary" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="Mô tả thêm"
-            android:textColor="@color/color_on_surface"
+            android:textColor="@color/lg_text"
             android:textStyle="bold" />
 
         <EditText
@@ -333,20 +339,23 @@
             android:layout_width="match_parent"
             android:layout_height="112dp"
             android:layout_marginTop="6dp"
-            android:background="@drawable/bg_search"
+            android:background="@drawable/bg_glass_input"
             android:gravity="top|start"
             android:hint="Tình trạng xe, giấy tờ, lịch sử bảo dưỡng..."
             android:inputType="textMultiLine|textCapSentences"
             android:padding="12dp"
-            android:textColor="@color/color_on_surface"
-            android:textColorHint="@color/color_on_surface_tertiary" />
+            android:textColor="@color/lg_text"
+            android:textColorHint="@color/lg_text_secondary" />
 
         <Button
             android:id="@+id/btn_submit_post"
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="22dp"
-            android:background="@drawable/bg_search_button"
+            android:backgroundTint="@color/lg_accent"
+            app:cornerRadius="26dp"
+            app:strokeColor="@color/lg_glass_stroke"
+            app:strokeWidth="1dp"
             android:text="Gửi yêu cầu đăng tin"
             android:textAllCaps="false"
             android:textColor="@android:color/white"

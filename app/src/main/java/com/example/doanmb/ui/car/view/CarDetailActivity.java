@@ -63,8 +63,9 @@ public class CarDetailActivity extends AppCompatActivity {
 
     // Form mua xe
     private LinearLayout layoutBuyForm;
-    private EditText etBuyerNote;
+    private EditText etBuyerName, etBuyerPhone, etBuyerCCCD, etBuyerNote;
     private Button btnSendRequest, btnCallSeller, btnChatSeller;
+    private TextView tvBuyAutofillHint, tvRentAutofillHint;
 
     // Form thuê xe
     private LinearLayout layoutRentForm;
@@ -94,6 +95,7 @@ public class CarDetailActivity extends AppCompatActivity {
     private boolean tripMode = false;
     private String tripPickup = "", tripDest = "";
     private double tripDistanceKm = 0d;
+    private double tripPickupLat = 0d, tripPickupLng = 0d, tripDestLat = 0d, tripDestLng = 0d;
 
     // Đánh giá tài xế
     private View layoutReviewSection;
@@ -114,6 +116,10 @@ public class CarDetailActivity extends AppCompatActivity {
                         tripPickup = d.getStringExtra(MapPickerActivity.RESULT_PICKUP);
                         tripDest = d.getStringExtra(MapPickerActivity.RESULT_DEST);
                         tripDistanceKm = d.getDoubleExtra(MapPickerActivity.RESULT_DISTANCE_KM, 0d);
+                        tripPickupLat = d.getDoubleExtra(MapPickerActivity.RESULT_PICKUP_LAT, 0d);
+                        tripPickupLng = d.getDoubleExtra(MapPickerActivity.RESULT_PICKUP_LNG, 0d);
+                        tripDestLat = d.getDoubleExtra(MapPickerActivity.RESULT_DEST_LAT, 0d);
+                        tripDestLng = d.getDoubleExtra(MapPickerActivity.RESULT_DEST_LNG, 0d);
                         updateTripSummary();
                     });
 
@@ -237,6 +243,19 @@ public class CarDetailActivity extends AppCompatActivity {
             updateFavoriteIcons();
         });
 
+        // Hồ sơ người dùng → tự điền form thuê/mua (chỉ điền ô đang trống, vẫn sửa được)
+        viewModel.getUserProfile().observe(this, p -> {
+            if (p == null) return;
+            boolean rentFilled = prefillIfEmpty(etRenterName, p.name)
+                    | prefillIfEmpty(etRenterPhone, p.phone)
+                    | prefillIfEmpty(etRenterCCCD, p.cccd);
+            boolean buyFilled = prefillIfEmpty(etBuyerName, p.name)
+                    | prefillIfEmpty(etBuyerPhone, p.phone)
+                    | prefillIfEmpty(etBuyerCCCD, p.cccd);
+            if (rentFilled && tvRentAutofillHint != null) tvRentAutofillHint.setVisibility(View.VISIBLE);
+            if (buyFilled && tvBuyAutofillHint != null) tvBuyAutofillHint.setVisibility(View.VISIBLE);
+        });
+
         viewModel.getShowReviews().observe(this, show -> {
             if (layoutReviewSection != null)
                 layoutReviewSection.setVisibility(Boolean.TRUE.equals(show) ? View.VISIBLE : View.GONE);
@@ -336,7 +355,12 @@ public class CarDetailActivity extends AppCompatActivity {
         btnMenuDetail = findViewById(R.id.btn_menu_detail);
 
         layoutBuyForm = findViewById(R.id.layoutBuyForm);
+        etBuyerName = findViewById(R.id.etBuyerName);
+        etBuyerPhone = findViewById(R.id.etBuyerPhone);
+        etBuyerCCCD = findViewById(R.id.etBuyerCCCD);
         etBuyerNote = findViewById(R.id.etBuyerNote);
+        tvBuyAutofillHint = findViewById(R.id.tv_buy_autofill_hint);
+        tvRentAutofillHint = findViewById(R.id.tv_rent_autofill_hint);
         btnSendRequest = findViewById(R.id.btnSendRequest);
         btnCallSeller = findViewById(R.id.btnCallSeller);
         btnChatSeller = findViewById(R.id.btnChatSeller);
@@ -649,8 +673,23 @@ public class CarDetailActivity extends AppCompatActivity {
         }
     }
 
+    /** Điền value vào ô nếu ô đang trống. Trả về true nếu có điền. */
+    private boolean prefillIfEmpty(EditText et, String value) {
+        if (et == null || value == null || value.isEmpty()) return false;
+        if (et.getText() != null && !et.getText().toString().trim().isEmpty()) return false;
+        et.setText(value);
+        return true;
+    }
+
     private void setupButtons() {
-        btnSendRequest.setOnClickListener(v -> viewModel.sendBuyRequest(etBuyerNote.getText().toString()));
+        btnSendRequest.setOnClickListener(v -> {
+            CarDetailViewModel.BuyForm form = new CarDetailViewModel.BuyForm();
+            form.buyerName  = etBuyerName != null ? etBuyerName.getText().toString().trim() : "";
+            form.buyerPhone = etBuyerPhone != null ? etBuyerPhone.getText().toString().trim() : "";
+            form.buyerCccd  = etBuyerCCCD != null ? etBuyerCCCD.getText().toString().trim() : "";
+            form.note       = etBuyerNote.getText().toString();
+            viewModel.sendBuyRequest(form);
+        });
         btnCallSeller.setOnClickListener(v -> callSeller());
         btnChatSeller.setOnClickListener(v -> openChat());
 
@@ -1056,6 +1095,10 @@ public class CarDetailActivity extends AppCompatActivity {
         form.pickup      = tripPickup;
         form.dest        = tripDest;
         form.distanceKm  = tripDistanceKm;
+        form.pickupLat   = tripPickupLat;
+        form.pickupLng   = tripPickupLng;
+        form.destLat     = tripDestLat;
+        form.destLng     = tripDestLng;
         form.paymentMethod = paymentMethod;
         viewModel.sendRentRequest(form);
     }

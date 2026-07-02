@@ -25,14 +25,17 @@
             android:paddingBottom="18dp">
 
             <!-- Thẻ hồ sơ -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_profile"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clickable="true"
                 android:focusable="true"
+                app:cardBackgroundColor="@color/driver_surface"
                 app:cardCornerRadius="18dp"
-                app:cardElevation="3dp">
+                app:cardElevation="0dp"
+                app:strokeColor="@color/driver_stroke"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -90,10 +93,10 @@
 
                     <ImageView style="@style/DriverChevron" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Nhóm 1 -->
-            <androidx.cardview.widget.CardView style="@style/DriverMenuGroup">
+            <com.google.android.material.card.MaterialCardView style="@style/DriverMenuGroup">
 
                 <LinearLayout style="@style/DriverMenuGroupInner">
 
@@ -127,10 +130,10 @@
                         <ImageView style="@style/DriverChevron" />
                     </LinearLayout>
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Nhóm 2 -->
-            <androidx.cardview.widget.CardView style="@style/DriverMenuGroup">
+            <com.google.android.material.card.MaterialCardView style="@style/DriverMenuGroup">
 
                 <LinearLayout style="@style/DriverMenuGroupInner">
 
@@ -146,10 +149,10 @@
                         <ImageView style="@style/DriverChevron" />
                     </LinearLayout>
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Nhóm 3 -->
-            <androidx.cardview.widget.CardView style="@style/DriverMenuGroup">
+            <com.google.android.material.card.MaterialCardView style="@style/DriverMenuGroup">
 
                 <LinearLayout style="@style/DriverMenuGroupInner">
 
@@ -165,7 +168,7 @@
                         <ImageView style="@style/DriverChevron" />
                     </LinearLayout>
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <LinearLayout
                 android:id="@+id/btn_dp_logout"

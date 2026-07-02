@@ -92,9 +92,51 @@ public class DriverHomeFragment extends Fragment {
             });
         }
 
+        setupMapPreview(v);
+
         observeViewModel();
         viewModel.loadDriverInfo();
         return v;
+    }
+
+    /** Bản đồ nhỏ chỉ để xem trước (không tương tác) — bấm để mở tab "Bản đồ" đầy đủ. */
+    private void setupMapPreview(View v) {
+        org.osmdroid.config.Configuration.getInstance().load(requireContext(),
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()));
+        org.osmdroid.config.Configuration.getInstance().setUserAgentValue(requireContext().getPackageName());
+
+        org.osmdroid.views.MapView mapPreview = v.findViewById(R.id.map_view_home_preview);
+        if (mapPreview != null) {
+            mapPreview.setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK);
+            mapPreview.setMultiTouchControls(false);
+            mapPreview.setOnTouchListener((view, event) -> true); // chỉ xem, không kéo/zoom được
+
+            org.osmdroid.util.GeoPoint center = new org.osmdroid.util.GeoPoint(10.776530, 106.700981);
+            if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
+                    android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    || androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                android.location.LocationManager lm = androidx.core.content.ContextCompat.getSystemService(
+                        requireContext(), android.location.LocationManager.class);
+                if (lm != null) {
+                    try {
+                        for (String provider : lm.getProviders(true)) {
+                            android.location.Location loc = lm.getLastKnownLocation(provider);
+                            if (loc != null) { center = new org.osmdroid.util.GeoPoint(loc.getLatitude(), loc.getLongitude()); break; }
+                        }
+                    } catch (SecurityException ignored) {}
+                }
+            }
+            mapPreview.getController().setZoom(13.0);
+            mapPreview.getController().setCenter(center);
+        }
+
+        View overlay = v.findViewById(R.id.overlay_map_preview_click);
+        if (overlay != null) overlay.setOnClickListener(x -> {
+            if (getActivity() instanceof DriverDashboardActivity) {
+                ((DriverDashboardActivity) getActivity()).openMapTab();
+            }
+        });
     }
 
     @Override public void onResume() { super.onResume(); viewModel.onResume(); }

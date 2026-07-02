@@ -3,7 +3,7 @@
     android:id="@+id/scroll_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F6F8"
+    android:background="@drawable/bg_liquid_glass"
     android:clipToPadding="false"
     android:fillViewport="true">
 
@@ -19,8 +19,8 @@
             android:layout_height="wrap_content"
             android:minHeight="56dp"
             android:gravity="center_vertical"
-            android:background="#FFFFFF"
-            android:elevation="3dp"
+            android:background="@color/lg_glass_fill_strong"
+            android:elevation="4dp"
             android:paddingHorizontal="16dp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp">
@@ -32,14 +32,15 @@
                 android:layout_centerVertical="true"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:padding="8dp"
-                android:src="@android:drawable/ic_menu_revert" />
+                android:src="@drawable/ic_back"
+                android:tint="@color/lg_text" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
                 android:text="Về chúng tôi"
-                android:textColor="#1A1A1A"
+                android:textColor="@color/lg_text"
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
@@ -67,7 +68,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="CARVIA"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -75,7 +76,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Smart Vehicle Platform"
-                android:textColor="#777777"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="15sp" />
 
             <TextView
@@ -83,7 +84,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:text="Phiên bản 1.0.0"
-                android:textColor="#999999"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="13sp" />
 
         </LinearLayout>
@@ -93,7 +94,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
-            android:background="#FFFFFF"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -101,7 +102,7 @@
                 android:text="Giới thiệu"
                 android:textStyle="bold"
                 android:textSize="18sp"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
@@ -111,7 +112,7 @@
                 android:layout_marginTop="10dp"
                 android:lineSpacingExtra="4dp"
                 android:text="CARVIA là nền tảng hỗ trợ đăng bán xe, cho thuê xe và đăng ký làm tài xế, được phát triển nhằm kết nối chủ xe, tài xế và khách hàng trên cùng một hệ thống. Ứng dụng mang đến trải nghiệm nhanh chóng, thuận tiện, minh bạch và an toàn trong việc tìm kiếm, giao dịch và quản lý phương tiện."
-                android:textColor="#444444"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
         </LinearLayout>
@@ -122,7 +123,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -130,31 +131,35 @@
                 android:text="Các chức năng chính"
                 android:textStyle="bold"
                 android:textSize="18sp"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
             <TextView
                 android:layout_marginTop="10dp"
                 android:text="🚗 Đăng bán xe"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
             <TextView
                 android:text="📅 Cho thuê xe"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
             <TextView
                 android:text="👨‍✈️ Đăng ký làm tài xế"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
             <TextView
                 android:text="💬 Kết nối khách hàng và chủ xe"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
@@ -167,7 +172,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="16dp"
-            android:background="#FFFFFF"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -175,7 +180,7 @@
                 android:text="Nhóm phát triển"
                 android:textStyle="bold"
                 android:textSize="18sp"
-                android:textColor="#2A70DE"
+                android:textColor="@color/lg_accent"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
@@ -184,30 +189,35 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="Phạm Văn Hoài Nam"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Nguyễn Quang Thành"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Ngô Quang Khánh"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Trần Xuân Hùng"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Trần Nguyễn Thanh Tú"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
         </LinearLayout>
@@ -218,7 +228,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginBottom="24dp"
-            android:background="#FFFFFF"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="18dp">
 
@@ -228,7 +238,7 @@
                 android:text="Thông tin liên hệ"
                 android:textStyle="bold"
                 android:textSize="18sp"
-                android:textColor="#2A70DE"/>
+                android:textColor="@color/lg_accent"/>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -236,18 +246,21 @@
                 android:layout_marginTop="10dp"
                 android:text="Đại diện nhóm:"
                 android:textStyle="bold"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Phạm Văn Hoài Nam"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="SĐT: 0862210723"
+                android:textColor="@color/lg_text"
                 android:textSize="15sp"/>
 
             <TextView
@@ -256,7 +269,7 @@
                 android:layout_marginTop="18dp"
                 android:gravity="center"
                 android:text="© 2026 CARVIA Team&#10;Đồ án môn Lập trình Thiết bị Di động"
-                android:textColor="#777777"
+                android:textColor="@color/lg_text_secondary"
                 android:textSize="13sp"/>
 
         </LinearLayout>

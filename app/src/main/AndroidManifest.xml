@@ -25,10 +25,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DOANMB">
 
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="${MAPS_API_KEY}" />
-
         <service
             android:name=".core.service.CarviaMessagingService"
             android:exported="false">

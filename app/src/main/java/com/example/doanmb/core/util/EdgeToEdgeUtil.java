@@ -74,6 +74,11 @@ public final class EdgeToEdgeUtil {
         }
     }
 
+    /** Chiều cao thanh trạng thái THẬT của máy (px) — dùng khi cần cộng margin thay vì padding. */
+    public static int statusBarHeight(Context ctx) {
+        return systemDimen(ctx, "status_bar_height", 24);
+    }
+
     /** Đọc một dimen của hệ thống Android (vd status_bar_height). Trả về fallbackDp (px) nếu không có. */
     private static int systemDimen(Context ctx, String name, int fallbackDp) {
         Resources res = ctx.getResources();

@@ -19,7 +19,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Tạo URL thanh toán VNPay và kiểm tra chữ ký URL trả về — xử lý hoàn toàn phía
- * client (không cần backend). Phù hợp cho đồ án/sandbox.
+ * client (không cần backend). sandbox.
  *
  * ⚠️ Vì key nằm trong app và ví cộng ở client nên KHÔNG dùng cho sản phẩm thật.
  */
@@ -29,7 +29,7 @@ public final class VnpayHelper {
     public static final String TMN_CODE   = "TZ9M4UN9";
     public static final String HASH_SECRET = "IF93SG5WPI42RT3YYVCDE20UE0LWV1KL";
     public static final String PAY_URL    = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-    /** URL giả để bắt khi VNPay redirect về (app chặn trong WebView, không cần tồn tại thật). */
+    /** URL giả để bắt khi VNPay redirect về . */
     public static final String RETURN_URL = "https://carvia.app/vnpay_return";
 
     private VnpayHelper() {}

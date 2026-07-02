@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F6F8"
+    android:background="@color/driver_bg"
     android:fitsSystemWindows="true">
 
     <!-- Header -->
@@ -90,18 +90,21 @@
                 android:layout_height="48dp"
                 android:layout_marginTop="6dp"
                 android:layout_marginBottom="16dp"
-                android:background="@android:drawable/editbox_background" />
+                android:background="@drawable/bg_driver_input" />
 
             <!-- Ảnh CCCD -->
             <TextView style="@style/DriverFieldLabel" android:text="Ảnh CCCD (tuỳ chọn)" />
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_dr_cccd_img"
                 android:layout_width="match_parent"
                 android:layout_height="150dp"
                 android:layout_marginTop="6dp"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/driver_surface"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/driver_stroke"
+                app:strokeWidth="1dp"
                 android:clickable="true"
                 android:focusable="true">
                 <ImageView
@@ -113,18 +116,21 @@
                     android:src="@android:drawable/ic_menu_camera"
                     android:padding="40dp"
                     app:tint="#90A4AE" />
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Ảnh bằng lái -->
             <TextView style="@style/DriverFieldLabel" android:text="Ảnh bằng lái (tuỳ chọn)" />
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_dr_license_img"
                 android:layout_width="match_parent"
                 android:layout_height="150dp"
                 android:layout_marginTop="6dp"
                 android:layout_marginBottom="20dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/driver_surface"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/driver_stroke"
+                app:strokeWidth="1dp"
                 android:clickable="true"
                 android:focusable="true">
                 <ImageView
@@ -136,7 +142,7 @@
                     android:src="@android:drawable/ic_menu_camera"
                     android:padding="40dp"
                     app:tint="#90A4AE" />
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <Button
                 android:id="@+id/btn_dr_submit"

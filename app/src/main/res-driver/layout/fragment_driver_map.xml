@@ -23,12 +23,15 @@
             android:paddingHorizontal="14dp">
 
             <!-- Công tắc nhận chuyến -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
+                app:cardBackgroundColor="@color/driver_surface"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/driver_stroke"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -71,123 +74,110 @@
                         app:cornerRadius="20dp"
                         app:strokeColor="@color/driver_primary" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
-            <!-- Bản đồ + vùng giá cao -->
-            <androidx.cardview.widget.CardView
+            <!-- Bản đồ thật: vị trí hiện tại của tài xế + lộ trình đơn đang nhận (nếu có) -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="230dp"
+                android:layout_height="260dp"
                 android:layout_marginTop="14dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/driver_stroke"
+                app:strokeWidth="1dp">
 
-                <FrameLayout
+                <org.osmdroid.views.MapView
+                    android:id="@+id/map_view_driver"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                    android:layout_height="match_parent" />
+            </com.google.android.material.card.MaterialCardView>
 
-                    <ImageView
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:scaleType="centerCrop"
-                        android:src="@drawable/bg_map_stub" />
-
-                    <TextView
-                        android:layout_gravity="center"
-                        style="@style/SurgeChip"
-                        android:backgroundTint="@color/driver_red"
-                        android:text="2.8x" />
-
-                    <TextView
-                        android:layout_gravity="top|end"
-                        android:layout_marginTop="34dp"
-                        android:layout_marginEnd="46dp"
-                        style="@style/SurgeChip"
-                        android:backgroundTint="@color/driver_orange"
-                        android:text="1.5x" />
-
-                    <TextView
-                        android:layout_gravity="start|center_vertical"
-                        android:layout_marginStart="30dp"
-                        style="@style/SurgeChip"
-                        android:backgroundTint="@color/driver_green"
-                        android:text="1.2x" />
-
-                    <TextView
-                        android:layout_gravity="bottom|center_horizontal"
-                        android:layout_marginBottom="34dp"
-                        style="@style/SurgeChip"
-                        android:backgroundTint="@color/driver_orange"
-                        android:text="2.0x" />
-                </FrameLayout>
-            </androidx.cardview.widget.CardView>
-
-            <RelativeLayout
+            <!-- Thẻ chuyến đang nhận (ẩn nếu chưa có đơn accepted/in_progress) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_active_trip"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:paddingHorizontal="4dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentStart="true"
-                    android:text="Khu vực nhu cầu cao"
-                    android:textColor="@color/driver_text"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:text="Cập nhật 13:30"
-                    android:textColor="@color/driver_text_secondary"
-                    android:textSize="12sp" />
-            </RelativeLayout>
-
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
+                android:layout_marginTop="12dp"
+                app:cardBackgroundColor="@color/driver_surface_blue"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                android:visibility="gone">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:divider="?android:attr/listDivider"
                     android:orientation="vertical"
-                    android:padding="6dp"
-                    android:showDividers="middle">
+                    android:padding="16dp">
 
-                    <LinearLayout style="@style/DriverZoneRow">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Chuyến đang nhận"
+                        android:textColor="@color/driver_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.03" />
 
-                        <TextView style="@style/SurgeChip"
-                            android:backgroundTint="@color/driver_red"
-                            android:text="2.8x" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                        <TextView style="@style/DriverZoneName" android:text="Cầu Thủ Thiêm" />
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/bg_dot"
+                            android:backgroundTint="@color/driver_green" />
+
+                        <TextView
+                            android:id="@+id/tv_active_pickup"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/driver_text"
+                            android:textSize="13sp" />
                     </LinearLayout>
 
-                    <LinearLayout style="@style/DriverZoneRow">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                        <TextView style="@style/SurgeChip"
-                            android:backgroundTint="@color/driver_orange"
-                            android:text="1.5x" />
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/bg_dot"
+                            android:backgroundTint="@color/driver_red" />
 
-                        <TextView style="@style/DriverZoneName" android:text="Quận 1" />
+                        <TextView
+                            android:id="@+id/tv_active_dest"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/driver_text"
+                            android:textSize="13sp" />
                     </LinearLayout>
 
-                    <LinearLayout style="@style/DriverZoneRow">
-
-                        <TextView style="@style/SurgeChip"
-                            android:backgroundTint="@color/driver_green"
-                            android:text="1.2x" />
-
-                        <TextView style="@style/DriverZoneName" android:text="Bình Thạnh" />
-                    </LinearLayout>
+                    <TextView
+                        android:id="@+id/tv_active_distance"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textColor="@color/driver_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Hai lối tắt -->
             <LinearLayout
@@ -196,7 +186,7 @@
                 android:layout_marginTop="12dp"
                 android:orientation="horizontal">
 
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_navigate"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -204,8 +194,11 @@
                     android:layout_weight="1"
                     android:clickable="true"
                     android:focusable="true"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp">
+                    app:cardBackgroundColor="@color/driver_surface"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/driver_stroke"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -235,6 +228,7 @@
                                 android:textStyle="bold" />
 
                             <TextView
+                                android:id="@+id/tv_navigate_hint"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Mở Google Maps"
@@ -242,9 +236,9 @@
                                 android:textSize="11sp" />
                         </LinearLayout>
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                </com.google.android.material.card.MaterialCardView>
 
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_move_history"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -252,8 +246,11 @@
                     android:layout_weight="1"
                     android:clickable="true"
                     android:focusable="true"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="2dp">
+                    app:cardBackgroundColor="@color/driver_surface"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/driver_stroke"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -290,7 +287,7 @@
                                 android:textSize="11sp" />
                         </LinearLayout>
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
 
         </LinearLayout>
