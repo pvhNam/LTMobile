@@ -1,6 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     id("com.google.gms.google-services")
+}
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { stream -> load(stream) }
+    }
 }
 
 android {
@@ -43,7 +52,20 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     buildTypes {
+        getByName("debug") {
+            val appCheckDebugToken =
+                localProperties.getProperty("APP_CHECK_DEBUG_TOKEN", "")
+            buildConfigField(
+                "String",
+                "APP_CHECK_DEBUG_TOKEN",
+                "\"$appCheckDebugToken\""
+            )
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -67,7 +89,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
@@ -92,6 +114,10 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("androidx.preference:preference:1.2.1")
     implementation ("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-ai")
+    implementation("com.google.guava:guava:31.0.1-android")
+    debugImplementation("com.google.firebase:firebase-appcheck-debug")
+    releaseImplementation("com.google.firebase:firebase-appcheck-playintegrity")
     // viewmodel
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.8.7")
     implementation("androidx.lifecycle:lifecycle-livedata:2.8.7")

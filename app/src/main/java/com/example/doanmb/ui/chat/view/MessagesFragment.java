@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.doanmb.ui.chat.viewmodel.MessagesViewModel;
 import com.example.doanmb.ui.home.view.MainActivity;
 import com.example.doanmb.core.util.ImageLoader;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.data.repository.ChatRepository;
 import com.example.doanmb.R;
 import com.example.doanmb.ui.home.adapter.ShortcutAdapter;
@@ -71,6 +72,7 @@ public class MessagesFragment extends Fragment {
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_messages, container, false);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, view.findViewById(R.id.page_header));
 
         viewModel = new ViewModelProvider(this).get(MessagesViewModel.class);
 

@@ -13,7 +13,8 @@ public class AboutUsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_about_us);
-        EdgeToEdgeUtil.padContentForSystemBars(this, 0xFFFFFFFF);
+        EdgeToEdgeUtil.applyHeaderAndScroll(
+                findViewById(R.id.scroll_root), findViewById(R.id.header_bar));
 
         // Bắt sự kiện nút quay lại
         ImageView btnBack = findViewById(R.id.btn_back_about);

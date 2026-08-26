@@ -13,36 +13,18 @@
         android:orientation="vertical">
 
         <RelativeLayout
+            style="@style/CarviaPageHeader"
             android:id="@+id/header_bar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:gravity="center_vertical"
-            android:background="@color/lg_glass_fill_strong"
-            android:elevation="4dp"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp">
+            >
 
             <ImageView
+                style="@style/CarviaPageHeaderBack"
                 android:id="@+id/btn_back"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_centerVertical="true"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Quay lại"
-                android:padding="8dp"
-                android:tint="@color/lg_text"
-                android:src="@drawable/ic_back" />
+                />
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="Chính sách bảo mật"
-                android:textColor="@color/lg_text"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                style="@style/CarviaPageHeaderTitle"
+                android:text="Chính sách bảo mật" />
         </RelativeLayout>
 
         <LinearLayout

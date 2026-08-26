@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.data.model.Transaction;
 import com.example.doanmb.ui.profile.adapter.TransactionAdapter;
 import com.example.doanmb.ui.profile.viewmodel.WalletViewModel;
@@ -61,7 +62,9 @@ public class WalletActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_wallet);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, findViewById(R.id.header_bar));
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
         viewModel = new ViewModelProvider(this).get(WalletViewModel.class);

@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.data.model.UserVoucher;
 import com.example.doanmb.data.model.Voucher;
 import com.example.doanmb.ui.profile.adapter.MyVoucherAdapter;
@@ -48,7 +49,9 @@ public class GiftsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_gifts);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, findViewById(R.id.header_bar));
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
         viewModel = new ViewModelProvider(this).get(GiftsViewModel.class);

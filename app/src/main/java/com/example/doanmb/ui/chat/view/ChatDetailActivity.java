@@ -34,6 +34,7 @@ import eightbitlab.com.blurview.RenderScriptBlur;
 
 import com.bumptech.glide.Glide;
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.ui.chat.adapter.ChatAdapter;
 import com.example.doanmb.ui.chat.adapter.MediaPickerAdapter;
 import com.example.doanmb.ui.chat.viewmodel.ChatDetailViewModel;
@@ -119,7 +120,9 @@ public class ChatDetailActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_chat_detail);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, findViewById(R.id.layout_header));
 
         currentUserId = FirebaseAuth.getInstance().getCurrentUser() != null
                 ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";

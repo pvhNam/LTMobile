@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
 import com.example.doanmb.ui.home.adapter.BannerAdapter;
+import com.example.doanmb.ui.aiassistant.view.AiAssistantActivity;
 import com.example.doanmb.ui.car.view.CarDetailActivity;
 import com.example.doanmb.ui.chat.view.ChatDetailActivity;
 import com.example.doanmb.ui.car.view.ManageFragment;
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Quick action buttons
     private LinearLayout btnBuyCar, btnDriver, btnPoliceCar, btnPayment;
+    private View btnAiAssistant;
 
     private CarSaleAdapter carSaleAdapter;
     private CarRentalAdapter carRentalAdapter;
@@ -309,6 +311,7 @@ public class MainActivity extends AppCompatActivity {
         btnDriver    = findViewById(R.id.btn_driver);
         btnPoliceCar = findViewById(R.id.btn_police_car);
         btnPayment   = findViewById(R.id.btn_payment);
+        btnAiAssistant = findViewById(R.id.btn_ai_assistant);
     }
 
     private void setupQuickActions() {
@@ -321,6 +324,12 @@ public class MainActivity extends AppCompatActivity {
         if (btnDriver != null) btnDriver.setOnClickListener(openCategory);
         if (btnPoliceCar != null) btnPoliceCar.setOnClickListener(openCategory);
         if (btnPayment != null) btnPayment.setOnClickListener(openCategory);
+        if (btnAiAssistant != null) {
+            btnAiAssistant.setOnClickListener(v -> {
+                pulseView(v);
+                startActivity(new Intent(this, AiAssistantActivity.class));
+            });
+        }
     }
 
     private void pulseView(View view) {

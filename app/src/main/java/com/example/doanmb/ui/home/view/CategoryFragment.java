@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.ui.car.adapter.ProfileCarAdapter;
 import com.example.doanmb.data.model.Car;
 import com.example.doanmb.data.model.Place;
@@ -102,6 +103,10 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_category, container, false);
+        View pageHeader = view.findViewById(R.id.layout_search_filter);
+        View pageContent = view.findViewById(R.id.layout_category_content);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, pageHeader);
+        placeContentBelowHeader(pageHeader, pageContent);
 
         cardBuyCar = view.findViewById(R.id.card_buy_car);
         cardSellCar = view.findViewById(R.id.card_sell_car);
@@ -170,6 +175,17 @@ public class CategoryFragment extends Fragment implements PostCarFragment.OnPost
         loadCars();
 
         return view;
+    }
+
+    private void placeContentBelowHeader(View header, View content) {
+        if (header == null || content == null) return;
+        header.post(() -> {
+            ViewGroup.MarginLayoutParams params =
+                    (ViewGroup.MarginLayoutParams) content.getLayoutParams();
+            if (params.topMargin == header.getHeight()) return;
+            params.topMargin = header.getHeight();
+            content.setLayoutParams(params);
+        });
     }
 
     private void setupCollapseOnScroll() {

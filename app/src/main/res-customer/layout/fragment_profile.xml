@@ -65,6 +65,7 @@
             android:id="@+id/layout_main_profile"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:clipToPadding="false"
             android:scrollbars="none"
             android:visibility="visible">
 
@@ -78,18 +79,17 @@
                 app:cardBackgroundColor="@color/lg_accent_soft"
                 app:cardCornerRadius="0dp"
                 app:cardElevation="0dp"
-                android:layout_marginTop="-20dp"/>
+                android:layout_marginTop="0dp"/>
 
-                <androidx.cardview.widget.CardView
+                <eightbitlab.com.blurview.BlurView
                     android:id="@+id/card_user_profile"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginTop="12dp"
-                    app:cardBackgroundColor="@color/lg_glass_fill_strong"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="3dp"
+                    android:background="@drawable/bg_glass_card"
+                    android:elevation="3dp"
                     android:foreground="?android:attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true">
@@ -170,17 +170,16 @@
                             android:layout_alignParentEnd="true"
                             android:layout_centerVertical="true" />
                     </RelativeLayout>
-                </androidx.cardview.widget.CardView>
+                </eightbitlab.com.blurview.BlurView>
 
-                <androidx.cardview.widget.CardView
+                <eightbitlab.com.blurview.BlurView
+                    android:id="@+id/blur_profile_actions"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginTop="10dp"
-                    app:cardBackgroundColor="@color/lg_glass_fill_strong"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp">
+                    android:background="@drawable/bg_glass_card">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -343,17 +342,16 @@
                         </RelativeLayout>
 
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                </eightbitlab.com.blurview.BlurView>
 
-                <androidx.cardview.widget.CardView
+                <eightbitlab.com.blurview.BlurView
+                    android:id="@+id/blur_profile_rewards"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginTop="10dp"
-                    app:cardBackgroundColor="@color/lg_glass_fill_strong"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp">
+                    android:background="@drawable/bg_glass_card">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -388,17 +386,16 @@
                         </RelativeLayout>
 
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                </eightbitlab.com.blurview.BlurView>
 
-                <androidx.cardview.widget.CardView
+                <eightbitlab.com.blurview.BlurView
+                    android:id="@+id/blur_profile_support"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginTop="10dp"
-                    app:cardBackgroundColor="@color/lg_glass_fill_strong"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp">
+                    android:background="@drawable/bg_glass_card">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -448,7 +445,7 @@
                         </RelativeLayout>
 
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                </eightbitlab.com.blurview.BlurView>
 
                 <Button
                     android:id="@+id/btn_switch_driver"
@@ -497,7 +494,7 @@
                 app:cardCornerRadius="24dp"
                 app:cardElevation="0dp"
                 app:layout_constraintTop_toTopOf="parent"
-                android:layout_marginTop="-20dp"/>
+                android:layout_marginTop="0dp"/>
 
             <ImageView
                 android:id="@+id/btn_back_to_main"
@@ -556,15 +553,14 @@
                 </androidx.cardview.widget.CardView>
             </FrameLayout>
 
-            <androidx.cardview.widget.CardView
+            <eightbitlab.com.blurview.BlurView
+                android:id="@+id/blur_profile_settings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:layout_marginTop="24dp"
-                app:cardBackgroundColor="@color/lg_glass_fill_strong"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
+                android:background="@drawable/bg_glass_card"
                 app:layout_constraintTop_toBottomOf="@id/avatar_container">
 
                 <LinearLayout
@@ -621,7 +617,7 @@
                     </RelativeLayout>
 
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </eightbitlab.com.blurview.BlurView>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -636,34 +632,18 @@
             <!-- Cao wrap_content + minHeight: Java cộng thêm chiều cao status bar thật
                  vào paddingTop (EdgeToEdgeUtil) để nút back không bị thanh trạng thái đè -->
             <RelativeLayout
+                style="@style/CarviaPageHeader"
                 android:id="@+id/top_bar_info"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="56dp"
-                android:background="@color/lg_glass_fill_strong"
-                android:elevation="4dp"
-                android:paddingHorizontal="16dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                >
 
                 <ImageView
+                    style="@style/CarviaPageHeaderBack"
                     android:id="@+id/btn_back_to_settings"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_centerVertical="true"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:padding="8dp"
-                    android:tint="@color/lg_text"
-                    android:src="@drawable/ic_back" />
+                    />
 
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_centerInParent="true"
-                    android:text="Thông tin cá nhân"
-                    android:textColor="@color/lg_text"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    style="@style/CarviaPageHeaderTitle"
+                    android:text="Thông tin cá nhân" />
 
             </RelativeLayout>
 

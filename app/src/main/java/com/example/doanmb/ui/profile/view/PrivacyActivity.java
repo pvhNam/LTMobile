@@ -11,7 +11,8 @@ public class PrivacyActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_privacy);
-        EdgeToEdgeUtil.padContentForSystemBars(this, 0xFFFFFFFF);
+        EdgeToEdgeUtil.applyHeaderAndScroll(
+                findViewById(R.id.privacy_scroll), findViewById(R.id.header_bar));
 
         ImageView btnBack = findViewById(R.id.btn_back);
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());

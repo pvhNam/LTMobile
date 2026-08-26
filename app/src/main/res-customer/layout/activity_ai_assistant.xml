@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_liquid_glass">
+
+    <!-- HEADER -->
+    <eightbitlab.com.blurview.BlurView
+        android:id="@+id/blur_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:background="@android:color/transparent">
+
+        <RelativeLayout
+            android:id="@+id/page_header"
+            style="@style/CarviaPageHeader">
+
+            <ImageButton
+                style="@style/CarviaPageHeaderBack"
+                android:id="@+id/btn_back"
+                />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_toEndOf="@id/btn_back"
+                android:layout_alignParentEnd="true"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Trợ lý CarVIA"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/lg_text"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Gợi ý xe mua/thuê · tư vấn đăng bán"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/lg_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </RelativeLayout>
+    </eightbitlab.com.blurview.BlurView>
+
+    <!-- DANH SÁCH TIN NHẮN -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_messages"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/blur_header"
+        android:layout_above="@id/blur_input"
+        android:clipToPadding="false"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        tools:listitem="@layout/item_ai_message_bot" />
+
+    <!-- Ô NHẬP CÂU HỎI -->
+    <eightbitlab.com.blurview.BlurView
+        android:id="@+id/blur_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="@color/lg_glass_fill_strong">
+
+        <LinearLayout
+            android:id="@+id/layout_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="8dp"
+            android:paddingVertical="8dp">
+
+        <EditText
+            android:id="@+id/et_message"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_glass_input"
+            android:hint="Hỏi về xe cần mua, cần bán..."
+            android:imeOptions="actionSend"
+            android:inputType="textCapSentences|textMultiLine|textNoSuggestions"
+            android:maxLines="4"
+            android:paddingHorizontal="14dp"
+            android:textColor="@color/lg_text"
+            android:textColorHint="@color/lg_text_secondary"
+            android:textSize="14sp" />
+
+        <ImageButton
+            android:id="@+id/btn_send"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_circle_blue"
+            android:padding="10dp"
+            android:src="@android:drawable/ic_menu_send"
+            app:tint="@color/white" />
+        </LinearLayout>
+    </eightbitlab.com.blurview.BlurView>
+</RelativeLayout>

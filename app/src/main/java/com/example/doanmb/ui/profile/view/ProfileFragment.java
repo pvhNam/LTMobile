@@ -2,6 +2,7 @@ package com.example.doanmb.ui.profile.view;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -43,6 +44,11 @@ import android.app.DatePickerDialog;
 
 import java.util.Calendar;
 
+import eightbitlab.com.blurview.BlurAlgorithm;
+import eightbitlab.com.blurview.BlurView;
+import eightbitlab.com.blurview.RenderEffectBlur;
+import eightbitlab.com.blurview.RenderScriptBlur;
+
 public class ProfileFragment extends Fragment {
 
     private LinearLayout layoutNotLoggedIn;
@@ -54,7 +60,7 @@ public class ProfileFragment extends Fragment {
     private RelativeLayout layoutPersonalInfo;
 
     // Views màn 1
-    private CardView cardUserProfile;
+    private View cardUserProfile;
     private TextView tvProfileNameMain, tvPhoneVerifiedBadge, tvWalletBalance;
     private ImageView ivAvatarMain,ivVerifiedIcon,ivFavouriteCar,ivRegRentCar,ivLocation;
     private Button btnLogin, btnRegister, btnLogout, btnSwitchDriver;
@@ -91,9 +97,35 @@ public class ProfileFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
         db = FirebaseFirestore.getInstance();
         initViews(view);
+        setupProfileBlur(view);
         setupListeners();
         return view;
 
+    }
+
+    private void setupProfileBlur(View fragmentView) {
+        View activityRoot = requireActivity().findViewById(R.id.main_root);
+        ViewGroup blurRoot = activityRoot instanceof ViewGroup
+                ? (ViewGroup) activityRoot
+                : (ViewGroup) fragmentView;
+        int[] blurIds = {
+                R.id.card_user_profile,
+                R.id.blur_profile_actions,
+                R.id.blur_profile_rewards,
+                R.id.blur_profile_support,
+                R.id.blur_profile_settings
+        };
+        for (int id : blurIds) {
+            BlurView blurView = fragmentView.findViewById(id);
+            if (blurView == null) continue;
+            BlurAlgorithm algorithm = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    ? new RenderEffectBlur()
+                    : new RenderScriptBlur(requireContext());
+            blurView.setupWith(blurRoot, algorithm)
+                    .setFrameClearDrawable(blurRoot.getBackground())
+                    .setBlurRadius(16f);
+            blurView.setClipToOutline(true);
+        }
     }
 
     private void initViews(View view) {
@@ -101,6 +133,7 @@ public class ProfileFragment extends Fragment {
         layoutLoggedIn = view.findViewById(R.id.layout_logged_in);
 
         layoutMainProfile = view.findViewById(R.id.layout_main_profile);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, layoutMainProfile);
         layoutAccountSettings = view.findViewById(R.id.layout_account_settings);
         layoutPersonalInfo = view.findViewById(R.id.layout_personal_info);
 

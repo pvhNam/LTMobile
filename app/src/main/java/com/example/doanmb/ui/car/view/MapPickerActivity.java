@@ -25,6 +25,7 @@ import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.preference.PreferenceManager;
 
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.google.android.material.button.MaterialButton;
 
 import org.json.JSONArray;
@@ -121,7 +122,10 @@ public class MapPickerActivity extends AppCompatActivity {
         Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
         Configuration.getInstance().setUserAgentValue(getPackageName());
         super.onCreate(savedInstanceState);
+        EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_map_picker);
+        EdgeToEdgeUtil.applyHeaderAndScroll(
+                findViewById(R.id.map_root), findViewById(R.id.page_header));
 
         tvHint     = findViewById(R.id.tv_map_hint);
         tvPickup   = findViewById(R.id.tv_map_pickup);

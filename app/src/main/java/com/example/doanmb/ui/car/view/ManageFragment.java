@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.core.service.OrderReminderService;
 import com.example.doanmb.ui.car.adapter.ProfileCarAdapter;
 import com.example.doanmb.ui.car.adapter.RequestAdapter;
@@ -60,6 +61,10 @@ public class ManageFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_manage, container, false);
+        View pageHeader = view.findViewById(R.id.page_header);
+        View pageContent = view.findViewById(R.id.layout_manage_content);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, pageHeader);
+        placeContentBelowHeader(pageHeader, pageContent);
 
         db = FirebaseFirestore.getInstance();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -80,6 +85,17 @@ public class ManageFragment extends Fragment {
         }
 
         return view;
+    }
+
+    private void placeContentBelowHeader(View header, View content) {
+        if (header == null || content == null) return;
+        header.post(() -> {
+            ViewGroup.MarginLayoutParams params =
+                    (ViewGroup.MarginLayoutParams) content.getLayoutParams();
+            if (params.topMargin == header.getHeight()) return;
+            params.topMargin = header.getHeight();
+            content.setLayoutParams(params);
+        });
     }
 
     private void observeViewModel() {

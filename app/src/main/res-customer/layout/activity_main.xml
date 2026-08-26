@@ -338,6 +338,22 @@
                 </LinearLayout>
             </androidx.core.widget.NestedScrollView>
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/btn_ai_assistant"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="18dp"
+            android:layout_marginBottom="92dp"
+            android:contentDescription="Mở trợ lý AI"
+            android:elevation="8dp"
+            android:text="Trợ lý AI"
+            android:textColor="@color/white"
+            app:backgroundTint="@color/lg_accent_dark"
+            app:icon="@drawable/ic_support"
+            app:iconTint="@color/white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <FrameLayout

@@ -15,6 +15,7 @@ import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.core.helper.VnpayHelper;
 
 /**
@@ -32,7 +33,9 @@ public class VnpayPaymentActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_vnpay_payment);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, findViewById(R.id.header_bar));
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
         amount = getIntent().getLongExtra(EXTRA_AMOUNT, 0L);

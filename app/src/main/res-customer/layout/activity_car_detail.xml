@@ -666,22 +666,21 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top"
         android:alpha="0"
-        android:background="@color/lg_glass_fill_strong"
-        android:elevation="6dp"
+        android:background="@android:color/transparent"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="6dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="10dp">
+        android:paddingStart="20dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="12dp">
 
         <ImageView
             android:id="@+id/btn_back_detail"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Trở lại"
-            android:padding="9dp"
+            android:padding="8dp"
             android:src="@drawable/ic_back"
             android:tint="#1A1A2E" />
 
@@ -695,7 +694,7 @@
             android:maxLines="1"
             android:text="Chi tiết xe"
             android:textColor="#1A1A2E"
-            android:textSize="18sp"
+            android:textSize="20sp"
             android:textStyle="bold" />
 
         <ImageView

@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.doanmb.R;
+import com.example.doanmb.core.util.EdgeToEdgeUtil;
 import com.example.doanmb.ui.car.adapter.ProfileCarAdapter;
 import com.example.doanmb.data.model.Car;
 import com.example.doanmb.data.repository.FavoriteRepository;
@@ -32,7 +33,9 @@ public class FavoriteCarsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_favorite_cars);
+        EdgeToEdgeUtil.applyHeaderAndScroll(null, findViewById(R.id.header_bar));
         db = FirebaseFirestore.getInstance();
 
         findViewById(R.id.btn_back_favorites).setOnClickListener(v -> finish());

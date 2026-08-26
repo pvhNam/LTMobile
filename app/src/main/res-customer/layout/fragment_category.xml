@@ -16,7 +16,7 @@
         <LinearLayout
             android:id="@+id/layout_search_filter"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="wrap_content"
             android:background="@drawable/bg_search_filter_panel"
             android:orientation="vertical"
             android:paddingBottom="0dp">
@@ -24,11 +24,12 @@
             <LinearLayout
                 android:id="@+id/layout_search_tabs"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="150dp"
                 android:baselineAligned="false"
                 android:orientation="horizontal"
                 android:paddingStart="20dp"
-                android:paddingTop="40dp"
+                android:paddingTop="12dp"
                 android:paddingEnd="20dp">
 
                 <androidx.cardview.widget.CardView

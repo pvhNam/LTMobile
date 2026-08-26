@@ -14,35 +14,18 @@
 
         <!-- Header -->
         <RelativeLayout
+            style="@style/CarviaPageHeader"
             android:id="@+id/header_bar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:gravity="center_vertical"
-            android:background="@color/lg_glass_fill_strong"
-            android:elevation="4dp"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp">
+            >
 
             <ImageView
+                style="@style/CarviaPageHeaderBack"
                 android:id="@+id/btn_back_about"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_centerVertical="true"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:padding="8dp"
-                android:src="@drawable/ic_back"
-                android:tint="@color/lg_text" />
+                />
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="Về chúng tôi"
-                android:textColor="@color/lg_text"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                style="@style/CarviaPageHeaderTitle"
+                android:text="Về chúng tôi" />
 
         </RelativeLayout>
 

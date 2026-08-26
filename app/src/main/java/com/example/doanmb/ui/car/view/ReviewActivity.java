@@ -38,7 +38,8 @@ public class ReviewActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdgeUtil.enable(this, true);
         setContentView(R.layout.activity_review);
-        EdgeToEdgeUtil.padContentForSystemBars(this, 0xFFFFFFFF);
+        EdgeToEdgeUtil.applyHeaderAndScroll(
+                findViewById(R.id.scroll_root), findViewById(R.id.header_bar));
 
         ImageView btnBack = findViewById(R.id.btn_back);
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());
